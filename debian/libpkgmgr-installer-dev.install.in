@@ -1,0 +1,4 @@
+@PREFIX@/include/pkgmgr/pkgmgr_installer.h
+@PREFIX@/lib/pkgconfig/pkgmgr-installer-client.pc
+@PREFIX@/lib/pkgconfig/pkgmgr-installer-status-broadcast-server.pc
+@PREFIX@/lib/pkgconfig/pkgmgr-installer.pc

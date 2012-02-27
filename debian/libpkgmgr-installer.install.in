@@ -1,0 +1,3 @@
+@PREFIX@/lib/libpkgmgr_installer_client.so*
+@PREFIX@/lib/libpkgmgr_installer_status_broadcast_server.so*
+@PREFIX@/lib/libpkgmgr_installer.so*

@@ -1,0 +1,16 @@
+#
+# Copyright (c) 2008 ~ 2010 Samsung Electronics Co., Ltd.
+# All rights reserved.
+#
+
+prefix=@PREFIX@
+exec_prefix=@EXEC_PREFIX@
+libdir=@LIBDIR@
+includedir=@INCLUDEDIR@
+
+Name: package manager types
+Description: SLP package manager's types header
+Version: @VERSION@
+Requires:
+Libs:
+Cflags: -I${includedir}

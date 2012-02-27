@@ -1,0 +1,7 @@
+slp-pkgmgr (0.1.100-2) unstable; urgency=low
+
+  * Initial Release.
+  * Git: pkgs/s/slp-pkgmgr
+  * Tag: slp-pkgmgr_0.1.100-2
+
+ -- Sewook Park <sewook7.park@samsung.com>  Wed, 07 Dec 2011 12:55:49 +0900

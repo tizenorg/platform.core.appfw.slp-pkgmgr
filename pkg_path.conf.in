@@ -1,0 +1,6 @@
+# usage 
+# frontend:directory_path
+# backend:directory_path
+frontend:/usr/etc/package-manager/frontend/
+backend:/usr/etc/package-manager/backend/
+backendlib:/usr/etc/package-manager/backendlib/

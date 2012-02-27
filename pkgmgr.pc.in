@@ -1,0 +1,16 @@
+#
+# Copyright (c) 2008 ~ 2010 Samsung Electronics Co., Ltd.
+# All rights reserved.
+#
+
+prefix=@PREFIX@
+exec_prefix=@EXEC_PREFIX@
+libdir=@LIBDIR@
+includedir=@INCLUDEDIR@
+
+Name: package manager 
+Description: SLP Package Manager Package
+Version: @VERSION@
+Requires: security-server dlog pkgmgr-types pkgmgr-installer-client pkgmgr-installer-status-broadcast-server aul
+Libs: -L${libdir} -L${libdir}/pkgmgr -lpkgmgr-client
+Cflags: -I${includedir}

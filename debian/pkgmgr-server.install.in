@@ -1,0 +1,3 @@
+@PREFIX@/bin/pkgmgr-server
+@PREFIX@/share/dbus-1/services/org.tizen.slp.pkgmgr.service
+@PREFIX@/share/locale/*

@@ -1,0 +1,2 @@
+@PREFIX@/include/package-manager.h
+@PREFIX@/lib/pkgconfig/pkgmgr.pc

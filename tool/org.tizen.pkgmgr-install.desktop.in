@@ -1,0 +1,9 @@
+Name=pkgmgr-install
+Type=Application
+Exec=/usr/bin/pkgmgr-install
+Hidden=True
+Version=0.1
+Mimetype=application/x-deb;application/x-java-archive;text/vnd.sun.j2me.app-descriptor;application/widget;application/vnd.wac.widget-sharing
+X-SLP-TaskManage=False
+X-SLP-Multiple=True
+X-SLP-Removable=False
