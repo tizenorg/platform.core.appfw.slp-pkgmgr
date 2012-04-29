@@ -31,8 +31,12 @@
 #include <string.h>
 #include <unistd.h>
 
+
 #define KEY_MIME_TYPE "__AUL_MIME_TYPE__"
 #define KEY_MIME_CONTENT "__AUL_MIME_CONTENT__"
+
+#define KEY_MIME_TYPE_NEW "__APP_SVC_MIME_TYPE__"
+#define KEY_MIME_CONTENT_NEW "__APP_SVC_URI__"
 
 char *supported_mime_type_list[] = {
 	NULL			/* sentinel */
@@ -56,8 +60,13 @@ static int __parse_argv(int argc, char **argv,
 
 	errno = 0;
 
-	*mime_type = (char *)bundle_get_val(b, KEY_MIME_TYPE);
-	*file_path = (char *)bundle_get_val(b, KEY_MIME_CONTENT);
+	if(bundle_get_val(b, KEY_MIME_CONTENT_NEW)) {
+	/*	*mime_type = (char *)bundle_get_val(b, KEY_MIME_TYPE_NEW); */
+		*file_path = (char *)bundle_get_val(b, KEY_MIME_CONTENT_NEW);
+	} else {
+		*mime_type = (char *)bundle_get_val(b, KEY_MIME_TYPE);
+		*file_path = (char *)bundle_get_val(b, KEY_MIME_CONTENT);
+	}
 
 	if (errno)
 		return -1;

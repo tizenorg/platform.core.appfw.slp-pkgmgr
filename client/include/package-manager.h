@@ -112,13 +112,12 @@ typedef enum _pkgmgr_return_val {
 /** @} */
 
 /**
- * @defgroup pkg_operate	APIs to install /uninstall / activate application
+ * @defgroup pkg_operate	APIs to install /uninstall / application
  * @ingroup pkgmgr
  * @brief
- *	APIs to install /uninstall / activate application 
+ *	APIs to install /uninstall / application 
  *	- Install application using application package filepath
  *	- Uninstall application using application package name
- *	- Activate application using application package name
  *
  */
 
@@ -216,38 +215,6 @@ int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 				pkgmgr_handler event_cb, void *data);
 
 /**
- * @brief	This API activates package.
- *
- * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
- * @param[in]	pkg_type		package type 
- * @param[in]	pkg_name	package name
- * @return	request_id (>0) if success, error code(<0) if fail\n
- * @retval	PKGMGR_R_OK	success
- * @retval	PKGMGR_R_EINVAL	invalid argument
- * @retval	PKGMGR_R_ECOMM	communication error
-*/
-int pkgmgr_client_activate(pkgmgr_client *pc, const char *pkg_type,
-				const char *pkg_name);
-
-/**
- * @brief	This API deactivates package.
- *
- * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
- * @param[in]	pkg_type		package type 
- * @param[in]	pkg_name	package name
- * @return	request_id (>0) if success, error code(<0) if fail\n
- * @retval	PKGMGR_R_OK	success
- * @retval	PKGMGR_R_EINVAL	invalid argument
- * @retval	PKGMGR_R_ECOMM	communication error
-*/
-int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
-				 const char *pkg_name);
-
-/**
  * @brief	This API deletes application's private data.
  *
  * This API is for package-manager client application.\n
@@ -336,18 +303,6 @@ typedef void pkgmgr_info;
  * @return	package entry pointer if success, NULL if fail\n
 */
 pkgmgr_info * pkgmgr_info_new(const char *pkg_type, const char *pkg_name);
-
-/**
- * @brief	This API  gets the package's information.
- *
- *              This API is for package-manager client application.\n
- * 
- * @param[in]	pkg_type		package type for the package to get infomation
- * @param[in]	pkg_path		package file path to get infomation
- * @return	package entry pointer if success, NULL if fail\n
-*/
-pkgmgr_info * pkgmgr_info_new_from_file(const char *pkg_type,
-					     const char *pkg_path);
 
 /**
  * @brief	This API  get package information value

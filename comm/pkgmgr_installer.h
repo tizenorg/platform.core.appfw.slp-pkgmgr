@@ -341,7 +341,7 @@ int main(int argc, char **argv)
 
 	// Do something...
 	pkgmgr_installer_send_signal(pi,
-	 "deb", "deb.org.tizen.foo", "install_percent", "100");	
+	 "deb", "org.tizen.foo", "install_percent", "100");
 	// A sample signal
 
 	pkgmgr_installer_free(pi);

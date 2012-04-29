@@ -87,7 +87,6 @@ int ail_db_update = 1;
 
 GMainLoop *mainloop = NULL;
 
-static const char *activate_cmd = "/usr/bin/activator";
 
 /* operation_type */
 typedef enum {
@@ -113,10 +112,9 @@ typedef struct pm_desktop_notifier_t pm_desktop_notifier;
 pm_desktop_notifier desktop_notifier;
 pm_inotify_paths paths[DESKTOP_FILE_DIRS_NUM];
 
-static
-void response_cb(void *data, Evas_Object *notify, void *event_info);
-static
-int create_popup(struct appdata *ad);
+static void response_cb1(void *data, Evas_Object *notify, void *event_info);
+static void response_cb2(void *data, Evas_Object *notify, void *event_info);
+static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
 gboolean queue_job(void *data);
 static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler);
@@ -230,64 +228,33 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 }
 
 static
-void response_cb(void *data, Evas_Object *notify, void *event_info)
+void response_cb1(void *data, Evas_Object *notify, void *event_info)
 {
 	struct appdata *ad = (struct appdata *)data;
 
 	DBG("start of response_cb()\n");
 
-	if ((int)event_info == ELM_POPUP_RESPONSE_OK) {	/* YES  */
-		DBG("Uninstalling... [%s]\n", ad->item->pkg_name);
+	/* YES  */
+	DBG("Uninstalling... [%s]\n", ad->item->pkg_name);
 
-		if (strlen(ad->item->pkg_name) == 0) {
-			DBG("package_name is empty\n");
-		}
-
-		if (strlen(ad->item->pkg_type) == 0) {
-			DBG("Fail :  Uninstalling... [%s]\n",
-			    ad->item->pkg_name);
-			free(ad->item);
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
-			drawing_popup = 0;
-
-			return;
-		}
-
-		DBG("pkg_type = [%s]\n", ad->item->pkg_type);
-
-		_pm_queue_push(*(ad->item));
-
-	} else {		/* NO  */
-		pkgmgr_installer *pi;
-		gboolean ret_parse;
-		gint argcp;
-		gchar **argvp;
-		GError *gerr = NULL;
-
-		pi = pkgmgr_installer_new();
-		if (!pi) {
-			DBG("Failure in creating the pkgmgr_installer object");
-			return;
-		}
-
-		ret_parse = g_shell_parse_argv(ad->item->args,
-					       &argcp, &argvp, &gerr);
-		if (FALSE == ret_parse) {
-			DBG("Failed to split args: %s", ad->item->args);
-			DBG("messsage: %s", gerr->message);
-			pkgmgr_installer_free(pi);
-			return;
-		}
-
-		pkgmgr_installer_receive_request(pi, argcp, argvp);
-
-		pkgmgr_installer_send_signal(pi, ad->item->pkg_type,
-					     ad->item->pkg_name, "end",
-					     "cancel");
-
-		pkgmgr_installer_free(pi);
+	if (strlen(ad->item->pkg_name) == 0) {
+		DBG("package_name is empty\n");
 	}
+
+	if (strlen(ad->item->pkg_type) == 0) {
+		DBG("Fail :  Uninstalling... [%s]\n",
+		    ad->item->pkg_name);
+		free(ad->item);
+		evas_object_del(ad->notify);
+		evas_object_del(ad->win);
+		drawing_popup = 0;
+
+		return;
+	}
+
+	DBG("pkg_type = [%s]\n", ad->item->pkg_type);
+
+	_pm_queue_push(*(ad->item));
 
 	/* Free resource */
 	free(ad->item);
@@ -303,6 +270,59 @@ void response_cb(void *data, Evas_Object *notify, void *event_info)
 
 	return;
 }
+
+static
+void response_cb2(void *data, Evas_Object *notify, void *event_info)
+{
+	struct appdata *ad = (struct appdata *)data;
+
+	DBG("start of response_cb()\n");
+
+	/* NO  */
+	pkgmgr_installer *pi;
+	gboolean ret_parse;
+	gint argcp;
+	gchar **argvp;
+	GError *gerr = NULL;
+
+	pi = pkgmgr_installer_new();
+	if (!pi) {
+		DBG("Failure in creating the pkgmgr_installer object");
+		return;
+	}
+
+	ret_parse = g_shell_parse_argv(ad->item->args,
+				       &argcp, &argvp, &gerr);
+	if (FALSE == ret_parse) {
+		DBG("Failed to split args: %s", ad->item->args);
+		DBG("messsage: %s", gerr->message);
+		pkgmgr_installer_free(pi);
+		return;
+	}
+
+	pkgmgr_installer_receive_request(pi, argcp, argvp);
+
+	pkgmgr_installer_send_signal(pi, ad->item->pkg_type,
+				     ad->item->pkg_name, "end",
+				     "cancel");
+
+	pkgmgr_installer_free(pi);
+
+	/* Free resource */
+	free(ad->item);
+	evas_object_del(ad->notify);
+	evas_object_del(ad->win);
+	/***************/
+
+	g_idle_add(queue_job, NULL);
+
+	DBG("end of response_cb()\n");
+
+	drawing_popup = 0;
+
+	return;
+}
+
 
 static char *__get_exe_path(const char *pkg_name)
 {
@@ -390,7 +410,7 @@ int create_popup(struct appdata *ad)
 
 	double s;
 	s = w / DESKTOP_W;
-	elm_scale_set(s);
+	elm_config_scale_set(s);
 
 	evas_object_show(ad->win);
 
@@ -446,23 +466,27 @@ int create_popup(struct appdata *ad)
 	} else
 		snprintf(sentence, sizeof(sentence) - 1, _("Invalid request"));
 
-	elm_popup_title_label_set(ad->notify, pkg_name);
+	elm_object_part_text_set(ad->notify, "title,text", pkg_name);
 	evas_object_size_hint_weight_set(ad->notify, EVAS_HINT_EXPAND,
 					 EVAS_HINT_EXPAND);
-/*      elm_popup_mode_set(ad->notify, ELM_POPUP_TYPE_ALERT); */
 
 	evas_object_show(ad->notify);
 	/***********************************/
 
-	elm_popup_desc_set(ad->notify, sentence);
+	elm_object_text_set(ad->notify, sentence);
 
-	elm_popup_buttons_add(ad->notify, 2,
-			      dgettext("sys_string", "IDS_COM_SK_YES"),
-			      ELM_POPUP_RESPONSE_OK, dgettext("sys_string",
-							      "IDS_COM_SK_NO"),
-			      ELM_POPUP_RESPONSE_CANCEL, NULL);
-	evas_object_smart_callback_add(ad->notify,
-				       "response", response_cb, ad);
+	Evas_Object *button1 = NULL;
+	Evas_Object *button2 = NULL;
+
+	button1 = elm_button_add(ad->notify);
+	elm_object_text_set(button1, dgettext("sys_string", "IDS_COM_SK_YES"));
+	elm_object_part_content_set(ad->notify, "button1", button1);
+	evas_object_smart_callback_add(button1, "clicked", response_cb1, ad);
+
+	button2 = elm_button_add(ad->notify);
+	elm_object_text_set(button2, dgettext("sys_string", "IDS_COM_SK_NO"));
+	elm_object_part_content_set(ad->notify, "button2", button2);
+	evas_object_smart_callback_add(button2, "clicked", response_cb2, ad);
 
 	evas_object_show(ad->notify);
 

@@ -1,9 +1,10 @@
 Name=pkgmgr-install
 Type=Application
 Exec=/usr/bin/pkgmgr-install
-Hidden=True
+NoDisplay=True
 Version=0.1
-Mimetype=application/x-deb;application/x-java-archive;text/vnd.sun.j2me.app-descriptor;application/widget;application/vnd.wac.widget-sharing
-X-SLP-TaskManage=False
-X-SLP-Multiple=True
-X-SLP-Removable=False
+Mimetype=application/x-deb;application/x-java-archive;text/vnd.sun.j2me.app-descriptor;application/widget;application/vnd.wac.widget-sharing;application/x-rpm;application/x-redhat-package-manager
+X-Tizen-TaskManage=False
+X-Tizen-Multiple=True
+X-Tizen-Removable=False
+X-Tizen-SVC=http://tizen.org/appsvc/operation/view|NULL|application/x-deb;http://tizen.org/appsvc/operation/view|NULL|application/x-java-archive;http://tizen.org/appsvc/operation/view|NULL|text/vnd.sun.j2me.app-descriptor;http://tizen.org/appsvc/operation/view|NULL|application/widget;http://tizen.org/appsvc/operation/view|NULL|application/vnd.wac.widget-sharing;http://tizen.org/appsvc/operation/view|NULL|application/x-rpm;http://tizen.org/appsvc/operation/view|NULL|application/x-redhat-package-manager

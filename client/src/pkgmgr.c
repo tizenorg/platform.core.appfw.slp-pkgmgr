@@ -743,113 +743,12 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	return req_id;
 }
 
-API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
-			       const char *pkg_name)
-{
-	const char *pkgtype;
-	char *req_key;
-	char *cookie = NULL;
-	int ret;
-	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
-	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
-
-	/* 0. check the pc type */
-	if (mpc->ctype != PC_REQUEST)
-		return PKGMGR_R_EINVAL;
-
-	/* 1. check argument */
-	if (pkg_name == NULL)
-		return PKGMGR_R_EINVAL;
-
-	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkg_name);
-		if (pkgtype == NULL)
-			return PKGMGR_R_EINVAL;
-	} else
-		pkgtype = pkg_type;
-
-	if (strlen(pkg_name) >= PKG_STRING_LEN_MAX)
-		return PKGMGR_R_EINVAL;
-
-	/* 2. generate req_key */
-	req_key = __get_req_key(pkg_name);
-
-	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  pkg_name, "1", cookie, 1);
-	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
-		free(req_key);
-		return PKGMGR_R_ECOMM;
-	}
-
-	free(req_key);
-
-	return PKGMGR_R_OK;
-}
-
-API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
-				 const char *pkg_name)
-{
-	const char *pkgtype;
-	char *req_key;
-	char *cookie = NULL;
-	int ret;
-	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
-	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
-
-	/* 0. check the pc type */
-	if (mpc->ctype != PC_REQUEST)
-		return PKGMGR_R_EINVAL;
-
-	/* 1. check argument */
-	if (pkg_name == NULL)
-		return PKGMGR_R_EINVAL;
-
-	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkg_name);
-		if (pkgtype == NULL)
-			return PKGMGR_R_EINVAL;
-	} else
-		pkgtype = pkg_type;
-
-	if (strlen(pkg_name) >= PKG_STRING_LEN_MAX)
-		return PKGMGR_R_EINVAL;
-
-	/* 2. generate req_key */
-	req_key = __get_req_key(pkg_name);
-
-	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  pkg_name, "0", cookie, 1);
-	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
-		free(req_key);
-		return PKGMGR_R_ECOMM;
-	}
-
-	free(req_key);
-
-	return PKGMGR_R_OK;
-}
-
 API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 				      const char *pkg_name, pkgmgr_mode mode)
 {
 	const char *pkgtype;
 	char *installer_path;
 	char *req_key;
-	int req_id;
 	int i = 0;
 	char *argv[PKG_ARGC_MAX] = { NULL, };
 	char *args = NULL;
@@ -1124,12 +1023,14 @@ API pkgmgr_info *pkgmgr_info_new(const char *pkg_type, const char *pkg_name)
 
 	plugin_set = _package_manager_load_library(pkgtype);
 	if (plugin_set == NULL) {
+		_LOGE("*** Failed to load library");
 		free(pkg_detail_info);
 		return NULL;
 	}
 
 	if (plugin_set->pkg_is_installed) {
 		if (plugin_set->pkg_is_installed(pkg_name) != 0) {
+			_LOGE("*** Failed to call pkg_is_installed()");
 			free(pkg_detail_info);
 			return NULL;
 		}
@@ -1137,6 +1038,7 @@ API pkgmgr_info *pkgmgr_info_new(const char *pkg_type, const char *pkg_name)
 		if (plugin_set->get_pkg_detail_info) {
 			if (plugin_set->get_pkg_detail_info(pkg_name,
 							    pkg_detail_info) != 0) {
+				_LOGE("*** Failed to call get_pkg_detail_info()");
 				free(pkg_detail_info);
 				return NULL;
 			}

@@ -51,43 +51,7 @@ struct pkgmgr_installer {
 
 	DBusConnection *conn;
 };
-static int __pkgmgr_installer_receive_request_by_socket(pkgmgr_installer *pi);
 
-/* Internal func */
-
-static int __pkgmgr_installer_receive_request_by_socket(pkgmgr_installer *pi)
-{
-	CHK_PI_RET(-EINVAL);
-	int r = 0;
-
-#ifdef USE_SOCKET
-	/* TODO: implement this */
-
-	/* Try to connect to socket */
-	comm_socket_client *csc = 
-		comm_socket_client_new(pi->quiet_socket_path);
-	if (!csc)
-		return -EINVAL;
-
-	/* Receive request */
-	char *req = NULL, *pkg_info = NULL;
-	if (0 != comm_socket_client_receive_request(csc, &req, &pkg_info)) {
-		r = -EINVAL;
-		goto CLEANUP_RET;
-	}
-
-	/* Verify requester */
-
-	/* Set request value */
-
-	/* Cleanup */
- CLEANUP_RET:
-	if (csc)
-		comm_socket_client_free(csc);
-#endif
-
-	return r;
-}
 
 /* API */
 
@@ -204,7 +168,7 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			/* pi->quiet_socket_path = strndup(optarg, MAX_STRLEN);
 			   maximum 255 bytes 
 			   return 
-			__pkgmgr_installer_receive_request_by_socket(pi); */
+			*/
 
 			break;
 
