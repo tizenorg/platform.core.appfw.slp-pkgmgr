@@ -16,6 +16,11 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(aul)
 BuildRequires:  pkgconfig(ail)
 BuildRequires:  pkgconfig(appcore-efl)
+Requires(post): /usr/bin/update-mime-database
+Requires(post): /bin/mkdir
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
 
 
 %description
