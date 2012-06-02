@@ -1,0 +1,2 @@
+* Fri June 01 2012 Yan Yin <yan.yin@intel.com> - 0.1.111
+- Add Requires(post) entries to avoid image creation warning 
