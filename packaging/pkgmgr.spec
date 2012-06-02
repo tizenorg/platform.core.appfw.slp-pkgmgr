@@ -5,6 +5,7 @@ Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
 Source0:    %{name}-%{version}.tar.gz
+Source1001: packaging/pkgmgr.manifest 
 BuildRequires:  cmake
 BuildRequires:  gettext-tools
 BuildRequires:  pkgconfig(ecore)
@@ -85,6 +86,7 @@ Package Manager client types develpoment package for packaging
 cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
 
 %build
+cp %{SOURCE1001} .
 
 make %{?jobs:-j%jobs}
 %install
@@ -116,6 +118,7 @@ mkdir -p /usr/etc/package-manager/server
 %postun installer -p /sbin/ldconfig
 
 %files
+%manifest pkgmgr.manifest
 %defattr(-,root,root,-)
 %{_bindir}/pkgcmd
 %exclude %{_bindir}/pkgmgr_backend_sample
@@ -126,6 +129,7 @@ mkdir -p /usr/etc/package-manager/server
 %exclude /usr/etc/package-manager/server/queue_status
 
 %files client
+%manifest pkgmgr.manifest
 %defattr(-,root,root,-)
 %{_prefix}/etc/package-manager/pkg_path.conf
 %{_datadir}/mime/packages/mime.wac.xml
@@ -134,24 +138,28 @@ mkdir -p /usr/etc/package-manager/server
 /opt/share/applications/org.tizen.pkgmgr-install.desktop
 
 %files client-devel
+%manifest pkgmgr.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager.h
 %{_libdir}/pkgconfig/pkgmgr.pc
 %{_libdir}/libpkgmgr-client.so
 
 %files server
+%manifest pkgmgr.manifest
 %defattr(-,root,root,-)
 %{_datadir}/dbus-1/services/org.tizen.slp.pkgmgr.service
 %{_bindir}/pkgmgr-server
 %{_datadir}/locale/*/LC_MESSAGES/*.mo
 
 %files installer
+%manifest pkgmgr.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libpkgmgr_installer.so.*
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so.*
 %{_libdir}/libpkgmgr_installer_client.so.*
 
 %files installer-devel
+%manifest pkgmgr.manifest
 %defattr(-,root,root,-)
 %{_includedir}/pkgmgr/pkgmgr_installer.h
 %{_libdir}/pkgconfig/pkgmgr-installer-status-broadcast-server.pc
@@ -162,6 +170,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so
 
 %files types-devel
+%manifest pkgmgr.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager-types.h
 %{_includedir}/package-manager-plugin.h
