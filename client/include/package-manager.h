@@ -51,6 +51,7 @@
 #define __PKG_MANAGER_H__
 
 #include <errno.h>
+#include <stdbool.h>
 
 
 #ifdef __cplusplus
@@ -112,12 +113,13 @@ typedef enum _pkgmgr_return_val {
 /** @} */
 
 /**
- * @defgroup pkg_operate	APIs to install /uninstall / application
+ * @defgroup pkg_operate	APIs to install /uninstall / activate application
  * @ingroup pkgmgr
  * @brief
- *	APIs to install /uninstall / application 
+ *	APIs to install /uninstall / activate application 
  *	- Install application using application package filepath
  *	- Uninstall application using application package name
+ *	- Activate application using application package name
  *
  */
 
@@ -126,12 +128,19 @@ typedef enum _pkgmgr_return_val {
  * @addtogroup pkg_operate
  * @{
  */
+
+typedef void* pkgmgr_pkginfo_h;
+typedef void* pkgmgr_appinfo_h;
+
 typedef int (*pkgmgr_iter_fn)(const char* pkg_type, const char* pkg_name,
 				const char* version, void *data);
 
 typedef int (*pkgmgr_handler)(int req_id, const char *pkg_type,
 				const char *pkg_name, const char *key,
 				const char *val, const void *pmsg, void *data);
+
+typedef int (*pkgmgr_info_app_list_cb ) (const pkgmgr_appinfo_h handle,
+				const char *appid, void *user_data);
 
 
 typedef void pkgmgr_client;
@@ -146,6 +155,16 @@ typedef enum {
 	PM_DEFAULT,
 	PM_QUIET
 }pkgmgr_mode;
+
+typedef enum {
+	PM_LOCATION_INTERNAL = 0,
+	PM_LOCATION_EXTERNAL
+}pkgmgr_install_location;
+
+typedef enum {
+	PM_UI_APP,
+	PM_SVC_APP
+}pkgmgr_app_component;
 
 /**
  * @brief	This API creates pkgmgr client.
@@ -213,6 +232,38 @@ int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
 int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkg_name, pkgmgr_mode mode,
 				pkgmgr_handler event_cb, void *data);
+
+/**
+ * @brief	This API activates package.
+ *
+ * This API is for package-manager client application.\n
+ * 
+ * @param[in]	pc	pkgmgr_client 
+ * @param[in]	pkg_type		package type 
+ * @param[in]	pkg_name	package name
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_activate(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkg_name);
+
+/**
+ * @brief	This API deactivates package.
+ *
+ * This API is for package-manager client application.\n
+ * 
+ * @param[in]	pc	pkgmgr_client 
+ * @param[in]	pkg_type		package type 
+ * @param[in]	pkg_name	package name
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
+				 const char *pkg_name);
 
 /**
  * @brief	This API deletes application's private data.
@@ -305,6 +356,18 @@ typedef void pkgmgr_info;
 pkgmgr_info * pkgmgr_info_new(const char *pkg_type, const char *pkg_name);
 
 /**
+ * @brief	This API  gets the package's information.
+ *
+ *              This API is for package-manager client application.\n
+ * 
+ * @param[in]	pkg_type		package type for the package to get infomation
+ * @param[in]	pkg_path		package file path to get infomation
+ * @return	package entry pointer if success, NULL if fail\n
+*/
+pkgmgr_info * pkgmgr_info_new_from_file(const char *pkg_type,
+					     const char *pkg_path);
+
+/**
  * @brief	This API  get package information value
  *
  *              This API is for package-manager client application.\n
@@ -324,9 +387,295 @@ char * pkgmgr_info_get_string(pkgmgr_info * pkg_info, const char *key);
  * @return	0 if success, error code(<0) if fail\n
 */
 int pkgmgr_info_free(pkgmgr_info * pkg_info);
+
+/**
+ * @brief	This API  get package info entry from db
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	pkg_name			pointer to package name
+ * @param[out]	handle				pointer to the package info handle.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo(const char *pkg_name, pkgmgr_pkginfo_h *handle);
+
+/**
+ * @brief	This API  gets type of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	type				to hold package type.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_type(pkgmgr_pkginfo_h handle, char **type);
+
+/**
+ * @brief	This API  gets version  of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	version				to hold package version.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_version(pkgmgr_pkginfo_h handle, char **version);
+
+/**
+ * @brief	This API  gets install location of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	location			to hold install location.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_install_location(pkgmgr_pkginfo_h handle, pkgmgr_install_location *location);
+
+/**
+ * @brief	This API gets label of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	label				to hold package label.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_label(pkgmgr_pkginfo_h handle, char **label);
+
+/**
+ * @brief	This API gets icon of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	icon				to hold package icon.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_icon(pkgmgr_pkginfo_h handle, char **icon);
+
+/**
+ * @brief	This API gets desription of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	description			to hold package description.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_descriptioon(pkgmgr_pkginfo_h handle, char **description);
+
+/**
+ * @brief	This API gets author's name of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	author_name			to hold author's name.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_author_name(pkgmgr_pkginfo_h handle, char **author_name);
+
+/**
+ * @brief	This API gets author's email of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	author_email			to hold author's email id.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_author_email(pkgmgr_pkginfo_h handle, char **author_email);
+
+/**
+ * @brief	This API gets author's href of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	author_href			to hold author's href.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_author_href(pkgmgr_pkginfo_h handle, char **author_href);
+
+/**
+ * @brief	This API gets removable of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	removable			to hold removable value.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_removable(pkgmgr_pkginfo_h handle, bool *removable);
+
+/**
+ * @brief	This API gets preload of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	preload				to hold preload value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_preload(pkgmgr_pkginfo_h handle, bool *preload);
+
+/**
+ * @brief	This API gets readonly value of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[out]	readonly				to hold readonly value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_readonly(pkgmgr_pkginfo_h handle, bool *readonly);
+
+/**
+ * @brief	This API gets list of ui-application/service application of the given package.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @param[in]	component		application component type.
+ * @param[in]	app_func			application's callback function.
+ * @param[in]	user_data			user data to be passed to callback function
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_info_app(pkgmgr_pkginfo_h handle, pkgmgr_app_component component,
+							pkgmgr_info_app_list_cb app_func, void *user_data);
+
+/**
+ * @brief	This API gets list of installed applications.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	iter_fn	iteration function for list
+ * @param[in]	user_data			user data to be passed to callback function
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_info_list(pkgmgr_iter_fn iter_fn, void *user_data);
+
+
+/**
+ * @brief	This API destroy the pacakge info handle
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to package info handle
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_destroy_pkginfo(pkgmgr_pkginfo_h handle);
+
+/**
+ * @brief	This API gets application info entry from db.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	appid				application id
+ * @param[out]	handle				pointer to app info handle
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_appinfo(const char *appid, pkgmgr_appinfo_h *handle);
+
+/**
+ * @brief	This API gets exec of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	exec				to hold exec value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_exec(pkgmgr_appinfo_h  handle, char **exec);
+
+/**
+ * @brief	This API gets component type of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	component				to hold component value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_component(pkgmgr_appinfo_h  handle, char **component);
+
+/**
+ * @brief	This API gets app type of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	app_type			to hold the apptype.
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_apptype(pkgmgr_appinfo_h  handle, char **app_type);
+
+/**
+ * @brief	This API gets nodisplay value of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	nodisplay			to hold the nodisplay value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_nodisplay(pkgmgr_appinfo_h  handle, bool *nodisplay);
+
+/**
+ * @brief	This API gets multiple value of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	multiple			to hold the multiple value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_multiple(pkgmgr_appinfo_h  handle, bool *multiple);
+
+/**
+ * @brief	This API gets taskmanage value of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	taskmanage			to hold the taskmanage value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_taskmanage(pkgmgr_appinfo_h  handle, bool *taskmanage);
+
+/**
+ * @brief	This API gets onboot value of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	onboot			to hold the onboot value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_onboot(pkgmgr_appinfo_h  handle, bool *onboot);
+
+/**
+ * @brief	This API gets autorestart value of the given appid.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @param[out]	autorestart			to hold the autorestart value
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_get_pkginfo_autorestart(pkgmgr_appinfo_h  handle, bool *autorestart);
+
+/**
+ * @brief	This API destroy the appinfo handle.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	handle				pointer to app info handle
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_destroy_appinfo(pkgmgr_appinfo_h  handle);
 /** @} */
-
-
 
 #ifdef __cplusplus
 }

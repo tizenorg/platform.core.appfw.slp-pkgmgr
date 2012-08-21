@@ -149,7 +149,7 @@ comm_client *comm_client_new(void)
 
 	/* Connect to dbus */
 	dbus_error_init(&err);
-	cc->conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
+	cc->conn = dbus_bus_get_private(DBUS_BUS_SYSTEM, &err);
 	if (dbus_error_is_set(&err)) {
 		ERR("dbus connection error (%s)", err.message);
 		dbus_error_free(&err);
@@ -198,6 +198,7 @@ int comm_client_free(comm_client *cc)
 		/* _free_sig_cb_data(cc->sig_cb_data); */
 	}
 
+	dbus_connection_close(cc->conn);
 	dbus_connection_unref(cc->conn);
 
 	free(cc);
@@ -263,7 +264,7 @@ comm_client_request(
 	/* Send message */
 	if (is_block == 1){
 		if(!dbus_connection_send_with_reply_and_block(cc->conn, msg,
-							      1200, NULL)) {
+							      5000, NULL)) {
 			r = COMM_RET_NOMEM; 
 			goto ERROR_CLEANUP;
 		}

@@ -20,10 +20,10 @@ SET(INCLUDEDIR "\${prefix}/include")
 set(CMAKE_SKIP_BUILD_RPATH true)
 
 #Verbose
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/comm)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/comm ${CMAKE_SOURCE_DIR}/parser)
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file)
+pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file libxml-2.0)
 
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -54,13 +54,14 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 ##################
 ## build comm libraries
 add_subdirectory(comm)
+add_subdirectory(parser)
 add_subdirectory(tool)
 add_subdirectory(types)
 
 ###################################################################################################
 ## for libpkgmgr-client.so (library)
 SET(PKGMGR_CLIENT "pkgmgr-client")
-SET(libpkgmgr-client_SOURCES ${pm_c_src_dir}/pkgmgr-info.c ${pm_c_src_dir}/pkgmgr-internal.c ${pm_c_src_dir}/pkgmgr.c)
+SET(libpkgmgr-client_SOURCES ${pm_c_src_dir}/pkgmgr-info.c ${pm_c_src_dir}/pkgmgr-dbinfo.c ${pm_c_src_dir}/pkgmgr-internal.c ${pm_c_src_dir}/pkgmgr.c)
 SET(libpkgmgr-client_LDFLAGS " -module -avoid-version ")
 SET(libpkgmgr-client_CFLAGS  " ${CFLAGS} -fPIC -I${pm_c_inc_dir} -I${pm_inc_dir} -I${pm_t_inc_dir} ${debug_type}")
 
@@ -68,7 +69,7 @@ ADD_LIBRARY(${PKGMGR_CLIENT} SHARED ${libpkgmgr-client_SOURCES})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES VERSION ${VERSION})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES COMPILE_FLAGS "${libpkgmgr-client_CFLAGS}")
-TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT} pkgmgr_installer_client pkgmgr_installer_status_broadcast_server ${libpkgs_LDFLAGS})
+TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT} pkgmgr_installer_client pkgmgr_installer_status_broadcast_server pkgmgr_parser ${libpkgs_LDFLAGS})
 ###################################################################################################
 
 ###################################################################################################

@@ -1,6 +1,7 @@
+#sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.1.111
+Version:    0.1.136
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -15,6 +16,7 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(aul)
 BuildRequires:  pkgconfig(ail)
 BuildRequires:  pkgconfig(appcore-efl)
+BuildRequires:  pkgconfig(libxml-2.0)
 
 
 %description
@@ -65,8 +67,25 @@ Requires:   %{name} = %{version}-%{release}
 %description installer-devel
 Dev package for libpkgmgr-installer for packaging.
 
+%package parser
+Summary:    Library for manifest parser
+Group:      TO_BE/FILLED_IN
+Requires:   %{name} = %{version}-%{release}
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
+%description parser
+Library for manifest parser
+
+%package parser-devel
+Summary:    Dev package for libpkgmgr-parser
+Group:      TO_BE/FILLED_IN
+Requires:   %{name} = %{version}-%{release}
+
+%description parser-devel
+Dev package for libpkgmgr-parser
 %package types-devel
-Summary:    Package Manager client types develpoment package
+Summary:    Package Manager manifest parser develpoment package
 Group:      TO_BE/FILLED_IN
 Requires:   %{name} = %{version}-%{release}
 
@@ -90,8 +109,8 @@ rm -rf %{buildroot}
 %post
 /sbin/ldconfig
 
-mkdir -p /usr/etc/package-manager/frontend
 mkdir -p /usr/etc/package-manager/backend
+mkdir -p /usr/etc/package-manager/backendlib
 
 # For pkgmgr-install:
 # Update mime database to support package mime types
@@ -113,6 +132,8 @@ mkdir -p /usr/etc/package-manager/server
 %files
 %defattr(-,root,root,-)
 %{_bindir}/pkgcmd
+%{_bindir}/pkginfo
+%{_bindir}/pkg_initdb
 %exclude %{_bindir}/pkgmgr_backend_sample
 %exclude %{_includedir}/pkgmgr/comm_client.h
 %exclude %{_includedir}/pkgmgr/comm_config.h
@@ -126,7 +147,8 @@ mkdir -p /usr/etc/package-manager/server
 %{_datadir}/mime/packages/mime.wac.xml
 %{_bindir}/pkgmgr-install
 %{_libdir}/libpkgmgr-client.so.*
-/opt/share/applications/org.tizen.pkgmgr-install.desktop
+%{_datadir}/applications/org.tizen.pkgmgr-install.desktop
+%{_datadir}/packages/org.tizen.pkgmgr-install.xml
 
 %files client-devel
 %defattr(-,root,root,-)
@@ -155,6 +177,22 @@ mkdir -p /usr/etc/package-manager/server
 %{_libdir}/libpkgmgr_installer.so
 %{_libdir}/libpkgmgr_installer_client.so
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so
+
+%files parser
+%defattr(-,root,root,-)
+%{_libdir}/libpkgmgr_parser.so.*
+%{_prefix}/etc/package-manager/preload/preload_list.txt
+%{_prefix}/etc/package-manager/preload/manifest.xsd
+%{_prefix}/etc/package-manager/preload/xml.xsd
+%{_libdir}/libpkgmgr_parser_lib_sample.so
+
+%files parser-devel
+%defattr(-,root,root,-)
+%{_includedir}/pkgmgr/pkgmgr_parser.h
+%{_libdir}/pkgconfig/pkgmgr-parser.pc
+%{_libdir}/libpkgmgr_parser.so
+
+
 
 %files types-devel
 %defattr(-,root,root,-)

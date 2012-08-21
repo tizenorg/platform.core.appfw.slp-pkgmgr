@@ -24,31 +24,36 @@
 
 
 
-#ifndef __COMM_CLIENT_H__
-#define __COMM_CLIENT_H__
+#ifndef __PKGMGR_PARSER_INTERNAL_H__
+#define __PKGMGR_PARSER_INTERNAL_H__
 
-#include "comm_config.h"
-#include <glib.h>
-#include <dbus/dbus-glib.h>
 
-enum {
-	COMM_CLIENT_STATUS_CALLBACK_FLAG_NONE = 0,
-};
+/* debug output */
+#if defined(NDEBUG)
+#define DBG(fmt, args...)
+#define __SET_DBG_OUTPUT(fp)
+#elif defined(PRINT)
+#include <stdio.h>
+FILE *___log = NULL;
+#define DBG(fmt, args...) \
+	{if (!___log) ___log = stderr; \
+	 fprintf(___log, "[DBG:PMS]%s:%d:%s(): " fmt "\n",\
+	 basename(__FILE__), __LINE__, __func__, ##args); fflush(___log); }
+#define __SET_DBG_OUTPUT(fp) \
+	(___log = fp)
+#else
+#include <dlog.h>
+#undef LOG_TAG
+#define LOG_TAG "PKGMGR_PARSER"
 
-typedef struct comm_client comm_client;
-typedef void (*status_cb) (void *cb_data, const char *req_id,
-			   const char *pkg_type, const char *pkg_name,
-			   const char *key, const char *val);
+#define DBGE(fmt, arg...) LOGE("[%s,%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+#define DBG(fmt, arg...) LOGD("[%s,%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+#endif
 
-API comm_client *comm_client_new(void);
-API int comm_client_free(comm_client *cc);
 
-API int comm_client_request(comm_client *cc, const char *req_id,
-			    const int req_type, const char *pkg_type,
-			    const char *pkg_name, const char *args,
-			    const char *cookie, int is_block);
+#ifndef API
+#define API __attribute__ ((visibility("default")))
+#endif
 
-API int comm_client_set_status_callback(comm_client *cc, status_cb cb,
-					void *cb_data);
 
-#endif				/* __COMM_CLIENT_H__ */
+#endif				/* __PKGMGR_PARSER_INTERNAL_H__ */

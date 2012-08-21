@@ -49,6 +49,12 @@ typedef struct {
 	char cookie[MAX_COOKIE_LEN];
 } pm_dbus_msg;
 
+typedef struct backend_info_t {
+	int pid;
+	char pkgtype[MAX_PKG_TYPE_LEN];
+	char pkgname[MAX_PKG_NAME_LEN];
+	char args[MAX_PKG_ARGS_LEN];
+}backend_info;
 
 struct pm_inotify_paths_t {
 	int wd;

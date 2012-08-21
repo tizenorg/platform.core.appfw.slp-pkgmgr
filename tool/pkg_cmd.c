@@ -46,13 +46,16 @@ static int __iter_fn(const char *pkg_type, const char *pkg_name,
 static int __return_cb(int req_id, const char *pkg_type, const char *pkg_name,
 		       const char *key, const char *val, const void *pmsg,
 		       void *data);
+static int __convert_to_absolute_path(char *path);
 
 /* Supported options */
-const char *short_options = "iuclsd:p:t:n:qh";
+const char *short_options = "iucADlsd:p:t:n:qh";
 const struct option long_options[] = {
 	{"install", 0, NULL, 'i'},
 	{"uninstall", 0, NULL, 'u'},
 	{"clear", 0, NULL, 'c'},
+	{"activate", 0, NULL, 'A'},
+	{"deactivate", 0, NULL, 'D'},
 	{"list", 0, NULL, 'l'},
 	{"show", 0, NULL, 's'},
 	{"descriptor", 1, NULL, 'd'},
@@ -68,6 +71,8 @@ enum pm_tool_request_e {
 	INSTALL_REQ = 1,
 	UNINSTALL_REQ,
 	CLEAR_REQ,
+	ACTIVATE_REQ,
+	DEACTIVATE_REQ,
 	LIST_REQ,
 	SHOW_REQ,
 	HELP_REQ
@@ -111,6 +116,41 @@ static int __return_cb(int req_id, const char *pkg_type,
 		g_main_loop_quit(main_loop);
 	}
 
+	return 0;
+}
+
+static int __convert_to_absolute_path(char *path)
+{
+	char abs[PKG_NAME_STRING_LEN_MAX] = {'\0'};
+	char temp[PKG_NAME_STRING_LEN_MAX] = {'\0'};
+	char *ptr = NULL;
+	if (path == NULL) {
+		printf("path is NULL\n");
+		return -1;
+	}
+	strncpy(temp, path, PKG_NAME_STRING_LEN_MAX - 1);
+	if (strchr(path, '/') == NULL) {
+		getcwd(abs, PKG_NAME_STRING_LEN_MAX - 1);
+		if (abs == NULL) {
+			printf("getcwd() failed\n");
+			return -1;
+		}
+		memset(data.pkg_path, '\0', PKG_NAME_STRING_LEN_MAX);
+		snprintf(data.pkg_path, PKG_NAME_STRING_LEN_MAX - 1, "%s/%s", abs, temp);
+		return 0;
+	}
+	if (strncmp(path, "./", 2) == 0) {
+		ptr = temp;
+		getcwd(abs, PKG_NAME_STRING_LEN_MAX - 1);
+		if (abs == NULL) {
+			printf("getcwd() failed\n");
+			return -1;
+		}
+		ptr = ptr + 2;
+		memset(data.pkg_path, '\0', PKG_NAME_STRING_LEN_MAX);
+		snprintf(data.pkg_path, PKG_NAME_STRING_LEN_MAX - 1, "%s/%s", abs, ptr);
+		return 0;
+	}
 	return 0;
 }
 
@@ -158,7 +198,8 @@ static void __print_usage()
 	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n\n");
 	printf("Example:\n");
 	printf("pkgcmd -u -t deb -n org.tizen.calculator\n");
-	printf("pkgcmd -i -t deb -p /mnt/nfs/org.tizen.calculator_0.1.2-95_armel.deb\n");
+	printf
+	    ("pkgcmd -i -t deb -p /mnt/nfs/org.tizen.calculator_0.1.2-95_armel.deb\n");
 	printf("pkgcmd -c -t deb -n org.tizen.hello\n");
 	exit(0);
 
@@ -326,11 +367,20 @@ static int __process_request()
 			mode = PM_DEFAULT;
 		else
 			mode = PM_QUIET;
+#if 0
 		ret = __is_app_installed(data.pkg_name);
 		if (ret == -1) {
 			printf("package is not installed\n");
 			break;
 		}
+#else
+		pkgmgr_pkginfo_h handle;
+		ret = pkgmgr_get_pkginfo(data.pkg_name, &handle);
+		if(ret < 0) {
+			printf("package is not in pkgmgr_info DB\n");
+		} else
+			pkgmgr_destroy_pkginfo(handle);
+#endif
 		ret =
 		    pkgmgr_client_uninstall(pc, data.pkg_type, data.pkg_name,
 					    mode, __return_cb, NULL);
@@ -368,6 +418,51 @@ static int __process_request()
 		if (ret < 0)
 			break;
 		ret = data.result;
+		break;
+
+	case ACTIVATE_REQ:
+		if (data.pkg_type[0] == '\0' || data.pkg_name[0] == '\0') {
+			printf("Please provide the arguments.\n");
+			printf("use -h option to see usage\n");
+			ret = -1;
+			break;
+		}
+
+		pc = pkgmgr_client_new(PC_REQUEST);
+		if (pc == NULL) {
+			printf("PkgMgr Client Creation Failed\n");
+			ret = -1;
+			break;
+		}
+
+		ret = pkgmgr_client_activate(pc, data.pkg_type, data.pkg_name);
+		if (ret < 0)
+			break;
+		ret = data.result;
+
+		break;
+
+
+	case DEACTIVATE_REQ:
+		if (data.pkg_type[0] == '\0' || data.pkg_name[0] == '\0') {
+			printf("Please provide the arguments.\n");
+			printf("use -h option to see usage\n");
+			ret = -1;
+			break;
+		}
+
+		pc = pkgmgr_client_new(PC_REQUEST);
+		if (pc == NULL) {
+			printf("PkgMgr Client Creation Failed\n");
+			ret = -1;
+			break;
+		}
+
+		ret = pkgmgr_client_deactivate(pc, data.pkg_type, data.pkg_name);
+		if (ret < 0)
+			break;
+		ret = data.result;
+
 		break;
 
 	case LIST_REQ:
@@ -475,6 +570,14 @@ int main(int argc, char *argv[])
 			data.request = CLEAR_REQ;
 			break;
 
+		case 'A':	/* activate */
+			data.request = ACTIVATE_REQ;
+			break;
+
+		case 'D':	/* deactivate */
+			data.request = DEACTIVATE_REQ;
+			break;
+
 		case 'l':	/* list */
 			data.request = LIST_REQ;
 			break;
@@ -487,6 +590,12 @@ int main(int argc, char *argv[])
 			if (optarg)
 				strncpy(data.pkg_path, optarg,
 					PKG_NAME_STRING_LEN_MAX);
+			ret = __convert_to_absolute_path(data.pkg_path);
+			if (ret == -1) {
+				printf("conversion of relative path to absolute path failed\n");
+				return -1;
+			}
+			printf("package path is %s\n", data.pkg_path);
 			break;
 
 		case 'd':	/* descriptor path */
