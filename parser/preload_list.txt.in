@@ -72,13 +72,13 @@ org.tizen.wifi-direct-popup
 org.tizen.wifi-direct-ugapp
 org.tizen.youtube
 activesync-ui
-org.tizen.aospd00043#osp-app-service
-org.tizen.cp7ipabg4k#osp-channel-service
-org.tizen.57r43275q7#osp-connectivity-service
-org.tizen.q7097a278m#osp-privilege-service
-org.tizen.800ij447xl#osp-location-service
-org.tizen.70lsyzhkse#osp-certmgr-service
-org.tizen.nas9xepmna#osp-context-service
+org.tizen.aospd00043
+org.tizen.cp7ipabg4k
+org.tizen.57r43275q7
+org.tizen.q7097a278m
+org.tizen.800ij447xl
+org.tizen.70lsyzhkse
+org.tizen.nas9xepmna
 
 #RW_RM
 org.tizen.video-player
