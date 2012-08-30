@@ -36,10 +36,8 @@
     <xs:simpleType name="PackageType">
       <xs:restriction base="xs:string">
         <xs:enumeration value="rpm"/>
-        <xs:enumeration value="oap"/>
         <xs:enumeration value="tpk"/>
         <xs:enumeration value="wgt"/>
-        <xs:enumeration value="apk"/>
       </xs:restriction>
     </xs:simpleType>
     <xs:simpleType name="TypeType">
