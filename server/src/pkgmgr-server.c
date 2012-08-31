@@ -272,8 +272,7 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 		DBG("Package : %s\n", package);
 
 		/* add & update */
-		if (event->mask & IN_CREATE || event->mask & IN_CLOSE_WRITE ||
-		    event->mask & IN_MOVED_TO) {
+		if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO) {
 			ail_appinfo_h ai = NULL;
 			ail_error_e ret;
 
@@ -1269,8 +1268,7 @@ void _pm_desktop_file_monitor_init()
 		}
 
 		wd = inotify_add_watch(desktop_notifier.ifd, paths[i].path,
-				       IN_CREATE | IN_CLOSE_WRITE | IN_MOVED_TO
-				       | IN_DELETE);
+				       IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE);
 		if (wd == -1) {
 			DBG("inotify_add_watch error: %s\n", strerror(errno));
 			close(desktop_notifier.ifd);
