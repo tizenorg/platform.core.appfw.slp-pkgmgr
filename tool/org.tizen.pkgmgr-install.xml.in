@@ -6,7 +6,7 @@
 	<ui-application appid="org.tizen.pkgmgr-install" exec="/usr/bin/pkgmgr-install" nodisplay="true" multiple="false" type="capp" taskmanage="false">
 		<label>pkgmgr-install</label>
 		<application-service>
-			<operation name="http://tizen.org/appsvc/operation/view"/>
+			<operation name="http://tizen.org/appcontrol/operation/view"/>
 			<mime name="application/widget"/>
 			<mime name="application/vnd.wac.widget-sharing"/>
 			<mime name="application/x-rpm"/>
