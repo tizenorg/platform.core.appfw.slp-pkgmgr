@@ -3859,8 +3859,8 @@ static int __ps_make_nativeapp_desktop(manifest_x * mfx)
         FILE* file = NULL;
         int fd = 0;
         char filepath[PKG_STRING_LEN_MAX] = "";
-        char buf[4096] = "";
-	char buftemp[4096] = "";
+        char buf[4096*2] = "";
+	char buftemp[4096*2] = "";
 
 	for(; mfx->uiapplication; mfx->uiapplication=mfx->uiapplication->next) {
 
