@@ -28,10 +28,10 @@ static GMainLoop *mainloop;
 
 void
 stat_cb(void *data, const char *req_id, const char *pkg_type,
-	const char *pkg_name, const char *key, const char *val)
+	const char *pkgid, const char *key, const char *val)
 {
 	printf(">>user callback>> Got: %s %s %s %s %s\n", req_id, pkg_type,
-	       pkg_name, key, val);
+	       pkgid, key, val);
 
 	g_main_loop_quit(mainloop);
 }

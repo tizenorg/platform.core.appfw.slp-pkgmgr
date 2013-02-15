@@ -7,7 +7,7 @@
 			<arg type="s" name="req_id" direction="in" />
 			<arg type="i" name="req_type" direction="in" />
 			<arg type="s" name="pkg_type" direction="in" />
-			<arg type="s" name="pkg_name" direction="in" />
+			<arg type="s" name="pkgid" direction="in" />
 			<arg type="s" name="args" direction="in" />
 			<arg type="s" name="cookie" direction="in" />
 			<arg type="i" name="ret" direction="out" />

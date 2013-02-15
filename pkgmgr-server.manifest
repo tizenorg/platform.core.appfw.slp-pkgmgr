@@ -1,0 +1,11 @@
+<manifest>
+        <define>
+                <domain name="pkgmgr-server"/>
+        </define>
+	<request>
+		<domain name="pkgmgr-server"/>
+	</request>
+	<assign>
+                <filesystem path="/usr/bin/pkgmgr-server" exec_label="pkgmgr-server"/>
+        </assign>
+</manifest>

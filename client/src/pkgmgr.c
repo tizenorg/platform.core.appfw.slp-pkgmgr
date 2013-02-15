@@ -25,19 +25,24 @@
 #include <string.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <dirent.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <ail.h>
 #include <aul.h>
+#include <vconf.h>
+#include <db-util.h>
+#include <pkgmgr-info.h>
 
 #include "package-manager.h"
 #include "pkgmgr-internal.h"
-#include "pkgmgr-info.h"
 #include "pkgmgr-api.h"
 #include "comm_client.h"
 #include "comm_status_broadcast_server.h"
+
 
 static int _get_request_id()
 {
@@ -82,6 +87,7 @@ typedef struct _iter_data {
 	pkgmgr_iter_fn iter_fn;
 	void *data;
 } iter_data;
+
 
 static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
 			    const char *req_key, pkgmgr_handler event_cb,
@@ -186,49 +192,15 @@ static void __add_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
 	}
 }
 
-static listen_cb_info *__find_stat_cbinfo(pkgmgr_client_t *pc, int request_id)
-{
-	listen_cb_info *tmp;
-
-	tmp = pc->info.listening.lhead;
-
-	_LOGD("tmp->request_id %d, request_id %d", tmp->request_id, request_id);
-
-	while (tmp) {
-		if (tmp->request_id == request_id)
-			return tmp;
-		tmp = tmp->next;
-	}
-	return NULL;
-}
-
-static void __remove_stat_cbinfo(pkgmgr_client_t *pc, listen_cb_info *info)
-{
-	listen_cb_info *tmp;
-
-	if (pc == NULL || pc->info.listening.lhead == NULL || info == NULL)
-		return;
-
-	tmp = pc->info.listening.lhead;
-	while (tmp) {
-		if (tmp->next == info) {
-			tmp->next = info->next;
-			free(info);
-			return;
-		}
-		tmp = tmp->next;
-	}
-}
-
 static void __operation_callback(void *cb_data, const char *req_id,
-				 const char *pkg_type, const char *pkg_name,
+				 const char *pkg_type, const char *pkgid,
 				 const char *key, const char *val)
 {
 	pkgmgr_client_t *pc;
 	req_cb_info *cb_info;
 
-	_LOGD("__operation_callback() req_id[%s] pkg_type[%s] pkg_name[%s]"
-	      "key[%s] val[%s]\n", req_id, pkg_type, pkg_name, key, val);
+	_LOGD("__operation_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
+	      "key[%s] val[%s]\n", req_id, pkg_type, pkgid, key, val);
 
 	pc = (pkgmgr_client_t *) cb_data;
 
@@ -241,7 +213,7 @@ static void __operation_callback(void *cb_data, const char *req_id,
 
 	/* call callback */
 	if (cb_info->event_cb) {
-		cb_info->event_cb(cb_info->request_id, pkg_type, pkg_name, key,
+		cb_info->event_cb(cb_info->request_id, pkg_type, pkgid, key,
 				  val, NULL, cb_info->data);
 		_LOGD("event_cb is called");
 	}
@@ -257,20 +229,20 @@ static void __operation_callback(void *cb_data, const char *req_id,
 }
 
 static void __status_callback(void *cb_data, const char *req_id,
-			      const char *pkg_type, const char *pkg_name,
+			      const char *pkg_type, const char *pkgid,
 			      const char *key, const char *val)
 {
 	pkgmgr_client_t *pc;
 	listen_cb_info *tmp;
 
-	_LOGD("__status_callback() req_id[%s] pkg_type[%s] pkg_name[%s]"
-	      "key[%s] val[%s]\n", req_id, pkg_type, pkg_name, key, val);
+	_LOGD("__status_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
+	      "key[%s] val[%s]\n", req_id, pkg_type, pkgid, key, val);
 
 	pc = (pkgmgr_client_t *) cb_data;
 
 	tmp = pc->info.listening.lhead;
 	while (tmp) {
-		if (tmp->event_cb(tmp->request_id, pkg_type, pkg_name, key, val,
+		if (tmp->event_cb(tmp->request_id, pkg_type, pkgid, key, val,
 				  NULL, tmp->data) != 0)
 			break;
 		tmp = tmp->next;
@@ -429,16 +401,16 @@ static char *__get_type_from_path(const char *pkg_path)
 	char extlist[256] = { '\0', };
 	char *pkg_type;
 
-	ret = aul_get_mime_from_file(pkg_path, mimetype, sizeof(mimetype));
+	ret = _get_mime_from_file(pkg_path, mimetype, sizeof(mimetype));
 	if (ret) {
-		_LOGE("aul_get_mime_from_file() failed - error code[%d]\n",
+		_LOGE("_get_mime_from_file() failed - error code[%d]\n",
 		      ret);
 		return NULL;
 	}
 
-	ret = aul_get_mime_extension(mimetype, extlist, sizeof(extlist));
+	ret = _get_mime_extension(mimetype, extlist, sizeof(extlist));
 	if (ret) {
-		_LOGE("aul_get_mime_extension() failed - error code[%d]\n",
+		_LOGE("_get_mime_extension() failed - error code[%d]\n",
 		      ret);
 		return NULL;
 	}
@@ -580,7 +552,7 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	/* 6. request install */
 	ret = comm_client_request(mpc->info.request.cc, req_key,
 				  COMM_REQ_TO_INSTALLER, pkgtype, pkg_path,
-				  args, cookie, 0);
+				  args, cookie, 1);
 	if (ret < 0) {
 		_LOGE("request failed, ret=%d\n", ret);
 
@@ -600,25 +572,105 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	return req_id;
 }
 
-int __iterfunc(const aul_app_info *info, void *data)
+
+static inline int __pkgmgr_read_proc(const char *path, char *buf, int size)
 {
-	char pkgname[PKG_STRING_LEN_MAX];
-	const char *pkg_name;
+	int fd;
+	int ret;
 
-	pkg_name = (const char *)data;
+	if (buf == NULL || path == NULL)
+		return -1;
 
-	aul_app_get_pkgname_bypid(info->pid, pkgname, sizeof(pkgname));
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return -1;
 
-	if (strncmp(pkg_name, pkgname, strlen(pkg_name)) == 0) {
-		if (aul_terminate_pid(info->pid) < 0)
-			kill(info->pid, SIGKILL);
+	ret = read(fd, buf, size - 1);
+	if (ret <= 0) {
+		close(fd);
+		return -1;
+	} else
+		buf[ret] = 0;
+
+	close(fd);
+
+	return ret;
+}
+
+static inline int __pkgmgr_find_pid_by_cmdline(const char *dname,
+				      const char *cmdline, const char *apppath)
+{
+	int pid = 0;
+
+	if (strncmp(cmdline, apppath, PKG_STRING_LEN_MAX-1) == 0) {
+		pid = atoi(dname);
+		if (pid != getpgid(pid))
+			pid = 0;
 	}
+
+	return pid;
+}
+
+
+static int __pkgmgr_proc_iter_kill_cmdline(const char *apppath)
+{
+	DIR *dp;
+	struct dirent *dentry;
+	int pid;
+	int ret;
+	char buf[PKG_STRING_LEN_MAX];
+
+	dp = opendir("/proc");
+	if (dp == NULL) {
+		return -1;
+	}
+
+	while ((dentry = readdir(dp)) != NULL) {
+		if (!isdigit(dentry->d_name[0]))
+			continue;
+
+		snprintf(buf, sizeof(buf), "/proc/%s/cmdline", dentry->d_name);
+		ret = __pkgmgr_read_proc(buf, buf, sizeof(buf));
+		if (ret <= 0)
+			continue;
+
+		pid = __pkgmgr_find_pid_by_cmdline(dentry->d_name, buf, apppath);
+
+		if (pid > 0) {
+			int pgid;
+
+			pgid = getpgid(pid);
+			if (pgid <= 1) {
+				closedir(dp);
+				return -1;
+			}
+
+			if (killpg(pgid, SIGKILL) < 0) {
+				closedir(dp);
+				return -1;
+			}
+		}
+	}
+
+	closedir(dp);
+	return 0;
+}
+
+
+static int __app_list_cb (const pkgmgr_appinfo_h handle,
+						void *user_data)
+{
+	char *exec = NULL;
+	pkgmgr_appinfo_get_exec(handle, &exec);
+
+	__pkgmgr_proc_iter_kill_cmdline(exec);
 
 	return 0;
 }
 
+
 API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
-				const char *pkg_name, pkgmgr_mode mode,
+				const char *pkgid, pkgmgr_mode mode,
 				pkgmgr_handler event_cb, void *data)
 {
 	const char *pkgtype;
@@ -646,24 +698,59 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	/* 1. check argument */
-	if (pkg_name == NULL)
+	if (pkgid == NULL)
 		return PKGMGR_R_EINVAL;
 
-	if (aul_app_is_running(pkg_name)) {
-		ret =
-		    aul_app_get_running_app_info(__iterfunc, (void *)pkg_name);
-		if (ret < 0)
+	pkgmgr_pkginfo_h handle;
+	ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+
+	if(handle != NULL){
+		/*check package id	*/
+		if (ret < 0){
+			pkgmgr_pkginfo_destroy_pkginfo(handle);
 			return PKGMGR_R_ERROR;
+		}
+
+		ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
+		if (ret < 0){
+			pkgmgr_pkginfo_destroy_pkginfo(handle);
+			return PKGMGR_R_ERROR;
+		}
+
+		ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
+		if (ret < 0){
+			pkgmgr_pkginfo_destroy_pkginfo(handle);
+			return PKGMGR_R_ERROR;
+		}
+
+		pkgmgr_pkginfo_destroy_pkginfo(handle);
+	} else {
+		/*check app id	*/
+		pkgmgr_appinfo_h handle;
+		ret = pkgmgr_appinfo_get_appinfo(pkgid, &handle);
+
+		if(handle == NULL)
+			return PKGMGR_R_ERROR;
+
+		if (ret < 0){
+			pkgmgr_appinfo_destroy_appinfo(handle);
+			return PKGMGR_R_ERROR;
+		}
+
+		char *exec = NULL;
+		pkgmgr_appinfo_get_exec(handle, &exec);
+		__pkgmgr_proc_iter_kill_cmdline(exec);
+		pkgmgr_appinfo_destroy_appinfo(handle);
 	}
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkg_name);
+		pkgtype = _get_pkg_type_from_desktop_file(pkgid);
 		if (pkgtype == NULL)
 			return PKGMGR_R_EINVAL;
 	} else
 		pkgtype = pkg_type;
 
-	if (strlen(pkg_name) >= PKG_STRING_LEN_MAX)
+	if (strlen(pkgid) >= PKG_STRING_LEN_MAX)
 		return PKGMGR_R_EINVAL;
 
 	/* 2. get installer path using pkg_path */
@@ -672,7 +759,7 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	/* 3. generate req_key */
-	req_key = __get_req_key(pkg_name);
+	req_key = __get_req_key(pkgid);
 
 	/* 4. add callback info - add callback info to pkgmgr_client */
 	req_id = _get_request_id();
@@ -689,7 +776,7 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	/* argv[3] */
 	argv[argcnt++] = strdup("-d");
 	/* argv[4] */
-	argv[argcnt++] = strdup(pkg_name);
+	argv[argcnt++] = strdup(pkgid);
 	/* argv[5] -q option should be located at the end of command !! */
 	if (mode == PM_QUIET)
 		argv[argcnt++] = strdup("-q");
@@ -723,8 +810,130 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 
 	/* 6. request install */
 	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_INSTALLER, pkgtype, pkg_name,
-				  args, cookie, 0);
+				  COMM_REQ_TO_INSTALLER, pkgtype, pkgid,
+				  args, cookie, 1);
+	if (ret < 0) {
+		_LOGE("request failed, ret=%d\n", ret);
+
+		for (i = 0; i < argcnt; i++)
+			free(argv[i]);
+
+		free(args);
+		return PKGMGR_R_ECOMM;
+	}
+
+	for (i = 0; i < argcnt; i++)
+		free(argv[i]);
+
+	free(args);
+
+	return req_id;
+}
+
+API int pkgmgr_client_move(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode)
+{
+	const char *pkgtype = NULL;
+	char *installer_path = NULL;
+	char *req_key = NULL;
+	int i = 0;
+	char *argv[PKG_ARGC_MAX] = { NULL, };
+	char *args = NULL;
+	int argcnt = 0;
+	int len = 0;
+	char *temp = NULL;
+	int ret = 0;
+	int req_id = 0;
+	char *cookie = NULL;
+	char buf[128] = {'\0'};
+
+	/* Check for NULL value of pc */
+	if (pc == NULL) {
+		_LOGD("package manager client handle is NULL\n");
+		return PKGMGR_R_EINVAL;
+	}
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+	/*check the pc type */
+	if (mpc->ctype != PC_REQUEST)
+		return PKGMGR_R_EINVAL;
+
+	/*check argument */
+	if (pkgid == NULL)
+		return PKGMGR_R_EINVAL;
+
+	if (pkg_type == NULL) {
+		pkgtype = _get_pkg_type_from_desktop_file(pkgid);
+		if (pkgtype == NULL)
+			return PKGMGR_R_EINVAL;
+	} else
+		pkgtype = pkg_type;
+
+	if (strlen(pkgid) >= PKG_STRING_LEN_MAX)
+		return PKGMGR_R_EINVAL;
+
+	if ((move_type < PM_MOVE_TO_INTERNAL) || (move_type > PM_MOVE_TO_SDCARD))
+		return PKGMGR_R_EINVAL;
+
+	/* get installer path using pkg_path */
+	installer_path = _get_backend_path_with_type(pkgtype);
+	if (installer_path == NULL)
+		return PKGMGR_R_EINVAL;
+
+	/* generate req_key */
+	req_key = __get_req_key(pkgid);
+	req_id = _get_request_id();
+
+	/* generate argv */
+	snprintf(buf, 128, "%d", move_type);
+	/* argv[0] installer path */
+	argv[argcnt++] = installer_path;
+	/* argv[1] */
+	argv[argcnt++] = strdup("-k");
+	/* argv[2] */
+	argv[argcnt++] = req_key;
+	/* argv[3] */
+	argv[argcnt++] = strdup("-m");
+	/* argv[4] */
+	argv[argcnt++] = strdup(pkgid);
+	/* argv[5] */
+	argv[argcnt++] = strdup("-t");
+	/* argv[6] */
+	argv[argcnt++] = strdup(buf);
+	/* argv[7] -q option should be located at the end of command !! */
+	if (mode == PM_QUIET)
+		argv[argcnt++] = strdup("-q");
+
+	/*** add quote in all string for special charactor like '\n'***   FIX */
+	for (i = 0; i < argcnt; i++) {
+		temp = g_shell_quote(argv[i]);
+		len += (strlen(temp) + 1);
+		g_free(temp);
+	}
+
+	args = (char *)calloc(len, sizeof(char));
+	if (args == NULL) {
+		_LOGD("calloc failed");
+
+		for (i = 0; i < argcnt; i++)
+			free(argv[i]);
+
+		return PKGMGR_R_ERROR;
+	}
+	strncpy(args, argv[0], len - 1);
+
+	for (i = 1; i < argcnt; i++) {
+		strncat(args, " ", strlen(" "));
+		temp = g_shell_quote(argv[i]);
+		strncat(args, temp, strlen(temp));
+		g_free(temp);
+	}
+	_LOGD("[args] %s [len] %d\n", args, len);
+	/******************* end of quote ************************/
+
+	/* 6. request install */
+	ret = comm_client_request(mpc->info.request.cc, req_key,
+				  COMM_REQ_TO_MOVER, pkgtype, pkgid,
+				  args, cookie, 1);
 	if (ret < 0) {
 		_LOGE("request failed, ret=%d\n", ret);
 
@@ -744,7 +953,7 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 }
 
 API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
-			       const char *pkg_name)
+			       const char *appid)
 {
 	const char *pkgtype;
 	char *req_key;
@@ -762,26 +971,26 @@ API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	/* 1. check argument */
-	if (pkg_name == NULL)
+	if (appid == NULL)
 		return PKGMGR_R_EINVAL;
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkg_name);
+		pkgtype = _get_pkg_type_from_desktop_file(appid);
 		if (pkgtype == NULL)
 			return PKGMGR_R_EINVAL;
 	} else
 		pkgtype = pkg_type;
 
-	if (strlen(pkg_name) >= PKG_STRING_LEN_MAX)
+	if (strlen(appid) >= PKG_STRING_LEN_MAX)
 		return PKGMGR_R_EINVAL;
 
 	/* 2. generate req_key */
-	req_key = __get_req_key(pkg_name);
+	req_key = __get_req_key(appid);
 
 	/* 3. request activate */
 	ret = comm_client_request(mpc->info.request.cc, req_key,
 				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  pkg_name, "1", cookie, 1);
+				  appid, "1", cookie, 1);
 	if (ret < 0) {
 		_LOGE("request failed, ret=%d\n", ret);
 		free(req_key);
@@ -794,7 +1003,7 @@ API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
 }
 
 API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
-				 const char *pkg_name)
+				 const char *appid)
 {
 	const char *pkgtype;
 	char *req_key;
@@ -812,26 +1021,26 @@ API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	/* 1. check argument */
-	if (pkg_name == NULL)
+	if (appid == NULL)
 		return PKGMGR_R_EINVAL;
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkg_name);
+		pkgtype = _get_pkg_type_from_desktop_file(appid);
 		if (pkgtype == NULL)
 			return PKGMGR_R_EINVAL;
 	} else
 		pkgtype = pkg_type;
 
-	if (strlen(pkg_name) >= PKG_STRING_LEN_MAX)
+	if (strlen(appid) >= PKG_STRING_LEN_MAX)
 		return PKGMGR_R_EINVAL;
 
 	/* 2. generate req_key */
-	req_key = __get_req_key(pkg_name);
+	req_key = __get_req_key(appid);
 
 	/* 3. request activate */
 	ret = comm_client_request(mpc->info.request.cc, req_key,
 				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  pkg_name, "0", cookie, 1);
+				  appid, "0", cookie, 1);
 	if (ret < 0) {
 		_LOGE("request failed, ret=%d\n", ret);
 		free(req_key);
@@ -844,12 +1053,11 @@ API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 }
 
 API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
-				      const char *pkg_name, pkgmgr_mode mode)
+				      const char *appid, pkgmgr_mode mode)
 {
 	const char *pkgtype;
 	char *installer_path;
 	char *req_key;
-	int req_id;
 	int i = 0;
 	char *argv[PKG_ARGC_MAX] = { NULL, };
 	char *args = NULL;
@@ -871,25 +1079,18 @@ API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	/* 1. check argument */
-	if (pkg_name == NULL)
+	if (appid == NULL)
 		return PKGMGR_R_EINVAL;
 
-/*
-	if( aul_app_is_running(pkg_name) ) {
-		ret = aul_app_get_running_app_info(__iterfunc, (void *) pkg_name);
-		if(ret < 0)
-			return PKGMGR_R_ERROR;
-	}
-*/
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkg_name);
+		pkgtype = _get_pkg_type_from_desktop_file(appid);
 		if (pkgtype == NULL)
 			return PKGMGR_R_EINVAL;
 	} else
 		pkgtype = pkg_type;
 
-	if (strlen(pkg_name) >= PKG_STRING_LEN_MAX)
+	if (strlen(appid) >= PKG_STRING_LEN_MAX)
 		return PKGMGR_R_EINVAL;
 
 	/* 2. get installer path using pkg_path */
@@ -898,7 +1099,7 @@ API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	/* 3. generate req_key */
-	req_key = __get_req_key(pkg_name);
+	req_key = __get_req_key(appid);
 
 	/* 4. generate argv */
 
@@ -911,7 +1112,7 @@ API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 	/* argv[3] */
 	argv[argcnt++] = strdup("-c");
 	/* argv[4] */
-	argv[argcnt++] = strdup(pkg_name);
+	argv[argcnt++] = strdup(appid);
 	/* argv[5] -q option should be located at the end of command !! */
 	if (mode == PM_QUIET)
 		argv[argcnt++] = strdup("-q");
@@ -945,7 +1146,7 @@ API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 
 	/* 6. request clear */
 	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_CLEARER, pkgtype, pkg_name,
+				  COMM_REQ_TO_CLEARER, pkgtype, appid,
 				  args, cookie, 1);
 	if (ret < 0) {
 		_LOGE("request failed, ret=%d\n", ret);
@@ -992,7 +1193,7 @@ API int pkgmgr_client_listen_status(pkgmgr_client *pc, pkgmgr_handler event_cb,
 }
 
 API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
-				       const char *pkg_name, const char *key,
+				       const char *pkgid, const char *key,
 				       const char *val)
 {
 	/* Check for NULL value of pc */
@@ -1001,7 +1202,7 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 	/* Check for valid arguments. NULL parameter causes DBUS to abort */
-	if (pkg_name == NULL || pkg_type == NULL || key == NULL || val == NULL) {
+	if (pkgid == NULL || pkg_type == NULL || key == NULL || val == NULL) {
 		_LOGD("Argument supplied is NULL\n");
 		return PKGMGR_R_EINVAL;
 	}
@@ -1013,7 +1214,7 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 
 	comm_status_broadcast_server_send_signal(mpc->info.broadcast.bc,
 						 PKG_STATUS, pkg_type,
-						 pkg_name, key, val);
+						 pkgid, key, val);
 
 	return PKGMGR_R_OK;
 }
@@ -1041,6 +1242,10 @@ ail_cb_ret_e __appinfo_func(const ail_appinfo_h appinfo, void *user_data)
 
 	return AIL_CB_RET_CONTINUE;
 }
+
+
+
+#define __START_OF_OLD_API
 
 API int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data)
 {
@@ -1096,24 +1301,24 @@ API int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data)
 	return PKGMGR_R_OK;
 }
 
-API pkgmgr_info *pkgmgr_info_new(const char *pkg_type, const char *pkg_name)
+API pkgmgr_info *pkgmgr_info_new(const char *pkg_type, const char *pkgid)
 {
 	const char *pkgtype;
 	pkg_plugin_set *plugin_set = NULL;
 	package_manager_pkg_detail_info_t *pkg_detail_info = NULL;
 
 	/* 1. check argument */
-	if (pkg_name == NULL)
+	if (pkgid == NULL)
 		return NULL;
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkg_name);
+		pkgtype = _get_pkg_type_from_desktop_file(pkgid);
 		if (pkgtype == NULL)
 			return NULL;
 	} else
 		pkgtype = pkg_type;
 
-	if (strlen(pkg_name) >= PKG_STRING_LEN_MAX)
+	if (strlen(pkgid) >= PKG_STRING_LEN_MAX)
 		return NULL;
 
 	pkg_detail_info = calloc(1, sizeof(package_manager_pkg_detail_info_t));
@@ -1124,19 +1329,22 @@ API pkgmgr_info *pkgmgr_info_new(const char *pkg_type, const char *pkg_name)
 
 	plugin_set = _package_manager_load_library(pkgtype);
 	if (plugin_set == NULL) {
+		_LOGE("*** Failed to load library");
 		free(pkg_detail_info);
 		return NULL;
 	}
 
 	if (plugin_set->pkg_is_installed) {
-		if (plugin_set->pkg_is_installed(pkg_name) != 0) {
+		if (plugin_set->pkg_is_installed(pkgid) != 0) {
+			_LOGE("*** Failed to call pkg_is_installed()");
 			free(pkg_detail_info);
 			return NULL;
 		}
 
 		if (plugin_set->get_pkg_detail_info) {
-			if (plugin_set->get_pkg_detail_info(pkg_name,
+			if (plugin_set->get_pkg_detail_info(pkgid,
 							    pkg_detail_info) != 0) {
+				_LOGE("*** Failed to call get_pkg_detail_info()");
 				free(pkg_detail_info);
 				return NULL;
 			}
@@ -1217,4 +1425,317 @@ API int pkgmgr_info_free(pkgmgr_info * pkg_info)
 	pkg_info = NULL;
 
 	return 0;
+}
+
+#define __END_OF_OLD_API
+
+API int pkgmgr_pkginfo_get_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_data)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_list(pkg_list_cb, user_data);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_pkginfo(const char *pkgid, pkgmgr_pkginfo_h *handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, handle);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_pkgname(pkgmgr_pkginfo_h handle, char **pkg_name)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_pkgname(handle, pkg_name);
+	return ret;
+}
+
+
+API int pkgmgr_pkginfo_get_pkgid(pkgmgr_pkginfo_h handle, char **pkgid)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, pkgid);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_type(pkgmgr_pkginfo_h handle, char **type)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_type(handle, type);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_version(pkgmgr_pkginfo_h handle, char **version)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_version(handle, version);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_install_location(pkgmgr_pkginfo_h handle, pkgmgr_install_location *location)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_install_location(handle, location);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_package_size(pkgmgr_pkginfo_h handle, int *size)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_package_size(handle, size);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_icon(pkgmgr_pkginfo_h handle, char **icon)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_icon(handle, icon);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_label(pkgmgr_pkginfo_h handle, char **label)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_label(handle, label);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_description(pkgmgr_pkginfo_h handle, char **description)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_description(handle, description);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_author_name(pkgmgr_pkginfo_h handle, char **author_name)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_author_name(handle, author_name);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_author_email(pkgmgr_pkginfo_h handle, char **author_email)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_author_email(handle, author_email);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_author_href(pkgmgr_pkginfo_h handle, char **author_href)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_author_href(handle, author_href);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_is_removable(pkgmgr_pkginfo_h handle, bool *removable)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_is_removable(handle, removable);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_is_preload(pkgmgr_pkginfo_h handle, bool *preload)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_is_preload(handle, preload);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_is_readonly(pkgmgr_pkginfo_h handle, bool *readonly)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_is_readonly(handle, readonly);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_is_accessible(pkgmgr_pkginfo_h handle, bool *accessible)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_is_accessible(handle, accessible);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_destroy_pkginfo(pkgmgr_pkginfo_h handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_installed_storage(pkgmgr_pkginfo_h handle, pkgmgr_installed_storage *storage)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_installed_storage(handle, storage);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_installed_time(pkgmgr_pkginfo_h handle, int *installed_time)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_installed_time(handle, installed_time);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_list(pkgmgr_pkginfo_h handle, pkgmgr_app_component component,
+							pkgmgr_info_app_list_cb app_func, void *user_data)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_list(handle, component, app_func, user_data);
+	return ret;
+}
+
+API int pkgmgr_appinfo_foreach_category(pkgmgr_appinfo_h handle, pkgmgr_info_app_category_list_cb category_func,
+							void *user_data)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_foreach_category(handle, category_func, user_data);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_appinfo(const char *appid, pkgmgr_appinfo_h *handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_appinfo(appid, handle);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_appid(pkgmgr_appinfo_h  handle, char **appid)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_appid(handle, appid);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_pkgname(pkgmgr_appinfo_h  handle, char **pkg_name)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_pkgname(handle, pkg_name);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_pkgid(pkgmgr_appinfo_h  handle, char **pkgid)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_pkgid(handle, pkgid);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_icon(pkgmgr_appinfo_h handle, char **icon)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_icon(handle, icon);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_label(pkgmgr_appinfo_h handle, char **label)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_label(handle, label);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_exec(pkgmgr_appinfo_h  handle, char **exec)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_exec(handle, exec);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_component(pkgmgr_appinfo_h  handle, pkgmgr_app_component *component)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_component(handle, component);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_apptype(pkgmgr_appinfo_h  handle, char **app_type)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_apptype(handle, app_type);
+	return ret;
+}
+
+API int pkgmgr_appinfo_is_nodisplay(pkgmgr_appinfo_h  handle, bool *nodisplay)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_is_nodisplay(handle, nodisplay);
+	return ret;
+}
+
+API int pkgmgr_appinfo_is_multiple(pkgmgr_appinfo_h  handle, bool *multiple)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_is_multiple(handle, multiple);
+	return ret;
+}
+
+API int pkgmgr_appinfo_is_taskmanage(pkgmgr_appinfo_h  handle, bool *taskmanage)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_is_taskmanage(handle, taskmanage);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_hwacceleration(pkgmgr_appinfo_h  handle, pkgmgr_hwacceleration_type *hwacceleration)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_hwacceleration(handle, hwacceleration);
+	return ret;
+}
+
+API int pkgmgr_appinfo_is_onboot(pkgmgr_appinfo_h  handle, bool *onboot)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_is_onboot(handle, onboot);
+	return ret;
+}
+
+API int pkgmgr_appinfo_is_autorestart(pkgmgr_appinfo_h  handle, bool *autorestart)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_is_autorestart(handle, autorestart);
+	return ret;
+}
+
+API int pkgmgr_appinfo_destroy_appinfo(pkgmgr_appinfo_h  handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_destroy_appinfo(handle);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_create_certinfo(pkgmgr_certinfo_h *handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_create_certinfo(handle);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_load_certinfo(const char *pkgid, pkgmgr_certinfo_h handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_load_certinfo(pkgid, handle);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_get_cert_value(pkgmgr_certinfo_h handle, pkgmgr_cert_type cert_type, const char **cert_value)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_cert_value(handle, cert_type, cert_value);
+	return ret;
+}
+
+API int pkgmgr_pkginfo_destroy_certinfo(pkgmgr_certinfo_h handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_destroy_certinfo(handle);
+	return ret;
+}
+
+API int pkgmgr_datacontrol_get_info(const char *providerid, const char * type, char **appid, char **access)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_datacontrol_get_info(providerid, type, appid, access);
+	return ret;
 }

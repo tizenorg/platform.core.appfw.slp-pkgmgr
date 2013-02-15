@@ -33,12 +33,12 @@
 #include "package-manager-plugin.h"
 
 static void pkg_native_plugin_on_unload(void);
-static int pkg_plugin_app_is_installed(const char *pkg_name);
+static int pkg_plugin_app_is_installed(const char *pkgid);
 static int pkg_plugin_get_installed_apps_list(const char *category,
 					      const char *option,
 					      package_manager_pkg_info_t **
 					      list, int *count);
-static int pkg_plugin_get_app_detail_info(const char *pkg_name,
+static int pkg_plugin_get_app_detail_info(const char *pkgid,
 					  package_manager_pkg_detail_info_t *
 					  pkg_detail_info);
 static int pkg_plugin_get_app_detail_info_from_package(const char *pkg_path,
@@ -50,7 +50,7 @@ static void pkg_native_plugin_on_unload(void)
 	printf("pkg_native_plugin_unload() is called\n");
 }
 
-static int pkg_plugin_app_is_installed(const char *pkg_name)
+static int pkg_plugin_app_is_installed(const char *pkgid)
 {
 	printf("pkg_plugin_app_is_installed() is called\n");
 
@@ -67,7 +67,7 @@ static int pkg_plugin_get_installed_apps_list(const char *category,
 	return 0;
 }
 
-static int pkg_plugin_get_app_detail_info(const char *pkg_name,
+static int pkg_plugin_get_app_detail_info(const char *pkgid,
 					  package_manager_pkg_detail_info_t *
 					  pkg_detail_info)
 {

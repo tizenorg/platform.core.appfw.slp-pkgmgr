@@ -35,8 +35,13 @@
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>
+#include <db-util.h>
+#include <pkgmgr-info.h>
+
 
 #define MAX_STRLEN 512
+#define MAX_QUERY_LEN	4096
+
 #define CHK_PI_RET(r) \
 	do { if (NULL == pi) return (r); } while (0)
 
@@ -44,6 +49,7 @@
 struct pkgmgr_installer {
 	int request_type;
 	int quiet;
+	int move_type;
 	char *pkgmgr_info;
 	char *session_id;
 	char *license_path;
@@ -51,44 +57,16 @@ struct pkgmgr_installer {
 
 	DBusConnection *conn;
 };
-static int __pkgmgr_installer_receive_request_by_socket(pkgmgr_installer *pi);
 
-/* Internal func */
+static int __validate_cb(void *data, int ncols, char **coltxt, char **colname);
 
-static int __pkgmgr_installer_receive_request_by_socket(pkgmgr_installer *pi)
+static int __validate_cb(void *data, int ncols, char **coltxt, char **colname)
 {
-	CHK_PI_RET(-EINVAL);
-	int r = 0;
-
-#ifdef USE_SOCKET
-	/* TODO: implement this */
-
-	/* Try to connect to socket */
-	comm_socket_client *csc = 
-		comm_socket_client_new(pi->quiet_socket_path);
-	if (!csc)
-		return -EINVAL;
-
-	/* Receive request */
-	char *req = NULL, *pkg_info = NULL;
-	if (0 != comm_socket_client_receive_request(csc, &req, &pkg_info)) {
-		r = -EINVAL;
-		goto CLEANUP_RET;
-	}
-
-	/* Verify requester */
-
-	/* Set request value */
-
-	/* Cleanup */
- CLEANUP_RET:
-	if (csc)
-		comm_socket_client_free(csc);
-#endif
-
-	return r;
+	int *p = (int*)data;
+	*p = atoi(coltxt[0]);
+	_LOGE("exist value is %d\n", *p);
+	return 0;
 }
-
 /* API */
 
 API pkgmgr_installer *pkgmgr_installer_new(void)
@@ -99,6 +77,7 @@ API pkgmgr_installer *pkgmgr_installer_new(void)
 		return ERR_PTR(-ENOMEM);
 
 	pi->request_type = PKGMGR_REQ_INVALID;
+	pi->quiet = 0;
 
 	return pi;
 }
@@ -189,6 +168,18 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'm':	/* move */
+			if (mode) {
+				r = -EINVAL;
+				goto RET;
+			}
+			mode = 'm';
+			pi->request_type = PKGMGR_REQ_MOVE;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 		case 'r':	/* recover */
 			if (mode) {
 				r = -EINVAL;
@@ -197,14 +188,18 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			mode = 'r';
 			break;
 
+		case 't': /* move type*/
+			pi->move_type = atoi(optarg);
+			break;
+
 		case 'q':	/* quiet mode */
 			/* if(mode) { r = -EINVAL; goto RET; }
 			   mode = 'q'; */
 			pi->quiet = 1;
 			/* pi->quiet_socket_path = strndup(optarg, MAX_STRLEN);
-			   maximum 255 bytes 
-			   return 
-			__pkgmgr_installer_receive_request_by_socket(pi); */
+			   maximum 255 bytes
+			   return
+			*/
 
 			break;
 
@@ -256,10 +251,16 @@ API int pkgmgr_installer_is_quiet(pkgmgr_installer *pi)
 	return pi->quiet;
 }
 
+API int pkgmgr_installer_get_move_type(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->move_type;
+}
+
 API int
 pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 			     const char *pkg_type,
-			     const char *pkg_name,
+			     const char *pkgid,
 			     const char *key, const char *val)
 {
 	int r = 0;
@@ -271,7 +272,42 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 	if (!sid)
 		sid = "";
 	comm_status_broadcast_server_send_signal(pi->conn, sid, pkg_type,
-						 pkg_name, key, val);
+						 pkgid, key, val);
 
 	return r;
+}
+
+API int pkgmgr_installer_create_certinfo_set_handle(pkgmgr_instcertinfo_h *handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_create_certinfo_set_handle(handle);
+	return ret;
+}
+
+API int pkgmgr_installer_set_cert_value(pkgmgr_instcertinfo_h handle, pkgmgr_instcert_type cert_type, char *cert_value)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_set_cert_value(handle, cert_type, cert_value);
+	return ret;
+}
+
+API int pkgmgr_installer_save_certinfo(const char *pkgid, pkgmgr_instcertinfo_h handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_save_certinfo(pkgid, handle);
+	return ret;
+}
+
+API int pkgmgr_installer_destroy_certinfo_set_handle(pkgmgr_instcertinfo_h handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_destroy_certinfo_set_handle(handle);
+	return ret;
+}
+
+API int pkgmgr_installer_delete_certinfo(const char *pkgid)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_delete_certinfo(pkgid);
+	return ret;
 }

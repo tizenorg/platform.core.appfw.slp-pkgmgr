@@ -20,16 +20,16 @@ SET(INCLUDEDIR "\${prefix}/include")
 set(CMAKE_SKIP_BUILD_RPATH true)
 
 #Verbose
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/comm)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/comm )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file)
+pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-info)
 
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-pkg_check_modules(libpkgs REQUIRED dbus-glib-1 dlog aul ail)
+pkg_check_modules(libpkgs REQUIRED dbus-glib-1 dlog ail pkgmgr-info)
 
 FOREACH(flag ${libpkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -60,7 +60,7 @@ add_subdirectory(types)
 ###################################################################################################
 ## for libpkgmgr-client.so (library)
 SET(PKGMGR_CLIENT "pkgmgr-client")
-SET(libpkgmgr-client_SOURCES ${pm_c_src_dir}/pkgmgr-info.c ${pm_c_src_dir}/pkgmgr-internal.c ${pm_c_src_dir}/pkgmgr.c)
+SET(libpkgmgr-client_SOURCES ${pm_c_src_dir}/pkgmgr-internal.c ${pm_c_src_dir}/pkgmgr.c ${pm_c_src_dir}/pkgmgr-dbinfo.c)
 SET(libpkgmgr-client_LDFLAGS " -module -avoid-version ")
 SET(libpkgmgr-client_CFLAGS  " ${CFLAGS} -fPIC -I${pm_c_inc_dir} -I${pm_inc_dir} -I${pm_t_inc_dir} ${debug_type}")
 
@@ -68,7 +68,7 @@ ADD_LIBRARY(${PKGMGR_CLIENT} SHARED ${libpkgmgr-client_SOURCES})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES VERSION ${VERSION})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES COMPILE_FLAGS "${libpkgmgr-client_CFLAGS}")
-TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT} pkgmgr_installer_client pkgmgr_installer_status_broadcast_server ${libpkgs_LDFLAGS})
+TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT} pkgmgr_installer_client pkgmgr_installer_status_broadcast_server pkgmgr-info ${libpkgs_LDFLAGS})
 ###################################################################################################
 
 ###################################################################################################
@@ -92,6 +92,7 @@ INSTALL(TARGETS ${PKGMGR_CLIENT} DESTINATION lib COMPONENT RuntimeLibraries)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/pkgmgr-server DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr.pc DESTINATION lib/pkgconfig)
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/client/include/package-manager.h DESTINATION include)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/client/include/pkgmgr-dbinfo.h DESTINATION include)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.service DESTINATION ${PREFIX}/share/dbus-1/services/)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkg_path.conf DESTINATION ${PREFIX}/etc/package-manager/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/queue_status DESTINATION etc/package-manager/server/)
