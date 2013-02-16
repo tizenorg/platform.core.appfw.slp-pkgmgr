@@ -1,3 +1,4 @@
 [D-BUS Service]
+User=root
 Name=org.tizen.slp.pkgmgr
-Exec=@PREFIX@/bin/pkgmgr-server
+Exec=@PREFIX@/bin/env DISPLAY=:0 @PREFIX@/bin/pkgmgr-server

@@ -38,12 +38,12 @@ extern "C" {
 #endif
 
 typedef void (*_pkg_plugin_unload) (void);
-typedef int (*_pkg_plugin_pkg_is_installed) (const char *pkg_name);
+typedef int (*_pkg_plugin_pkg_is_installed) (const char *pkgid);
 typedef int (*_pkg_plugin_get_installed_pkg_list) (const char *category,
 						   const char *option,
 						   package_manager_pkg_info_t
 						   **list, int *count);
-typedef int (*_pkg_plugin_get_pkg_detail_info) (const char *pkg_name,
+typedef int (*_pkg_plugin_get_pkg_detail_info) (const char *pkgid,
 					package_manager_pkg_detail_info_t
 					*pkg_detail_info);
 typedef int (*_pkg_plugin_get_pkg_detail_info_from_package) (const char

@@ -63,7 +63,7 @@ API void
 comm_status_broadcast_server_send_signal(DBusConnection *conn,
 					 const char *req_id,
 					 const char *pkg_type,
-					 const char *pkg_name, const char *key,
+					 const char *pkgid, const char *key,
 					 const char *val)
 {
 	dbus_uint32_t serial = 0;
@@ -73,7 +73,7 @@ comm_status_broadcast_server_send_signal(DBusConnection *conn,
 	const char *values[] = {
 		req_id,
 		pkg_type,
-		pkg_name,
+		pkgid,
 		key,
 		val
 	};

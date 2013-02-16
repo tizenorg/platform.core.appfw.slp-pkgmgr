@@ -2,5 +2,5 @@
 @PREFIX@/etc/package-manager/pkg_path.conf
 @PREFIX@/bin/pkgcmd
 @PREFIX@/bin/pkgmgr-install
-/opt/share/applications/*.desktop
+@PREFIX@/share/applications/*.desktop
 @PREFIX@/share/mime/packages/*.xml

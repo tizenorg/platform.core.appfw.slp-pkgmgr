@@ -5,7 +5,7 @@
 		<signal name="status">
 			<arg type="s" name="req_id" direction="out" />
 			<arg type="s" name="pkgtype" direction="out" />
-			<arg type="s" name="pkgname" direction="out" />
+			<arg type="s" name="pkgid" direction="out" />
 			<arg type="s" name="key" direction="out" />
 			<arg type="s" name="val" direction="out" />
 		</signal>

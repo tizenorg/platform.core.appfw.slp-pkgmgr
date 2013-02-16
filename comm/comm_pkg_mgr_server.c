@@ -74,7 +74,7 @@ G_DEFINE_TYPE(PkgMgrObject, pkg_mgr_object, G_TYPE_OBJECT);
  */
 GCallback pkgmgr_request(PkgMgrObject *obj, const gchar *req_id,
 			 const gint req_type, const gchar *pkg_type,
-			 const gchar *pkg_name, const gchar *args,
+			 const gchar *pkgid, const gchar *args,
 			 const gchar *cookie, gint *ret, GError *err);
 
 /* Include stub header */
@@ -163,7 +163,7 @@ pkgmgr_request(PkgMgrObject *obj,
 	       const gchar *req_id,
 	       const gint req_type,
 	       const gchar *pkg_type,
-	       const gchar *pkg_name,
+	       const gchar *pkgid,
 	       const gchar *args,
 	       const gchar *cookie, gint *ret, GError *err)
 {
@@ -176,9 +176,9 @@ pkgmgr_request(PkgMgrObject *obj,
 
 	if (obj->req_cb) {
 		dbg("Call request callback(obj, %s, %d, %s, %s, %s, *ret)",
-		    req_id, req_type, pkg_type, pkg_name, args);
+		    req_id, req_type, pkg_type, pkgid, args);
 		obj->req_cb(obj->req_cb_data, req_id, req_type, pkg_type,
-			    pkg_name, args, cookie, ret);
+			    pkgid, args, cookie, ret);
 	} else {
 		dbg("Attempt to call request callback,"
 		" but request callback is not set. Do nothing.\n"

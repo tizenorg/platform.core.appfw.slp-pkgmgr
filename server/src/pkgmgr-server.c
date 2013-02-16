@@ -38,6 +38,9 @@
 #include <Ecore_File.h>
 #include <ail.h>
 
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
+
 #include "pkgmgr_installer.h"
 #include "comm_pkg_mgr_server.h"
 #include "pkgmgr-server.h"
@@ -62,8 +65,8 @@ FILE *___log = NULL;
 #undef LOG_TAG
 #define LOG_TAG "PKGMGR_SERVER"
 
-#define DBGE(fmt, arg...) LOGE("[%s,%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#define DBG(fmt, arg...) LOGD("[%s,%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+#define DBGE(fmt, arg...) LOGE(fmt,##arg)
+#define DBG(fmt, arg...) LOGD(fmt,##arg)
 #endif
 
 #if !defined(PACKAGE)
@@ -85,9 +88,32 @@ static int drawing_popup = 0;	/* 0 means that pkgmgr-server has no popup now */
 *  before the db is updated. */
 int ail_db_update = 1;
 
+/*
+8 bit value to represent maximum 8 backends.
+Each bit position corresponds to a queue slot which
+is dynamically determined.
+*/
+char backend_busy = 0;
+/*
+8 bit value to represent quiet mode operation for maximum 8 backends
+1->quiet 0->non-quiet
+Each bit position corresponds to a queue slot which
+is dynamically determined.
+*/
+char backend_mode = 63; /*00111111*/
+extern int num_of_backends;
+
+backend_info *begin;
+extern queue_info_map *start;
+extern int entries;
+int pos = 0;
+/*To store info in case of backend crash*/
+char pname[MAX_PKG_NAME_LEN] = {'\0'};
+char ptype[MAX_PKG_TYPE_LEN] = {'\0'};
+char args[MAX_PKG_ARGS_LEN] = {'\0'};
+
 GMainLoop *mainloop = NULL;
 
-static const char *activate_cmd = "/usr/bin/activator";
 
 /* operation_type */
 typedef enum {
@@ -112,14 +138,71 @@ typedef struct pm_desktop_notifier_t pm_desktop_notifier;
 
 pm_desktop_notifier desktop_notifier;
 pm_inotify_paths paths[DESKTOP_FILE_DIRS_NUM];
-
-static
-void response_cb(void *data, Evas_Object *notify, void *event_info);
-static
-int create_popup(struct appdata *ad);
+static int __check_backend_status_for_exit();
+static int __check_queue_status_for_exit();
+static int __check_backend_mode();
+static int __is_backend_busy(int position);
+static void __set_backend_busy(int position);
+static void __set_backend_free(int position);
+static int __is_backend_mode_quiet(int position);
+static void __set_backend_mode(int position);
+static void __unset_backend_mode(int position);
+static void response_cb1(void *data, Evas_Object *notify, void *event_info);
+static void response_cb2(void *data, Evas_Object *notify, void *event_info);
+static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
+static int __get_position_from_pkg_type(char *pkgtype);
 gboolean queue_job(void *data);
+gboolean send_fail_signal(void *data);
+gboolean exit_server(void *data);
 static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler);
+
+/* To check whether a particular backend is free/busy*/
+static int __is_backend_busy(int position)
+{
+	return backend_busy & 1<<position;
+}
+/*To set a particular backend as busy*/
+static void __set_backend_busy(int position)
+{
+	backend_busy = backend_busy | 1<<position;
+}
+/*To set a particular backend as free */
+static void __set_backend_free(int position)
+{
+	backend_busy = backend_busy & ~(1<<position);
+}
+/* To check whether a particular backend is running in quiet mode*/
+static int __is_backend_mode_quiet(int position)
+{
+	return backend_mode & 1<<position;
+}
+/*To set a particular backend mode as quiet*/
+static void __set_backend_mode(int position)
+{
+	backend_mode = backend_mode | 1<<position;
+}
+/*To unset a particular backend mode */
+static void __unset_backend_mode(int position)
+{
+	backend_mode = backend_mode & ~(1<<position);
+}
+
+static int __get_position_from_pkg_type(char *pkgtype)
+{
+	int i = 0;
+	queue_info_map *ptr;
+	ptr = start;
+	for(i = 0; i < entries; i++)
+	{
+		if (!strncmp(ptr->pkgtype, pkgtype, MAX_PKG_TYPE_LEN))
+			return ptr->queue_slot;
+		else
+			ptr++;
+
+	}
+	return -1;
+}
 
 static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 {
@@ -145,7 +228,7 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 		return ECORE_CALLBACK_RENEW;
 	}
 
-	buf = malloc(read_size);
+	buf = calloc(1, read_size+1);
 	if (!buf) {
 		DBG("Failed to allocate memory for event handling\n");
 		ail_db_update = 1;
@@ -159,6 +242,8 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 		ail_db_update = 1;
 		return ECORE_CALLBACK_CANCEL;
 	}
+
+	buf[len] = 0;
 
 	while (i < len) {
 		struct inotify_event *event = (struct inotify_event*) &buf[i];
@@ -188,12 +273,12 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 			continue;
 
 		cut = strstr(package, ".desktop");
-		*cut = '\0';
+		if (cut)
+			*cut = '\0';
 		DBG("Package : %s\n", package);
 
 		/* add & update */
-		if (event->mask & IN_CREATE || event->mask & IN_CLOSE_WRITE ||
-		    event->mask & IN_MOVED_TO) {
+		if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO) {
 			ail_appinfo_h ai = NULL;
 			ail_error_e ret;
 
@@ -230,72 +315,44 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 }
 
 static
-void response_cb(void *data, Evas_Object *notify, void *event_info)
+void response_cb1(void *data, Evas_Object *notify, void *event_info)
 {
 	struct appdata *ad = (struct appdata *)data;
-
+	int p = 0;
+	int ret = 0;
 	DBG("start of response_cb()\n");
 
-	if ((int)event_info == ELM_POPUP_RESPONSE_OK) {	/* YES  */
-		DBG("Uninstalling... [%s]\n", ad->item->pkg_name);
+	/* YES  */
+	DBG("Uninstalling... [%s]\n", ad->item->pkgid);
 
-		if (strlen(ad->item->pkg_name) == 0) {
-			DBG("package_name is empty\n");
-		}
-
-		if (strlen(ad->item->pkg_type) == 0) {
-			DBG("Fail :  Uninstalling... [%s]\n",
-			    ad->item->pkg_name);
-			free(ad->item);
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
-			drawing_popup = 0;
-
-			return;
-		}
-
-		DBG("pkg_type = [%s]\n", ad->item->pkg_type);
-
-		_pm_queue_push(*(ad->item));
-
-	} else {		/* NO  */
-		pkgmgr_installer *pi;
-		gboolean ret_parse;
-		gint argcp;
-		gchar **argvp;
-		GError *gerr = NULL;
-
-		pi = pkgmgr_installer_new();
-		if (!pi) {
-			DBG("Failure in creating the pkgmgr_installer object");
-			return;
-		}
-
-		ret_parse = g_shell_parse_argv(ad->item->args,
-					       &argcp, &argvp, &gerr);
-		if (FALSE == ret_parse) {
-			DBG("Failed to split args: %s", ad->item->args);
-			DBG("messsage: %s", gerr->message);
-			pkgmgr_installer_free(pi);
-			return;
-		}
-
-		pkgmgr_installer_receive_request(pi, argcp, argvp);
-
-		pkgmgr_installer_send_signal(pi, ad->item->pkg_type,
-					     ad->item->pkg_name, "end",
-					     "cancel");
-
-		pkgmgr_installer_free(pi);
+	if (strlen(ad->item->pkgid) == 0) {
+		DBG("package_name is empty\n");
 	}
+
+	if (strlen(ad->item->pkg_type) == 0) {
+		DBG("Fail :  Uninstalling... [%s]\n",
+		    ad->item->pkgid);
+		free(ad->item);
+		evas_object_del(ad->notify);
+		evas_object_del(ad->win);
+		drawing_popup = 0;
+
+		return;
+	}
+
+	DBG("pkg_type = [%s]\n", ad->item->pkg_type);
+
+	ret = _pm_queue_push(ad->item);
+	p = __get_position_from_pkg_type(ad->item->pkg_type);
+	__unset_backend_mode(p);
 
 	/* Free resource */
 	free(ad->item);
 	evas_object_del(ad->notify);
 	evas_object_del(ad->win);
 	/***************/
-
-	g_idle_add(queue_job, NULL);
+	if (ret == 0)
+		g_idle_add(queue_job, NULL);
 
 	DBG("end of response_cb()\n");
 
@@ -304,14 +361,71 @@ void response_cb(void *data, Evas_Object *notify, void *event_info)
 	return;
 }
 
-static char *__get_exe_path(const char *pkg_name)
+static
+void response_cb2(void *data, Evas_Object *notify, void *event_info)
+{
+	int p = 0;
+	struct appdata *ad = (struct appdata *)data;
+
+	DBG("start of response_cb()\n");
+
+	/* NO  */
+	pkgmgr_installer *pi;
+	gboolean ret_parse;
+	gint argcp;
+	gchar **argvp;
+	GError *gerr = NULL;
+
+	pi = pkgmgr_installer_new();
+	if (!pi) {
+		DBG("Failure in creating the pkgmgr_installer object");
+		return;
+	}
+
+	ret_parse = g_shell_parse_argv(ad->item->args,
+				       &argcp, &argvp, &gerr);
+	if (FALSE == ret_parse) {
+		DBG("Failed to split args: %s", ad->item->args);
+		DBG("messsage: %s", gerr->message);
+		pkgmgr_installer_free(pi);
+		return;
+	}
+
+	pkgmgr_installer_receive_request(pi, argcp, argvp);
+
+	pkgmgr_installer_send_signal(pi, ad->item->pkg_type,
+				     ad->item->pkgid, "end",
+				     "cancel");
+
+	pkgmgr_installer_free(pi);
+	p = __get_position_from_pkg_type(ad->item->pkg_type);
+        __set_backend_mode(p);
+
+	/* Free resource */
+	free(ad->item);
+	evas_object_del(ad->notify);
+	evas_object_del(ad->win);
+	/***************/
+	/* queue_job should be called for every request that is pushed
+	into queue. In "NO" case, request is not pushed so no need of
+	calling queue_job*/
+
+	DBG("end of response_cb()\n");
+
+	drawing_popup = 0;
+
+	return;
+}
+
+
+static char *__get_exe_path(const char *pkgid)
 {
 	ail_appinfo_h handle;
 	ail_error_e ret;
 	char *str;
 	char *exe_path;
 
-	ret = ail_package_get_appinfo(pkg_name, &handle);
+	ret = ail_package_get_appinfo(pkgid, &handle);
 	if (ret != AIL_ERROR_OK) {
 		DBGE("ail_package_get_appinfo() failed");
 		return NULL;
@@ -334,10 +448,134 @@ static char *__get_exe_path(const char *pkg_name)
 	ret = ail_package_destroy_appinfo(handle);
 	if (ret != AIL_ERROR_OK) {
 		DBGE("ail_package_destroy_appinfo() failed");
+		free(exe_path);
 		return NULL;
 	}
 
 	return exe_path;
+}
+
+
+static int __X_rotate_disable_focus(Display *dpy, Window win)
+{
+	XWMHints *hints;
+
+	hints = XAllocWMHints();
+	if (!hints) return -1;
+
+	hints->flags = InputHint | StateHint;
+	hints->input = 0;
+	hints->initial_state = NormalState;
+
+	XSetWMHints(dpy, win, hints);
+	XFree(hints);
+
+	return 0;
+}
+
+static int __X_rotate_get_window_property(Display *dpy, Window win, Atom atom,
+					  Atom type, unsigned int *val,
+					  unsigned int len)
+{
+	unsigned char *prop_ret;
+	Atom type_ret;
+	unsigned long bytes_after;
+	unsigned long  num_ret;
+	int format_ret;
+	unsigned int i;
+	int num;
+
+	prop_ret = NULL;
+	if (XGetWindowProperty(dpy, win, atom, 0, 0x7fffffff, False,
+			       type, &type_ret, &format_ret, &num_ret,
+			       &bytes_after, &prop_ret) != Success)
+		return -1;
+
+	if (type_ret != type || format_ret != 32)
+		num = -1;
+	else if (num_ret == 0 || !prop_ret)
+		num = 0;
+	else {
+		if (num_ret < len)
+			len = num_ret;
+		for (i = 0; i < len; i++) {
+			val[i] = ((unsigned long *)prop_ret)[i];
+		}
+		num = len;
+	}
+
+	if (prop_ret)
+		XFree(prop_ret);
+
+	return num;
+}
+
+static int __X_rotate_get_rotation(Display *dpy)
+{
+	Window active_win;
+	Window root_win;
+	int rotation = -1;
+	int ret;
+
+	int angles[2];
+
+	Atom atom_active_win;
+	Atom atom_win_rotate_angle;
+
+	root_win = XDefaultRootWindow(dpy);
+
+	atom_active_win = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+	ret = __X_rotate_get_window_property(dpy, root_win, atom_active_win,
+					     XA_WINDOW,
+					     (unsigned int *)&active_win, 1);
+	if (ret < 0)
+		return ret;
+
+	atom_win_rotate_angle =
+		XInternAtom(dpy, "_E_ILLUME_ROTATE_ROOT_ANGLE", False);
+	ret = __X_rotate_get_window_property(dpy, root_win,
+					  atom_win_rotate_angle, XA_CARDINAL,
+					  (unsigned int *)&rotation, 1);
+
+	if (ret != -1)
+		return rotation;
+
+	return -1;
+}
+
+static int __X_rotate_do_rotation(Window win)
+{
+	Display *d;
+	int rotation;
+
+	d = XOpenDisplay(NULL);
+
+	rotation = __X_rotate_get_rotation(d);
+
+	if (rotation == -1) {
+		rotation = 0;
+	}
+
+	if (rotation >= 0)
+		elm_win_rotation_with_resize_set(win, rotation);
+
+	XCloseDisplay(d);
+
+	return 0;
+}
+
+static Eina_Bool __X_rotate_cb(void *data, int type, void *event)
+{
+	Window win = (Window)data;
+	Ecore_X_Event_Client_Message *ev = event;
+
+	if (!event)
+		return ECORE_CALLBACK_RENEW;
+
+	if (ev->message_type == ECORE_X_ATOM_E_ILLUME_ROTATE_ROOT_ANGLE)
+		__X_rotate_do_rotation(win);
+
+	return ECORE_CALLBACK_RENEW;
 }
 
 static
@@ -348,7 +586,7 @@ int create_popup(struct appdata *ad)
 	drawing_popup = 1;
 
 	char sentence[MAX_PKG_ARGS_LEN] = { '\0' };
-	char *pkg_name = NULL;
+	char *pkgid = NULL;
 	char app_name[MAX_PKG_NAME_LEN] = { '\0' };
 
 	ad->win = elm_win_add(NULL, PACKAGE, ELM_WIN_DIALOG_BASIC);
@@ -388,9 +626,14 @@ int create_popup(struct appdata *ad)
 	if (rotation != -1)
 		elm_win_rotation_with_resize_set(ad->win, rotation);
 
+	__X_rotate_disable_focus(ecore_x_display_get(), ad->win);
+
+	ecore_event_handler_add(ECORE_X_EVENT_CLIENT_MESSAGE,
+				__X_rotate_cb, ad->win);
+
 	double s;
 	s = w / DESKTOP_W;
-	elm_scale_set(s);
+	elm_config_scale_set(s);
 
 	evas_object_show(ad->win);
 
@@ -403,8 +646,8 @@ int create_popup(struct appdata *ad)
 	}
 
 	/* Sentence of popup */
-	pkg_name = strrchr(ad->item->pkg_name, '/') == NULL ?
-	    ad->item->pkg_name : strrchr(ad->item->pkg_name, '/') + 1;
+	pkgid = strrchr(ad->item->pkgid, '/') == NULL ?
+	    ad->item->pkgid : strrchr(ad->item->pkgid, '/') + 1;
 
 	if (ad->op_type == OPERATION_INSTALL) {
 		snprintf(sentence, sizeof(sentence) - 1, _("Install?"));
@@ -413,7 +656,7 @@ int create_popup(struct appdata *ad)
 		ail_appinfo_h handle;
 		ail_error_e ret;
 		char *str;
-		ret = ail_package_get_appinfo(pkg_name, &handle);
+		ret = ail_package_get_appinfo(pkgid, &handle);
 		if (ret != AIL_ERROR_OK) {
 			drawing_popup = 0;
 			evas_object_del(ad->notify);
@@ -440,29 +683,33 @@ int create_popup(struct appdata *ad)
 			return -1;
 		}
 
-		pkg_name = app_name;
+		pkgid = app_name;
 
 		snprintf(sentence, sizeof(sentence) - 1, _("Uninstall?"));
 	} else
 		snprintf(sentence, sizeof(sentence) - 1, _("Invalid request"));
 
-	elm_popup_title_label_set(ad->notify, pkg_name);
+	elm_object_part_text_set(ad->notify, "title,text", pkgid);
 	evas_object_size_hint_weight_set(ad->notify, EVAS_HINT_EXPAND,
 					 EVAS_HINT_EXPAND);
-/*      elm_popup_mode_set(ad->notify, ELM_POPUP_TYPE_ALERT); */
 
 	evas_object_show(ad->notify);
 	/***********************************/
 
-	elm_popup_desc_set(ad->notify, sentence);
+	elm_object_text_set(ad->notify, sentence);
 
-	elm_popup_buttons_add(ad->notify, 2,
-			      dgettext("sys_string", "IDS_COM_SK_YES"),
-			      ELM_POPUP_RESPONSE_OK, dgettext("sys_string",
-							      "IDS_COM_SK_NO"),
-			      ELM_POPUP_RESPONSE_CANCEL, NULL);
-	evas_object_smart_callback_add(ad->notify,
-				       "response", response_cb, ad);
+	Evas_Object *button1 = NULL;
+	Evas_Object *button2 = NULL;
+
+	button1 = elm_button_add(ad->notify);
+	elm_object_text_set(button1, dgettext("sys_string", "IDS_COM_SK_YES"));
+	elm_object_part_content_set(ad->notify, "button1", button1);
+	evas_object_smart_callback_add(button1, "clicked", response_cb1, ad);
+
+	button2 = elm_button_add(ad->notify);
+	elm_object_text_set(button2, dgettext("sys_string", "IDS_COM_SK_NO"));
+	elm_object_part_content_set(ad->notify, "button2", button2);
+	evas_object_smart_callback_add(button2, "clicked", response_cb2, ad);
 
 	evas_object_show(ad->notify);
 
@@ -470,29 +717,85 @@ int create_popup(struct appdata *ad)
 	return 0;
 }
 
+gboolean send_fail_signal(void *data)
+{
+	DBG("send_fail_signal start\n");
+	gboolean ret_parse;
+	gint argcp;
+	gchar **argvp;
+	GError *gerr = NULL;
+	pkgmgr_installer *pi;
+	pi = pkgmgr_installer_new();
+	if (!pi) {
+		DBG("Failure in creating the pkgmgr_installer object");
+		return FALSE;
+	}
+	ret_parse = g_shell_parse_argv(args,
+				       &argcp, &argvp, &gerr);
+	if (FALSE == ret_parse) {
+		DBG("Failed to split args: %s", args);
+		DBG("messsage: %s", gerr->message);
+		pkgmgr_installer_free(pi);
+		return FALSE;
+	}
+
+	pkgmgr_installer_receive_request(pi, argcp, argvp);
+	pkgmgr_installer_send_signal(pi, ptype, pname, "end", "fail");
+	pkgmgr_installer_free(pi);
+	return FALSE;
+}
+
 static void sighandler(int signo)
 {
 	int status;
-	pid_t pid;
+	pid_t cpid;
+	int i = 0;
+	backend_info *ptr = NULL;
+	ptr = begin;
 
-	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-		DBG("child exit [%d]\n", pid);
+	while ((cpid = waitpid(-1, &status, WNOHANG)) > 0) {
+		DBG("child exit [%d]\n", cpid);
+		if (WIFEXITED(status)) {
+			DBG("child NORMAL exit [%d]\n", cpid);
+			for(i = 0; i < num_of_backends; i++)
+			{
+				if (cpid == (ptr + i)->pid) {
+					__set_backend_free(i);
+					__set_backend_mode(i);
+					break;
+				}
+			}
+		}
+		else if (WIFSIGNALED(status)) {
+			DBG("child SIGNALED exit [%d]\n", cpid);
+			/*get the pkgid and pkgtype to send fail signal*/
+			for(i = 0; i < num_of_backends; i++)
+			{
+				if (cpid == (ptr + i)->pid) {
+					__set_backend_free(i);
+					__set_backend_mode(i);
+					strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
+					strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
+					strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
+					g_idle_add(send_fail_signal, NULL);
+					break;
+				}
+			}
+		}
 	}
 
-	g_idle_add(queue_job, NULL);
-
-	backend_flag = 0;
 }
 
 void req_cb(void *cb_data, const char *req_id, const int req_type,
-	    const char *pkg_type, const char *pkg_name, const char *args,
+	    const char *pkg_type, const char *pkgid, const char *args,
 	    const char *cookie, int *ret)
 {
 	static int sig_reg = 0;
 	int err = -1;
+	int p = 0;
 
 	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s]",
-	    req_id, req_type, pkg_type, pkg_name, args, cookie);
+	    req_id, req_type, pkg_type, pkgid, args, cookie);
 
 	struct appdata *ad = (struct appdata *)cb_data;
 
@@ -502,7 +805,7 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 	strncpy(item->req_id, req_id, sizeof(item->req_id) - 1);
 	item->req_type = req_type;
 	strncpy(item->pkg_type, pkg_type, sizeof(item->pkg_type) - 1);
-	strncpy(item->pkg_name, pkg_name, sizeof(item->pkg_name) - 1);
+	strncpy(item->pkgid, pkgid, sizeof(item->pkgid) - 1);
 	strncpy(item->args, args, sizeof(item->args) - 1);
 	strncpy(item->cookie, cookie, sizeof(item->cookie) - 1);
 
@@ -517,6 +820,8 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 			DBG("signal: SIGCHLD failed\n");
 		} else
 			DBG("signal: SIGCHLD succeed\n");
+		if (g_timeout_add_seconds(2, exit_server, NULL))
+			DBG("g_timeout_add_seconds() Added to Main Loop");
 
 		sig_reg = 1;
 	}
@@ -534,15 +839,20 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 		    ((quiet = strstr(args, " '-q'")) &&
 		     (quiet[strlen(quiet)] == '\0'))) {
 			/* quiet mode */
-			_pm_queue_push(*item);
+			err = _pm_queue_push(item);
+			p = __get_position_from_pkg_type(item->pkg_type);
+			__set_backend_mode(p);
 			/* Free resource */
 			free(item);
-
-			g_idle_add(queue_job, NULL);
+			if (err == 0)
+				g_idle_add(queue_job, NULL);
 			*ret = COMM_RET_OK;
 		} else {
 			/* non quiet mode */
-			if (drawing_popup == 0 && backend_flag == 0) {
+			p = __get_position_from_pkg_type(item->pkg_type);
+			if (drawing_popup == 0 &&
+				!__is_backend_busy(p) &&
+				__check_backend_mode()) {
 				/* if there is no popup */
 				ad->item = item;
 
@@ -564,112 +874,250 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 				if (err != 0) {
 					*ret = COMM_RET_ERROR;
 					DBG("create popup failed\n");
-					queue_job(NULL);
-					return;
+					/*queue_job(NULL);*/
+					goto err;
 				} else {
 					*ret = COMM_RET_OK;
 				}
 			} else {
+					DBG("info drawing_popup:%d, __is_backend_busy(p):%d, __check_backend_mode():%d\n",
+					drawing_popup, __is_backend_busy(p), __check_backend_mode());
 				/* if popup is already being drawn */
-				free(item);
 				*ret = COMM_RET_ERROR;
+				goto err;
 			}
 		}
 		break;
 	case COMM_REQ_TO_ACTIVATOR:
 		/* In case of activate, there is no popup */
-		_pm_queue_push(*item);
+		err = _pm_queue_push(item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		__set_backend_mode(p);
 		/* Free resource */
 		free(item);
 
 /*		g_idle_add(queue_job, NULL); */
-		queue_job(NULL);
+		if (err == 0)
+			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_CLEARER:
-		/* In case of activate, there is no popup */
-		_pm_queue_push(*item);
+		/* In case of clearer, there is no popup */
+		err = _pm_queue_push(item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		/*the backend shows the success/failure popup
+		so this request is non quiet*/
+		__unset_backend_mode(p);
 		/* Free resource */
 		free(item);
 
 /*		g_idle_add(queue_job, NULL); */
-		queue_job(NULL);
+		if (err == 0)
+			queue_job(NULL);
+		*ret = COMM_RET_OK;
+		break;
+	case COMM_REQ_TO_MOVER:
+		/* In case of mover, there is no popup */
+		err = _pm_queue_push(item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		/*the backend shows the success/failure popup
+		so this request is non quiet*/
+		__unset_backend_mode(p);
+		/* Free resource */
+		free(item);
+		if (err == 0)
+			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CANCEL:
 		ad->item = item;
-		_pm_queue_delete(*(ad->item));
+		_pm_queue_delete(ad->item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		__unset_backend_mode(p);
 		free(item);
 		*ret = COMM_RET_OK;
 		break;
 	default:
 		DBG("Check your request..\n");
-		free(item);
 		*ret = COMM_RET_ERROR;
 		break;
 	}
+err:
+	if (*ret == COMM_RET_ERROR) {
+		DBG("Failed to handle request %s %s\n",item->pkg_type, item->pkgid);
+		pkgmgr_installer *pi;
+		gboolean ret_parse;
+		gint argcp;
+		gchar **argvp;
+		GError *gerr = NULL;
+
+		pi = pkgmgr_installer_new();
+		if (!pi) {
+			DBG("Failure in creating the pkgmgr_installer object");
+			free(item);
+			return;
+		}
+
+		ret_parse = g_shell_parse_argv(args, &argcp, &argvp, &gerr);
+		if (FALSE == ret_parse) {
+			DBG("Failed to split args: %s", args);
+			DBG("messsage: %s", gerr->message);
+			pkgmgr_installer_free(pi);
+			free(item);
+			return;
+		}
+
+		pkgmgr_installer_receive_request(pi, argcp, argvp);
+
+		pkgmgr_installer_send_signal(pi, item->pkg_type,
+					     item->pkgid, "end",
+					     "fail");
+
+		pkgmgr_installer_free(pi);
+
+		free(item);
+	}
+	return;
+}
+
+static int __check_backend_mode()
+{
+	int i = 0;
+	for(i = 0; i < num_of_backends; i++)
+	{
+		if (__is_backend_mode_quiet(i))
+			continue;
+		else
+			return 0;
+	}
+	return 1;
+}
+static int __check_backend_status_for_exit()
+{
+	int i = 0;
+	for(i = 0; i < num_of_backends; i++)
+	{
+		if (!__is_backend_busy(i))
+			continue;
+		else
+			return 0;
+	}
+	return 1;
+}
+
+static int __check_queue_status_for_exit()
+{
+	pm_queue_data *head[MAX_QUEUE_NUM] = {NULL,};
+	queue_info_map *ptr = NULL;
+	ptr = start;
+	int i = 0;
+	int c = 0;
+	int slot = -1;
+	for(i = 0; i < entries; i++)
+	{
+		if (ptr->queue_slot <= slot) {
+			ptr++;
+			continue;
+		}
+		else {
+			head[c] = ptr->head;
+			slot = ptr->queue_slot;
+			c++;
+			ptr++;
+		}
+	}
+	for(i = 0; i < num_of_backends; i++)
+	{
+		if (!head[i])
+			continue;
+		else
+			return 0;
+	}
+	return 1;
+}
+gboolean exit_server(void *data)
+{
+	DBG("exit_server Start\n");
+	if (__check_backend_status_for_exit() &&
+                __check_queue_status_for_exit() &&
+			drawing_popup == 0) {
+                        if (!getenv("PMS_STANDALONE") && ail_db_update) {
+                                ecore_main_loop_quit();
+                                return FALSE;
+                        }
+        }
+	return TRUE;
 }
 
 gboolean queue_job(void *data)
 {
 	/* DBG("queue_job start"); */
-
+	pm_dbus_msg *item;
+	backend_info *ptr = NULL;
+	ptr = begin;
+	int x = 0;
 	/* Pop a job from queue */
-	pm_dbus_msg item = _pm_queue_get_head();
-	pid_t pid;
+pop:
+	if (!__is_backend_busy(pos % num_of_backends)) {
+		item = _pm_queue_pop(pos % num_of_backends);
+		pos = (pos + 1) % num_of_backends;
+	}
+	else {
+		pos = (pos + 1) % num_of_backends;
+		goto pop;
+	}
+
 	int ret = 0;
 	char *backend_cmd = NULL;
-	char *exe_path = NULL;
 
-	DBG("item.req_type=(%d) backend_flag=(%d)\n", item.req_type,
-	    backend_flag);
+	/* queue is empty and backend process is not running */
+	if ( (item == NULL) || (item->req_type == -1) ) {
+		if(item)
+			free(item);
+		goto pop;
+	}
+	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
 
-	/* queue is empty and backend process is not running, quit */
-	if ((item.req_type == -1) && (backend_flag == 0) &&
-	    drawing_popup == 0 && ail_db_update == 1) {
-		if (!getenv("PMS_STANDALONE"))
-			ecore_main_loop_quit();	/* Quit main loop:
-						   go to cleanup */
-		return FALSE;	/* Anyway, run queue_job() again. */
-	} else if (backend_flag == 1)	/* backend process is running */
-		return FALSE;
-
-	_pm_queue_pop();
-
-	switch (item.req_type) {
+	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:
 		DBG("installer start");
 		_save_queue_status(item, "processing");
 		DBG("saved queue status. Now try fork()");
-		pid = fork();
+		/*save pkg type and pkg name for future*/
+		x = (pos + num_of_backends - 1) % num_of_backends;
+		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
+		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
+		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
+		(ptr + x)->pid = fork();
+		DBG("child forked [%d]\n", (ptr + x)->pid);
 
-		switch (pid) {
+		switch ((ptr + x)->pid) {
 		case 0:	/* child */
 			DBG("before run _get_backend_cmd()");
-			backend_cmd = _get_backend_cmd(item.pkg_type);
+			backend_cmd = _get_backend_cmd(item->pkg_type);
 			if (NULL == backend_cmd)
 				break;
 
-			DBG("Try to exec [%s][%s]", item.pkg_type,
+			DBG("Try to exec [%s][%s]", item->pkg_type,
 			    backend_cmd);
 			fprintf(stdout, "Try to exec [%s][%s]\n",
-				item.pkg_type, backend_cmd);
+				item->pkg_type, backend_cmd);
 
 			/* Create args vector
-			 * req_id + pkg_name + args
+			 * req_id + pkgid + args
 			 *
 			 * vector size = # of args +
-			 *(req_id + pkg_name + NULL termination = 3)
+			 *(req_id + pkgid + NULL termination = 3)
 			 * Last value must be NULL for execv.
 			 */
 			gboolean ret_parse;
 			gint argcp;
 			gchar **argvp;
 			GError *gerr = NULL;
-			ret_parse = g_shell_parse_argv(item.args,
+			ret_parse = g_shell_parse_argv(item->args,
 						       &argcp, &argvp, &gerr);
 			if (FALSE == ret_parse) {
-				DBG("Failed to split args: %s", item.args);
+				DBG("Failed to split args: %s", item->args);
 				DBG("messsage: %s", gerr->message);
 				exit(1);
 			}
@@ -679,8 +1127,8 @@ gboolean queue_job(void *data)
 			   calloc(argcp + 4, sizeof(char *)); */
 			char **args_vector = calloc(argcp + 1, sizeof(char *));
 			/*args_vector[0] = strdup(backend_cmd);
-			   args_vector[1] = strdup(item.req_id);
-			   args_vector[2] = strdup(item.pkg_name); */
+			   args_vector[1] = strdup(item->req_id);
+			   args_vector[2] = strdup(item->pkgid); */
 			int arg_idx;
 			for (arg_idx = 0; arg_idx < argcp; arg_idx++) {
 				/* args_vector[arg_idx+3] = argvp[arg_idx]; */
@@ -704,12 +1152,12 @@ gboolean queue_job(void *data)
 
 			if (ret == -1) {
 				perror("fail to exec");
-				exit(SIGCHLD);
+				exit(1);
 			}
 			_save_queue_status(item, "done");
 			if (NULL != backend_cmd)
 				free(backend_cmd);
-			exit(SIGCHLD);	/* exit with SIGCHLD */
+			exit(0);	/* exit */
 			break;
 
 		case -1:	/* error */
@@ -718,7 +1166,6 @@ gboolean queue_job(void *data)
 			break;
 
 		default:	/* parent */
-			backend_flag = 1;
 			DBG("parent \n");
 			_save_queue_status(item, "done");
 			break;
@@ -726,35 +1173,40 @@ gboolean queue_job(void *data)
 		break;
 	case COMM_REQ_TO_ACTIVATOR:
 		DBG("activator start");
+		int val = 0;
 		_save_queue_status(item, "processing");
 		DBG("saved queue status. Now try fork()");
-		pid = fork();
+		/*save pkg type and pkg name for future*/
+		x = (pos + num_of_backends - 1) % num_of_backends;
+		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
+		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
+		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
+		(ptr + x)->pid = fork();
+		DBG("child forked [%d]\n", (ptr + x)->pid);
 
-		switch (pid) {
+		switch ((ptr + x)->pid) {
 		case 0:	/* child */
-			/* Execute Activator !!! */
-			exe_path = __get_exe_path(item.pkg_name);
-			if (exe_path == NULL)
-				break;
-
-			if (item.args[0] == '1')	/* activate */
-				ret = chmod(exe_path, 0755);
-			else if (item.args[0] == '0')	/* deactivate */
-				ret = chmod(exe_path, 0000);
+			if (item->args[0] == '1')	/* activate */
+				val = 0;
+			else if (item->args[0] == '0')	/* deactivate */
+				val = 1;
 			else {
 				DBG("error in args parameter:[%c]\n",
-				    item.args[0]);
-				exit(SIGCHLD);
+				    item->args[0]);
+				exit(1);
 			}
 
-			free(exe_path);
+			DBG("inactivated val %d", val);
 
-			if (ret == -1) {
-				perror("fail to exec");
-				exit(SIGCHLD);
+			ret = ail_desktop_appinfo_modify_bool(item->pkgid,
+						AIL_PROP_X_SLP_INACTIVATED_BOOL,
+						val);
+			if (ret != AIL_ERROR_OK) {
+				perror("fail to activate/deactivte package");
+				exit(1);
 			}
 			_save_queue_status(item, "done");
-			exit(SIGCHLD);	/* exit with SIGCHLD */
+			exit(0);	/* exit with */
 			break;
 
 		case -1:	/* error */
@@ -763,45 +1215,51 @@ gboolean queue_job(void *data)
 			break;
 
 		default:	/* parent */
-			backend_flag = 1;
 			DBG("parent exit\n");
 			_save_queue_status(item, "done");
 			break;
 		}
 		break;
+	case COMM_REQ_TO_MOVER:
 	case COMM_REQ_TO_CLEARER:
 		DBG("cleaner start");
 		_save_queue_status(item, "processing");
 		DBG("saved queue status. Now try fork()");
-		pid = fork();
+		/*save pkg type and pkg name for future*/
+		x = (pos + num_of_backends - 1) % num_of_backends;
+		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
+		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
+		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
+		(ptr + x)->pid = fork();
+		DBG("child forked [%d]\n", (ptr + x)->pid);
 
-		switch (pid) {
+		switch ((ptr + x)->pid) {
 		case 0:	/* child */
 			DBG("before run _get_backend_cmd()");
-			backend_cmd = _get_backend_cmd(item.pkg_type);
+			backend_cmd = _get_backend_cmd(item->pkg_type);
 			if (NULL == backend_cmd)
 				break;
 
-			DBG("Try to exec [%s][%s]", item.pkg_type,
+			DBG("Try to exec [%s][%s]", item->pkg_type,
 			    backend_cmd);
 			fprintf(stdout, "Try to exec [%s][%s]\n",
-				item.pkg_type, backend_cmd);
+				item->pkg_type, backend_cmd);
 
 			/* Create args vector
-			 * req_id + pkg_name + args
+			 * req_id + pkgid + args
 			 *
 			 * vector size = # of args +
-			 *(req_id + pkg_name + NULL termination = 3)
+			 *(req_id + pkgid + NULL termination = 3)
 			 * Last value must be NULL for execv.
 			 */
 			gboolean ret_parse;
 			gint argcp;
 			gchar **argvp;
 			GError *gerr = NULL;
-			ret_parse = g_shell_parse_argv(item.args,
+			ret_parse = g_shell_parse_argv(item->args,
 						       &argcp, &argvp, &gerr);
 			if (FALSE == ret_parse) {
-				DBG("Failed to split args: %s", item.args);
+				DBG("Failed to split args: %s", item->args);
 				DBG("messsage: %s", gerr->message);
 				exit(1);
 			}
@@ -811,8 +1269,8 @@ gboolean queue_job(void *data)
 			   calloc(argcp + 4, sizeof(char *)); */
 			char **args_vector = calloc(argcp + 1, sizeof(char *));
 			/*args_vector[0] = strdup(backend_cmd);
-			   args_vector[1] = strdup(item.req_id);
-			   args_vector[2] = strdup(item.pkg_name); */
+			   args_vector[1] = strdup(item->req_id);
+			   args_vector[2] = strdup(item->pkgid); */
 			int arg_idx;
 			for (arg_idx = 0; arg_idx < argcp; arg_idx++) {
 				/* args_vector[arg_idx+3] = argvp[arg_idx]; */
@@ -836,12 +1294,12 @@ gboolean queue_job(void *data)
 
 			if (ret == -1) {
 				perror("fail to exec");
-				exit(SIGCHLD);
+				exit(1);
 			}
 			_save_queue_status(item, "done");
 			if (NULL != backend_cmd)
 				free(backend_cmd);
-			exit(SIGCHLD);	/* exit with SIGCHLD */
+			exit(0);	/* exit */
 			break;
 
 		case -1:	/* error */
@@ -850,7 +1308,6 @@ gboolean queue_job(void *data)
 			break;
 
 		default:	/* parent */
-			backend_flag = 1;
 			DBG("parent \n");
 			_save_queue_status(item, "done");
 			break;
@@ -859,6 +1316,8 @@ gboolean queue_job(void *data)
 	default:
 		break;
 	}
+
+	free(item);
 
 	return FALSE;
 }
@@ -964,8 +1423,7 @@ void _pm_desktop_file_monitor_init()
 		}
 
 		wd = inotify_add_watch(desktop_notifier.ifd, paths[i].path,
-				       IN_CREATE | IN_CLOSE_WRITE | IN_MOVED_TO
-				       | IN_DELETE);
+				       IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE);
 		if (wd == -1) {
 			DBG("inotify_add_watch error: %s\n", strerror(errno));
 			close(desktop_notifier.ifd);
@@ -1028,30 +1486,37 @@ int _pm_desktop_file_dir_search(pm_inotify_paths *paths, int number)
 
 	if (ioctl(fd, FIONREAD, &read_size) < 0) {
 		DBG("Failed to get a size of %s file.\n", DESKTOP_FILE_DIRS);
+		close(fd);
 		return -EFAULT;
 	}
 
 	if (read_size <= 0) {
 		DBG("Buffer is not ready.\n");
+		close(fd);
 		return -EFAULT;
 	}
 
-	buf = malloc(read_size);
+	buf = calloc(1, read_size+1);
 	if (!buf) {
 		DBG("Failed to allocate heap.\n");
+		close(fd);
 		return -EFAULT;
 	}
 
 	len = read(fd, buf, read_size);
 	if (len < 0) {
 		DBG("Failed to read.\n");
+		close(fd);
 		free(buf);
 		return -EFAULT;
 	}
 
+	buf[len] = 0;
+
 	noti_dir = strtok_r(buf, "\n", &saveptr);
 	if (!noti_dir) {
 		DBG("Failed to strtok for %s.\n", buf);
+		close(fd);
 		free(buf);
 		return -EFAULT;
 	}
@@ -1125,6 +1590,7 @@ int main(int argc, char *argv[])
 	pid_t pid;
 	char *backend_cmd = NULL;
 	char *backend_name = NULL;
+	backend_info *ptr = NULL;
 	int r;
 
 	ecore_init();
@@ -1177,9 +1643,23 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	_pm_queue_init();
+	r = _pm_queue_init();
+	if (r) {
+		DBG("Queue Initialization Failed\n");
+		return -1;
+	}
+
 	/*Initialize inotify to monitor desktop file updates */
 	_pm_desktop_file_monitor_init();
+
+	/*Allocate memory for holding pid, pkgtype and pkgid*/
+	ptr = (backend_info*)calloc(num_of_backends, sizeof(backend_info));
+	if (ptr == NULL) {
+		DBG("Malloc Failed\n");
+		return -1;
+	}
+	memset(ptr, '\0', num_of_backends * sizeof(backend_info));
+	begin = ptr;
 
 	/* init internationalization */
 	r = appcore_set_i18n(PACKAGE, LOCALEDIR);
@@ -1206,15 +1686,17 @@ int main(int argc, char *argv[])
 	pkg_mgr_set_request_callback(pkg_mgr, req_cb, &ad);
 	DBG("pkg_mgr object is created, and request callback is registered.");
 
-/*      g_timeout_add_seconds(1, queue_job, NULL); */
-	DBG("queue function is added to idler. Now run main loop.");
-
 /*      g_main_loop_run(mainloop); */
 	appcore_efl_main(PACKAGE, &argc, &argv, &ops);
 
 	DBG("Quit main loop.");
 	_pm_desktop_file_monitor_fini();
 	_pm_queue_final();
+	/*Free backend info */
+	if (begin) {
+		free(begin);
+		begin = NULL;
+	}
 
 	DBG("package manager server terminated.");
 

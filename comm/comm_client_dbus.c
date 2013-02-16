@@ -74,7 +74,7 @@ _on_signal_handle_filter(DBusConnection *conn,
 	/* Values to be received by signal */
 	char *req_id = NULL;
 	char *pkg_type = NULL;
-	char *pkg_name = NULL;
+	char *pkgid = NULL;
 	char *key = NULL;
 	char *val = NULL;
 
@@ -91,18 +91,18 @@ _on_signal_handle_filter(DBusConnection *conn,
 		if (dbus_message_get_args(msg, &err,
 					  DBUS_TYPE_STRING, &req_id,
 					  DBUS_TYPE_STRING, &pkg_type,
-					  DBUS_TYPE_STRING, &pkg_name,
+					  DBUS_TYPE_STRING, &pkgid,
 					  DBUS_TYPE_STRING, &key,
 					  DBUS_TYPE_STRING, &val,
 					  DBUS_TYPE_INVALID)) {
 			/* Got signal! */
 			dbg("Got signal: %s / %s / %s / %s / %s", req_id,
-			    pkg_type, pkg_name, key, val);
+			    pkg_type, pkgid, key, val);
 
 			/* Run signal callback if exist */
 			if (sig_cb_data && sig_cb_data->cb) {
 				sig_cb_data->cb(sig_cb_data->cb_data, req_id,
-						pkg_type, pkg_name, key, val);
+						pkg_type, pkgid, key, val);
 
 				dbg("callback function is end");
 			}
@@ -149,7 +149,7 @@ comm_client *comm_client_new(void)
 
 	/* Connect to dbus */
 	dbus_error_init(&err);
-	cc->conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
+	cc->conn = dbus_bus_get_private(DBUS_BUS_SYSTEM, &err);
 	if (dbus_error_is_set(&err)) {
 		ERR("dbus connection error (%s)", err.message);
 		dbus_error_free(&err);
@@ -187,7 +187,7 @@ int comm_client_free(comm_client *cc)
 
 	/* Cleanup ADT */
 	/* flush remaining buffer: blocking mode */
-	dbus_connection_flush(cc->conn);	
+	dbus_connection_flush(cc->conn);
 
 	/* Free signal filter if signal callback is exist */
 	if (cc->sig_cb_data) {
@@ -198,6 +198,7 @@ int comm_client_free(comm_client *cc)
 		/* _free_sig_cb_data(cc->sig_cb_data); */
 	}
 
+	dbus_connection_close(cc->conn);
 	dbus_connection_unref(cc->conn);
 
 	free(cc);
@@ -214,7 +215,7 @@ comm_client_request(
 		const char *req_id,
 		const int req_type,
 		const char *pkg_type,
-		const char *pkg_name,
+		const char *pkgid,
 		const char *args,
 		const char *cookie,
 		int is_block)
@@ -240,8 +241,8 @@ comm_client_request(
 		req_id = "tmp_reqid";
 	if (NULL == pkg_type)
 		pkg_type = "none";
-	if (NULL == pkg_name)
-		pkg_name = "";
+	if (NULL == pkgid)
+		pkgid = "";
 	if (NULL == args)
 		args = "";
 	if (NULL == cookie)
@@ -252,24 +253,24 @@ comm_client_request(
 				      DBUS_TYPE_STRING, &req_id,
 				      DBUS_TYPE_INT32, &req_type,
 				      DBUS_TYPE_STRING, &pkg_type,
-				      DBUS_TYPE_STRING, &pkg_name,
+				      DBUS_TYPE_STRING, &pkgid,
 				      DBUS_TYPE_STRING, &args,
 				      DBUS_TYPE_STRING, &cookie,
 				      DBUS_TYPE_INVALID)) {
-		r = COMM_RET_NOMEM;
+		r = COMM_RET_ERROR;
 		goto ERROR_CLEANUP;
 	}
 
 	/* Send message */
 	if (is_block == 1){
 		if(!dbus_connection_send_with_reply_and_block(cc->conn, msg,
-							      1200, NULL)) {
-			r = COMM_RET_NOMEM; 
+							      5000, NULL)) {
+			r = COMM_RET_ERROR; 
 			goto ERROR_CLEANUP;
 		}
 	} else {
 		if (!dbus_connection_send(cc->conn, msg, NULL)) {
-			r = COMM_RET_NOMEM;
+			r = COMM_RET_ERROR;
 			goto ERROR_CLEANUP;
 		}
 	}
