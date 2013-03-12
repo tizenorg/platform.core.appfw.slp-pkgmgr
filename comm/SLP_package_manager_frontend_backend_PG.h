@@ -297,12 +297,12 @@ Example code is in packages/test/backend.c. <br>
 	<h3 class="pg">Parse command args</h3>
 Every installer backend's command arguments are like this; <br>
 @code
-$ <backend> <req_id> <pkg_name> [<arg1> <arg2> <arg3> ...]
+$ <backend> <req_id> <pkgid> [<arg1> <arg2> <arg3> ...]
 @endcode
 <ul>
 	<li>backend : An installer backend executable file.  </li>
 	<li>req_id : A request id, which is passed from frontend (with -k option). This is broadcasted with all signals from this backend. </li>
-	<li>pkg_name : package name</li>
+	<li>pkgid : package name</li>
 	<li>arg1, arg2, ... : Separated arguments from frontend. You can use anything. This is a rule just between frontend and backend. </li>
 </ul>
 
@@ -318,11 +318,11 @@ Backend must broadcast its installing status. You can broadcast your status by u
 DBusConnection *conn;
 conn = comm_status_broadcast_server_connect();
 
-comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkg_name, "start", "0");
+comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkgid, "start", "0");
 /* ... */
-comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkg_name, "install_percent", "60");
+comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkgid, "install_percent", "60");
 /* ... */
-comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkg_name, "end", "0");
+comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkgid, "end", "0");
 
 /* ... */
 @endcode
@@ -398,7 +398,7 @@ static void pkg_native_plugin_unload (void)
 	//ToDo
 }
 
-static int pkg_plugin_app_is_installed(const char *pkg_name)
+static int pkg_plugin_app_is_installed(const char *pkgid)
 {
 	//ToDo
 	
@@ -412,7 +412,7 @@ static int pkg_plugin_get_installed_apps_list(package_manager_pkg_info_t **list,
 	return 0;
 }
 
-static int pkg_plugin_get_app_detail_info(const char *pkg_name, package_manager_pkg_detail_info_t* pkg_detail_info)
+static int pkg_plugin_get_app_detail_info(const char *pkgid, package_manager_pkg_detail_info_t* pkg_detail_info)
 {
 	//ToDo
 	

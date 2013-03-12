@@ -31,12 +31,31 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <appcore-efl.h>
+#include <glib.h>
+
+
 #define KEY_MIME_TYPE "__AUL_MIME_TYPE__"
 #define KEY_MIME_CONTENT "__AUL_MIME_CONTENT__"
+
+#define KEY_MIME_TYPE_NEW "__APP_SVC_MIME_TYPE__"
+#define KEY_MIME_CONTENT_NEW "__APP_SVC_URI__"
+
+
+#if !defined(PACKAGE)
+#define PACKAGE "org.tizen.pkgmgr-install"
+#endif
+
 
 char *supported_mime_type_list[] = {
 	NULL			/* sentinel */
 };
+
+struct appdata {
+	char *file_path;
+	char *extension;
+};
+
 
 static int __parse_argv(int argc, char **argv,
 		char **mime_type, char **file_path);
@@ -56,8 +75,13 @@ static int __parse_argv(int argc, char **argv,
 
 	errno = 0;
 
-	*mime_type = (char *)bundle_get_val(b, KEY_MIME_TYPE);
-	*file_path = (char *)bundle_get_val(b, KEY_MIME_CONTENT);
+	if(bundle_get_val(b, KEY_MIME_CONTENT_NEW)) {
+	/*	*mime_type = (char *)bundle_get_val(b, KEY_MIME_TYPE_NEW); */
+		*file_path = (char *)bundle_get_val(b, KEY_MIME_CONTENT_NEW);
+	} else {
+		*mime_type = (char *)bundle_get_val(b, KEY_MIME_TYPE);
+		*file_path = (char *)bundle_get_val(b, KEY_MIME_CONTENT);
+	}
 
 	if (errno)
 		return -1;
@@ -70,29 +94,58 @@ static const char *__get_ext_from_file_path(const char *file_path)
 	return strrchr(file_path, '.') + 1;
 }
 
+gboolean __term(void *data)
+{
+	ecore_main_loop_quit();
+
+	return FALSE;
+}
+
 int main(int argc, char **argv)
 {
+	struct appdata ad;
+	struct appcore_ops ops = {
+		.create = NULL,
+		.terminate = NULL,
+		.pause = NULL,
+		.resume = NULL,
+		.reset = NULL,
+	};
+
 	char *mime_type;
 	char *file_path;
+	char *extension;
 
 	if (__parse_argv(argc, argv, &mime_type, &file_path)) {
 		fprintf(stderr, "Failed to parse argv!\n");
 		return -1;
 	}
 
-	const char *extension = __get_ext_from_file_path(file_path);
+	extension = __get_ext_from_file_path(file_path);
 
-	int req_id;
+	memset(&ad, 0x0, sizeof(struct appdata));
+	ops.data = &ad;
+	ad.file_path = file_path;
+	ad.extension = extension;
 
-	pkgmgr_client *pc = pkgmgr_client_new(PC_REQUEST);
-	req_id = pkgmgr_client_install(pc, extension, NULL, file_path, NULL,
-						PM_DEFAULT, NULL, NULL);
-	pkgmgr_client_free(pc);
 
-	sleep(2);
-		/* Wait until AULD(launchpad) retrives info of this process. 
-		Its timeout is 1.2s. */
+	int pid = fork();
+	if (pid == 0) {
+		int req_id;
+		pkgmgr_client *pc = pkgmgr_client_new(PC_REQUEST);
+		req_id = pkgmgr_client_install(pc, extension, NULL, file_path, NULL,
+							PM_DEFAULT, NULL, NULL);
+		pkgmgr_client_free(pc);
 
-	return 0;
+		exit(0);
+	}
+
+	g_timeout_add(1000, __term, &ad);
+
+//	sleep(2);
+	/* Wait until AULD(launchpad) retrives info of this process.
+	Its timeout is 1.2s. */
+
+	return appcore_efl_main(PACKAGE, &argc, &argv, &ops);
 }
 

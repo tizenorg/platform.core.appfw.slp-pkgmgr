@@ -105,6 +105,9 @@ enum {
 	/* to clearer */
 	COMM_REQ_TO_CLEARER,
 
+	/* to mover*/
+	COMM_REQ_TO_MOVER,
+
 	/* cancel job */
 	COMM_REQ_CANCEL,
 

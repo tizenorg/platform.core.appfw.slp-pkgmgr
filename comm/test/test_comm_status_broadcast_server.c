@@ -32,7 +32,7 @@ static int _main_dbus(int argc, char **argv)
 	int i;
 	for (i = 0; i < 100; i++) {
 		comm_status_broadcast_server_send_signal(conn, "test_id",
-							 "test", "test_pkgname",
+							 "test", "test_pkgid",
 							 "test_key",
 							 "test_val");
 		sleep(1);

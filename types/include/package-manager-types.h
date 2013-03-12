@@ -88,6 +88,7 @@ extern "C" {
 typedef struct _package_manager_pkg_info_t {
 	char pkg_type[PKG_TYPE_STRING_LEN_MAX];
 	char pkg_name[PKG_NAME_STRING_LEN_MAX];
+	char pkgid[PKG_NAME_STRING_LEN_MAX];
 	char version[PKG_VERSION_STRING_LEN_MAX];
 	struct _package_manager_pkg_info_t *next;
 } package_manager_pkg_info_t;
@@ -95,6 +96,7 @@ typedef struct _package_manager_pkg_info_t {
 typedef struct _package_manager_pkg_detail_info_t {
 	char pkg_type[PKG_TYPE_STRING_LEN_MAX];
 	char pkg_name[PKG_NAME_STRING_LEN_MAX];
+	char pkgid[PKG_NAME_STRING_LEN_MAX];
 	char version[PKG_VERSION_STRING_LEN_MAX];
 	char pkg_description[PKG_VALUE_STRING_LEN_MAX];
 	char min_platform_version[PKG_VERSION_STRING_LEN_MAX];

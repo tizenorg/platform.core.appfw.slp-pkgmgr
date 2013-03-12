@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns="http://tizen.org/ns/packages" package="org.tizen.pkgmgr-install" version="0.1" install-location="internal-only">
+	<label>pkgmgr-install</label>
+	<author email="sewook7.park@samsung.com" href="www.samsung.com">Sewook Park</author>
+	<description>pkgmgr-install</description>
+	<ui-application appid="org.tizen.pkgmgr-install" exec="/usr/bin/pkgmgr-install" nodisplay="true" multiple="false" type="capp" taskmanage="false">
+		<label>pkgmgr-install</label>
+		<application-service>
+			<operation name="http://tizen.org/appcontrol/operation/view"/>
+			<mime name="application/widget"/>
+			<mime name="application/vnd.wac.widget-sharing"/>
+			<mime name="application/x-rpm"/>
+			<mime name="application/x-redhat-package-manager"/>
+		</application-service>
+	</ui-application>
+</manifest>

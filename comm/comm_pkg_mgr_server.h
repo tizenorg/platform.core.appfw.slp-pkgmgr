@@ -40,7 +40,7 @@ API GType pkg_mgr_object_get_type(void);
 
 typedef void (*request_callback) (void *cb_data, const char *req_id,
 				  const int req_type, const char *pkg_type,
-				  const char *pkg_name, const char *args,
+				  const char *pkgid, const char *args,
 				  const char *cookie, int *ret);
 
 API void pkg_mgr_set_request_callback(PkgMgrObject *obj,

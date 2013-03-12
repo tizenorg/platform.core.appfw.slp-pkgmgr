@@ -38,7 +38,7 @@ struct comm_client {
 	GError *err;
 	DBusGProxy *request_proxy;
 	DBusGProxy *signal_proxy;
-	char *pkg_name;
+	char *pkgid;
 
 	status_cb signal_cb;
 	void *signal_cb_data;
@@ -87,8 +87,8 @@ int comm_client_free(comm_client *cc)
 		g_object_unref(cc->request_proxy);
 	if (cc->signal_proxy)
 		g_object_unref(cc->signal_proxy);
-	if (cc->pkg_name)
-		free(cc->pkg_name);
+	if (cc->pkgid)
+		free(cc->pkgid);
 
 	free(cc);
 
@@ -99,25 +99,25 @@ static void
 status_signal_handler(DBusGProxy *proxy,
 		      const char *req_id,
 		      const char *pkg_type,
-		      const char *pkg_name,
+		      const char *pkgid,
 		      const char *key, const char *val, gpointer data)
 {
 	comm_client *cc = (comm_client *) data;
 
 	dbg("Got signal: %s/%s/%s/%s/%s", req_id, pkg_type,
-				 pkg_name, key, val);
+				 pkgid, key, val);
 	if (cc->signal_cb) {
-		if (cc->pkg_name && pkg_name &&
-			0 == strncmp(cc->pkg_name, pkg_name,
-				     strlen(cc->pkg_name))) {
+		if (cc->pkgid && pkgid &&
+			0 == strncmp(cc->pkgid, pkgid,
+				     strlen(cc->pkgid))) {
 			dbg("Run signal handler");
 			cc->signal_cb(cc->signal_cb_data, req_id, pkg_type,
-				      pkg_name, key, val);
+				      pkgid, key, val);
 		} else {
-			dbg("pkg_name is different. (My pkg_name:%s)"
-			" Though pass signal to user callback.", cc->pkg_name);
+			dbg("pkgid is different. (My pkgid:%s)"
+			" Though pass signal to user callback.", cc->pkgid);
 			cc->signal_cb(cc->signal_cb_data, req_id, pkg_type,
-				      pkg_name, key, val);
+				      pkgid, key, val);
 		}
 	} else {
 		dbg("No signal handler is set. Do nothing.");
@@ -126,20 +126,20 @@ status_signal_handler(DBusGProxy *proxy,
 
 int
 comm_client_request(comm_client *cc, const char *req_id, const int req_type,
-		    const char *pkg_type, const char *pkg_name,
+		    const char *pkg_type, const char *pkgid,
 		    const char *args, const char *cookie)
 {
 	gboolean r;
 	gint ret = COMM_RET_ERROR;
 
 	dbg("got request:%s/%d/%s/%s/%s/%s\n", req_id, req_type, pkg_type,
-	    pkg_name, args, cookie);
+	    pkgid, args, cookie);
 
-	if (!pkg_name)
-		pkg_name = "";	/* NULL check */
+	if (!pkgid)
+		pkgid = "";	/* NULL check */
 
 	r = org_tizen_slp_pkgmgr_request(cc->request_proxy, req_id, req_type,
-					   pkg_type, pkg_name, args, cookie,
+					   pkg_type, pkgid, args, cookie,
 					   &ret, &(cc->err));
 	if (TRUE == r) {
 		ret = COMM_RET_OK;
@@ -154,12 +154,12 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 	}
 	dbg("request sent");
 
-	if (cc->pkg_name) {
-		dbg("freeing pkg_name");
-		free(cc->pkg_name);
-		dbg("freed pkg_name");
+	if (cc->pkgid) {
+		dbg("freeing pkgid");
+		free(cc->pkgid);
+		dbg("freed pkgid");
 	}
-	cc->pkg_name = strdup(pkg_name);
+	cc->pkgid = strdup(pkgid);
 
 	dbg("ret:%d", ret);
 

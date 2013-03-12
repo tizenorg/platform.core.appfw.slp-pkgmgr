@@ -26,12 +26,12 @@
 
 void
 req_cb(void *cb_data, const char *req_id, const int req_type,
-       const char *pkg_type, const char *pkg_name, const char *args,
+       const char *pkg_type, const char *pkgid, const char *args,
        const char *cookie, int *ret)
 {
 	/* TODO: Do your job here */
 	printf(">> in callback >> Got request: %s %d %s %s %s (cookie:%s)\n",
-	       req_id, req_type, pkg_type, pkg_name, args, cookie);
+	       req_id, req_type, pkg_type, pkgid, args, cookie);
 }
 
 gboolean queue_job(void *data)

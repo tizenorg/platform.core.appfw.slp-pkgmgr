@@ -114,7 +114,7 @@ static gboolean timer_stop_mainloop(void *data)
 
 static void
 get_signal_cb(void *cb_data, const char *req_id, const char *pkg_type,
-	      const char *pkg_name, const char *key, const char *val)
+	      const char *pkgid, const char *key, const char *val)
 {
 	struct signal_counter *counter = (struct signal_counter *)cb_data;
 

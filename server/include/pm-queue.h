@@ -37,14 +37,23 @@ typedef struct _pm_queue_data {
 	struct _pm_queue_data *next;
 } pm_queue_data;
 
-void _pm_queue_init();
-void _pm_queue_push(pm_dbus_msg item);
-pm_dbus_msg _pm_queue_pop();
-pm_dbus_msg _pm_queue_get_head();
+typedef struct queue_info_map_t {
+	char pkgtype[MAX_PKG_TYPE_LEN];
+	char backend[MAX_PKG_NAME_LEN];
+	int queue_slot;
+	pm_queue_data *head;
+} queue_info_map;
+
+#define MAX_QUEUE_NUM 128
+
+int _pm_queue_init();
+int _pm_queue_push(pm_dbus_msg *item);
+/*position specifies the queue from which to pop request*/
+pm_dbus_msg *_pm_queue_pop(int position);
 void _pm_queue_final();
-void _pm_queue_delete(pm_dbus_msg item);
+void _pm_queue_delete(pm_dbus_msg *item);
 pm_queue_data *_add_node();
-void _save_queue_status(pm_dbus_msg item, char *status);
-void _print_queue();
+void _save_queue_status(pm_dbus_msg *item, char *status);
+void _print_queue(int position);
 
 #endif				/* _PM_QUEUE_H_ */
