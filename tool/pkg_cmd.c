@@ -1,3 +1,4 @@
+
 /*
  * slp-pkgmgr
  *
@@ -41,6 +42,53 @@
 #define PKG_TOOL_VERSION	"0.1"
 #define APP_INSTALLATION_PATH_RW	"/opt/usr/apps"
 
+/* 1 -100 : Package command errors */
+/* 101-120 : reserved for Core installer */
+/* 121-140 : reserved for Web installer */
+/* 141-160 : reserved for Native installer */
+#define PKGCMD_ERR_PACKAGE_NOT_FOUND					1
+#define PKGCMD_ERR_PACKAGE_INVALID						2
+#define PKGCMD_ERR_PACKAGE_LOWER_VERSION				3
+#define PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND			4
+#define PKGCMD_ERR_MANIFEST_NOT_FOUND					11
+#define PKGCMD_ERR_MANIFEST_INVALID						12
+#define PKGCMD_ERR_CONFIG_NOT_FOUND						13
+#define PKGCMD_ERR_CONFIG_INVALID						14
+#define PKGCMD_ERR_SIGNATURE_NOT_FOUND					21
+#define PKGCMD_ERR_SIGNATURE_INVALID					22
+#define PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED		23
+#define PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND			31
+#define PKGCMD_ERR_CERTIFICATE_INVALID					32
+#define PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED	33
+#define PKGCMD_ERR_CERTIFICATE_EXPIRED					34
+#define PKGCMD_ERR_INVALID_PRIVILEGE					41
+#define PKGCMD_ERR_MENU_ICON_NOT_FOUND					51
+#define PKGCMD_ERR_FATAL_ERROR							61
+#define PKGCMD_ERR_OUT_OF_STORAGE						62
+#define PKGCMD_ERR_OUT_OF_MEMORY						63
+
+#define PKGCMD_ERR_PACKAGE_NOT_FOUND_STR					"PACKAGE_NOT_FOUND"
+#define PKGCMD_ERR_PACKAGE_INVALID_STR						"PACKAGE_INVALID"
+#define PKGCMD_ERR_PACKAGE_LOWER_VERSION_STR				"PACKAGE_LOWER_VERSION"
+#define PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND_STR			"PACKAGE_EXECUTABLE_NOT_FOUND"
+#define PKGCMD_ERR_MANIFEST_NOT_FOUND_STR					"MANIFEST_NOT_FOUND"
+#define PKGCMD_ERR_MANIFEST_INVALID_STR						"MANIFEST_INVALID"
+#define PKGCMD_ERR_CONFIG_NOT_FOUND_STR						"CONFIG_NOT_FOUND"
+#define PKGCMD_ERR_CONFIG_INVALID_STR						"CONFIG_INVALID"
+#define PKGCMD_ERR_SIGNATURE_NOT_FOUND_STR					"SIGNATURE_NOT_FOUND"
+#define PKGCMD_ERR_SIGNATURE_INVALID_STR					"SIGNATURE_INVALID"
+#define PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED_STR		"SIGNATURE_VERIFICATION_FAILED"
+#define PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND_STR			"ROOT_CERTIFICATE_NOT_FOUND"
+#define PKGCMD_ERR_CERTIFICATE_INVALID_STR					"CERTIFICATE_INVALID"
+#define PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED_STR	"CERTIFICATE_CHAIN_VERIFICATION_FAILED"
+#define PKGCMD_ERR_CERTIFICATE_EXPIRED_STR					"CERTIFICATE_EXPIRED"
+#define PKGCMD_ERR_INVALID_PRIVILEGE_STR					"INVALID_PRIVILEGE"
+#define PKGCMD_ERR_MENU_ICON_NOT_FOUND_STR					"MENU_ICON_NOT_FOUND"
+#define PKGCMD_ERR_FATAL_ERROR_STR							"FATAL_ERROR"
+#define PKGCMD_ERR_OUT_OF_STORAGE_STR						"OUT_OF_STORAGE"
+#define PKGCMD_ERR_OUT_OF_MEMORY_STR						"OUT_OF_MEMORY"
+#define PKGCMD_ERR_UNKNOWN_STR								"Unknown Error"
+
 static int __process_request();
 static void __print_usage();
 static int __is_authorized();
@@ -57,7 +105,7 @@ static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option);
 static int __app_list_cb(const pkgmgr_appinfo_h handle, void *user_data);
 
 /* Supported options */
-const char *short_options = "iumcCkaADlsd:p:t:n:T:qh";
+const char *short_options = "iumcCkaADL:lsd:p:t:n:T:qh";
 const struct option long_options[] = {
 	{"install", 0, NULL, 'i'},
 	{"uninstall", 0, NULL, 'u'},
@@ -65,6 +113,7 @@ const struct option long_options[] = {
 	{"clear", 0, NULL, 'c'},
 	{"activate", 0, NULL, 'A'},
 	{"deactivate", 0, NULL, 'D'},
+	{"activate with Label", 1, NULL, 'L'},
 	{"check", 0, NULL, 'C'},
 	{"kill", 0, NULL, 'k'},
 	{"app-path", 0, NULL, 'a'},
@@ -102,6 +151,7 @@ struct pm_tool_args_t {
 	char pkg_type[PKG_TYPE_STRING_LEN_MAX];
 	char pkgid[PKG_NAME_STRING_LEN_MAX];
 	char des_path[PKG_NAME_STRING_LEN_MAX];
+	char label[PKG_NAME_STRING_LEN_MAX];
 	int quiet;
 	int move_type;
 	int result;
@@ -111,18 +161,94 @@ pm_tool_args data;
 
 static GMainLoop *main_loop = NULL;
 
+static void __error_no_to_string(int errnumber, char **errstr)
+{
+	if (errstr == NULL)
+		return;
+	switch (errnumber) {
+	case PKGCMD_ERR_PACKAGE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_PACKAGE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_PACKAGE_INVALID:
+		*errstr = PKGCMD_ERR_PACKAGE_INVALID_STR;
+		break;
+	case PKGCMD_ERR_PACKAGE_LOWER_VERSION:
+		*errstr = PKGCMD_ERR_PACKAGE_LOWER_VERSION_STR;
+		break;
+	case PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_MANIFEST_INVALID:
+		*errstr = PKGCMD_ERR_MANIFEST_INVALID_STR;
+		break;
+	case PKGCMD_ERR_CONFIG_NOT_FOUND:
+		*errstr = PKGCMD_ERR_CONFIG_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_CONFIG_INVALID:
+		*errstr = PKGCMD_ERR_CONFIG_INVALID_STR;
+		break;
+	case PKGCMD_ERR_SIGNATURE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_SIGNATURE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_SIGNATURE_INVALID:
+		*errstr = PKGCMD_ERR_SIGNATURE_INVALID_STR;
+		break;
+	case PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED:
+		*errstr = PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED_STR;
+		break;
+	case PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_CERTIFICATE_INVALID:
+		*errstr = PKGCMD_ERR_CERTIFICATE_INVALID_STR;
+		break;
+	case PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED:
+		*errstr = PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED_STR;
+		break;
+	case PKGCMD_ERR_CERTIFICATE_EXPIRED:
+		*errstr = PKGCMD_ERR_CERTIFICATE_EXPIRED_STR;
+		break;
+	case PKGCMD_ERR_INVALID_PRIVILEGE:
+		*errstr = PKGCMD_ERR_INVALID_PRIVILEGE_STR;
+		break;
+	case PKGCMD_ERR_MENU_ICON_NOT_FOUND:
+		*errstr = PKGCMD_ERR_MENU_ICON_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_FATAL_ERROR:
+		*errstr = PKGCMD_ERR_FATAL_ERROR_STR;
+		break;
+	case PKGCMD_ERR_OUT_OF_STORAGE:
+		*errstr = PKGCMD_ERR_OUT_OF_STORAGE_STR;
+		break;
+	case PKGCMD_ERR_OUT_OF_MEMORY:
+		*errstr = PKGCMD_ERR_OUT_OF_MEMORY_STR;
+		break;
+	default:
+		*errstr = PKGCMD_ERR_UNKNOWN_STR;
+		break;
+	}
+}
+
 static int __return_cb(int req_id, const char *pkg_type,
 		       const char *pkgid, const char *key, const char *val,
 		       const void *pmsg, void *priv_data)
 {
-	printf("__return_cb req_id[%d] pkg_type[%s] "
-	       "pkgid[%s] key[%s] val[%s]\n",
-	       req_id, pkg_type, pkgid, key, val);
+	if (strncmp(key, "error", strlen("error")) == 0) {
+		int ret_val;
+		char *errstr = NULL;
+
+		ret_val = atoi(val);
+		__error_no_to_string(ret_val, &errstr);
+		data.result = ret_val;
+
+		printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error_massage[%s]\n",
+				   req_id, pkg_type, pkgid, key, ret_val, errstr);
+	} else
+		printf("__return_cb req_id[%d] pkg_type[%s] "
+		       "pkgid[%s] key[%s] val[%s]\n",
+		       req_id, pkg_type, pkgid, key, val);
 
 	if (strncmp(key, "end", strlen("end")) == 0) {
-		if (strncasecmp(val, "ok", strlen("ok")) != 0)
-			data.result = EXIT_FAILURE;	//error_code
-
 		g_main_loop_quit(main_loop);
 	}
 
@@ -613,9 +739,25 @@ static int __process_request()
 			break;
 		}
 
-		ret = pkgmgr_client_activate(pc, data.pkg_type, data.pkgid);
-		if (ret < 0)
-			break;
+		if ( strcmp(data.pkg_type, "app") == 0 ) {
+			if (strlen(data.label) == 0) {
+				ret = pkgmgr_client_activate_app(pc, data.pkgid);
+				if (ret < 0)
+					break;
+			} else {
+				printf("label [%s]\n", data.label);
+				char *largv[3] = {NULL, };
+				largv[0] = "-l";
+				largv[1] = data.label;
+				ret = pkgmgr_client_activate_appv(pc, data.pkgid, largv);
+				if (ret < 0)
+					break;
+			}
+		} else {
+			ret = pkgmgr_client_activate(pc, data.pkg_type, data.pkgid);
+			if (ret < 0)
+				break;
+		}
 		ret = data.result;
 
 		break;
@@ -636,9 +778,15 @@ static int __process_request()
 			break;
 		}
 
-		ret = pkgmgr_client_deactivate(pc, data.pkg_type, data.pkgid);
-		if (ret < 0)
-			break;
+		if ( strcmp(data.pkg_type, "app") == 0 ) {
+			ret = pkgmgr_client_deactivate_app(pc, data.pkgid);
+			if (ret < 0)
+				break;
+		} else {
+			ret = pkgmgr_client_deactivate(pc, data.pkg_type, data.pkgid);
+			if (ret < 0)
+				break;
+		}
 		ret = data.result;
 
 		break;
@@ -815,6 +963,7 @@ int main(int argc, char *argv[])
 	int opt_idx = 0;
 	int c = -1;
 	int ret = -1;
+	char *errstr = NULL;
 
 	if (!__is_authorized()) {
 		printf("You are not an authorized user!\n");
@@ -829,6 +978,7 @@ int main(int argc, char *argv[])
 	memset(data.pkg_path, '\0', PKG_NAME_STRING_LEN_MAX);
 	memset(data.pkgid, '\0', PKG_NAME_STRING_LEN_MAX);
 	memset(data.pkg_type, '\0', PKG_TYPE_STRING_LEN_MAX);
+	memset(data.label, '\0', PKG_TYPE_STRING_LEN_MAX);
 	data.quiet = 0;
 	data.result = 0;
 	data.move_type = -1;
@@ -862,6 +1012,13 @@ int main(int argc, char *argv[])
 			data.request = DEACTIVATE_REQ;
 			break;
 
+		case 'L':	/* activate with Label */
+			data.request = ACTIVATE_REQ;
+			if (optarg)
+				strncpy(data.label, optarg,
+					PKG_NAME_STRING_LEN_MAX);
+			break;
+
 		case 'a':	/* app installation path */
 			data.request = APPPATH_REQ;
 			break;
@@ -892,6 +1049,8 @@ int main(int argc, char *argv[])
 				return -1;
 			}
 			printf("package path is %s\n", data.pkg_path);
+			if (access(data.pkg_path, F_OK) != 0)
+				data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
 			break;
 
 		case 'd':	/* descriptor path */
@@ -939,11 +1098,12 @@ int main(int argc, char *argv[])
 	}
 	ret = __process_request();
 	if (ret != 0) {
-		printf("processing request %d failed\n", data.request);
+		__error_no_to_string(data.result, &errstr);
+		printf("processing result : %s [%d] failed\n", errstr, data.result);
 	} else {
 		if (data.request == INSTALL_REQ)
 			sleep(2);
 	}
 
-	return ret;
+	return data.result;
 }

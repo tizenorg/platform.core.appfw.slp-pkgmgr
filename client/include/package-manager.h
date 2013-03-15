@@ -152,6 +152,8 @@ typedef int (*pkgmgr_info_app_category_list_cb ) (const char *category_name,
 
 typedef void pkgmgr_client;
 
+typedef void pkgmgr_info;
+
 typedef enum {
 	PC_REQUEST = 0,
 	PC_LISTENING,
@@ -301,7 +303,7 @@ int pkgmgr_client_move(pkgmgr_client *pc, const char *pkg_type,
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_activate(pkgmgr_client *pc, const char *pkg_type,
-				const char *appid);
+				const char *pkgid);
 
 /**
  * @brief	This API deactivates package.
@@ -317,7 +319,50 @@ int pkgmgr_client_activate(pkgmgr_client *pc, const char *pkg_type,
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
-				 const char *appid);
+				 const char *pkgid);
+
+/**
+ * @brief	This API activates package.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	appid	applicaiton id
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_activate_app(pkgmgr_client *pc, const char *appid);
+
+/**
+ * @brief	This API activates package.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	appid	applicaiton id
+ * @param[in]	argv	argument vector
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[]);
+
+/**
+ * @brief	This API deactivates package.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	appid	applicaiton id
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid);
 
 /**
  * @brief	This API deletes application's private data.
@@ -370,6 +415,26 @@ int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 					 const char *val);
 
 /**
+ * @brief	This API  gets the package's information.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	pkg_path		package file path to get infomation
+ * @return	package entry pointer if success, NULL if fail\n
+*/
+pkgmgr_info *pkgmgr_client_check_pkginfo_from_file(const char *pkg_path);
+
+/**
+ * @brief	This API  get package information value
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	pkg_info			pointer for package info entry
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
+
+/**
  * @brief	This API provides package list
  *
  * This API is for package-manager client application.\n
@@ -396,7 +461,6 @@ int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data);
  * @{
  */
  
-typedef void pkgmgr_info;
 
 /**
  * @brief	This API  gets the package's information.

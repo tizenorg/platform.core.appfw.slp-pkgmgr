@@ -37,6 +37,7 @@
 #include <Ecore_X.h>
 #include <Ecore_File.h>
 #include <ail.h>
+#include <pkgmgr-info.h>
 
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -78,6 +79,8 @@ FILE *___log = NULL;
 #endif
 
 #define DESKTOP_W   720.0
+
+#define NO_MATCHING_FILE 11
 
 static int backend_flag = 0;	/* 0 means that backend process is not running */
 static int drawing_popup = 0;	/* 0 means that pkgmgr-server has no popup now */
@@ -152,6 +155,9 @@ static void response_cb2(void *data, Evas_Object *notify, void *event_info);
 static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
 static int __get_position_from_pkg_type(char *pkgtype);
+static int __is_efl_tpk_app(char *pkgpath);
+static int __xsystem(const char *argv[]);
+
 gboolean queue_job(void *data);
 gboolean send_fail_signal(void *data);
 gboolean exit_server(void *data);
@@ -203,6 +209,101 @@ static int __get_position_from_pkg_type(char *pkgtype)
 	}
 	return -1;
 }
+
+static int __xsystem(const char *argv[])
+{
+        int err = 0;
+        int status = 0;
+        pid_t pid;
+
+        pid = fork();
+
+        switch (pid) {
+        case -1:
+                DBG("fork() failed");
+                return -1;
+        case 0:
+                if (execvp(argv[0], (char *const *)argv) == -1) {
+                        DBG("execvp() failed");
+                }
+                _exit(100);
+        default:
+                /* parent */
+		do {
+			err = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+			if (err == -1) {
+				DBG("waitpid failed\n");
+				return -1;
+			}
+		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+                break;
+        }
+	if (WIFEXITED(status))
+	        return WEXITSTATUS(status);
+	else
+		return -1;
+}
+
+static int __is_efl_tpk_app(char *pkgid)
+{
+        char command[1024] = {'\0'};
+        char cwd[1024] = {'\0'};
+        char *ptr = NULL;
+        int ret = 0;
+        char *type = NULL;
+        DIR * dir =  NULL;
+	const char *unzip_argv[] = { "/usr/bin/unzip", "-j", pkgid, "usr/share/packages/*", "-d", "/tmp/efltpk-unzip", NULL };
+	const char *unzip_opt_argv[] = { "/usr/bin/unzip", "-j", pkgid, "opt/share/packages/*", "-d", "/tmp/efltpk-unzip", NULL };
+	const char *delete_argv[] = { "/bin/rm", "-rf", "/tmp/efltpk-unzip", NULL };
+        pkgmgrinfo_pkginfo_h handle;
+        /*Check for uninstall case. If we fail to get handle then request is for installation*/
+        ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+        if (ret == PMINFO_R_OK) {
+                ret = pkgmgrinfo_pkginfo_get_type(handle, &type);
+                if (ret != PMINFO_R_OK) {
+                        DBG("Failed to get package type\n");
+                        pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+                        return -1;
+                }
+                if (strcmp(type, "efltpk") == 0) {
+                        pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+                        return 1;
+                } else {
+                        pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+                        return 0;
+                }
+        }
+        /*Install request*/
+	if (strstr(pkgid, ".tpk") == NULL) {
+		DBG("TPK package");
+		return 0;
+	}
+        __xsystem(delete_argv);
+        ret = mkdir("/tmp/efltpk-unzip", 0755);
+        if (ret != 0) {
+                DBG("Failed to create temporary directory to unzip tpk package\n");
+                return -1;
+        }
+	/*In case of installation request, pkgid contains the pkgpath*/
+	ret = __xsystem(unzip_argv);
+	if (ret) {
+		ret = __xsystem(unzip_opt_argv);
+		if (ret) {
+			DBG("Unzip of tpk package failed. error:%d\n", ret);
+			if (ret == NO_MATCHING_FILE) /*no matching file found*/
+				ret = 0;
+			else
+				ret = -1;
+			goto err;
+		} else
+			ret = 1;
+	} else
+		ret = 1;
+err:
+        __xsystem(delete_argv);
+        return ret;
+}
+
 
 static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 {
@@ -652,31 +753,26 @@ int create_popup(struct appdata *ad)
 	if (ad->op_type == OPERATION_INSTALL) {
 		snprintf(sentence, sizeof(sentence) - 1, _("Install?"));
 	} else if (ad->op_type == OPERATION_UNINSTALL) {
-
-		ail_appinfo_h handle;
-		ail_error_e ret;
-		char *str;
-		ret = ail_package_get_appinfo(pkgid, &handle);
-		if (ret != AIL_ERROR_OK) {
+		char *label = NULL;
+		pkgmgrinfo_pkginfo_h handle;
+		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+		if (ret < 0){
+			drawing_popup = 0;
+			evas_object_del(ad->notify);
+			evas_object_del(ad->win);
+			return -1;
+		}
+		ret = pkgmgrinfo_pkginfo_get_label(handle, &label);
+		if (ret < 0){
 			drawing_popup = 0;
 			evas_object_del(ad->notify);
 			evas_object_del(ad->win);
 			return -1;
 		}
 
-		ret = ail_appinfo_get_str(handle, AIL_PROP_NAME_STR, &str);
-		if (ret != AIL_ERROR_OK) {
-			ail_package_destroy_appinfo(handle);
-			drawing_popup = 0;
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
-			return -1;
-		}
-
-		snprintf(app_name, sizeof(app_name) - 1, str);
-
-		ret = ail_package_destroy_appinfo(handle);
-		if (ret != AIL_ERROR_OK) {
+		snprintf(app_name, sizeof(app_name) - 1, label);
+		ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+		if (ret < 0){
 			drawing_popup = 0;
 			evas_object_del(ad->notify);
 			evas_object_del(ad->win);
@@ -1049,6 +1145,36 @@ gboolean exit_server(void *data)
 	return TRUE;
 }
 
+
+int __app_func(const pkgmgrinfo_appinfo_h handle, void *user_data)
+{
+	int ret = 0;
+	char *appid = NULL;
+	int *data = (int *)user_data;
+
+	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
+	if (ret != PMINFO_R_OK) {
+		perror("fail to activate/deactivte package");
+		exit(1);
+	}
+
+	ret = pkgmgrinfo_appinfo_set_state_enabled(appid, (*data));
+	if (ret != PMINFO_R_OK) {
+		perror("fail to activate/deactivte package");
+		exit(1);
+	}
+
+	ret = ail_desktop_appinfo_modify_bool(appid,
+				AIL_PROP_X_SLP_ENABLED_BOOL,
+				(*data), TRUE);
+	if (ret != AIL_ERROR_OK) {
+		perror("fail to activate/deactivte package");
+		exit(1);
+	}
+	return 0;
+}
+
+
 gboolean queue_job(void *data)
 {
 	/* DBG("queue_job start"); */
@@ -1094,7 +1220,15 @@ pop:
 		switch ((ptr + x)->pid) {
 		case 0:	/* child */
 			DBG("before run _get_backend_cmd()");
+			/*Check for efl-tpk app*/
 			backend_cmd = _get_backend_cmd(item->pkg_type);
+
+			if (strcmp(item->pkg_type, "tpk") == 0) {
+				ret = __is_efl_tpk_app(item->pkgid);
+				if (ret == 1)
+					backend_cmd = _get_backend_cmd("efltpk");
+			}
+
 			if (NULL == backend_cmd)
 				break;
 
@@ -1187,26 +1321,91 @@ pop:
 		switch ((ptr + x)->pid) {
 		case 0:	/* child */
 			if (item->args[0] == '1')	/* activate */
-				val = 0;
-			else if (item->args[0] == '0')	/* deactivate */
 				val = 1;
+			else if (item->args[0] == '0')	/* deactivate */
+				val = 0;
 			else {
 				DBG("error in args parameter:[%c]\n",
 				    item->args[0]);
 				exit(1);
 			}
 
-			DBG("inactivated val %d", val);
+			DBG("activated val %d", val);
 
-			ret = ail_desktop_appinfo_modify_bool(item->pkgid,
-						AIL_PROP_X_SLP_INACTIVATED_BOOL,
-						val);
-			if (ret != AIL_ERROR_OK) {
-				perror("fail to activate/deactivte package");
+			gboolean ret_parse;
+			gint argcp;
+			gchar **argvp;
+			GError *gerr = NULL;
+			char *label = NULL;
+			ret_parse = g_shell_parse_argv(item->args,
+						       &argcp, &argvp, &gerr);
+			if (FALSE == ret_parse) {
+				DBG("Failed to split args: %s", item->args);
+				DBG("messsage: %s", gerr->message);
 				exit(1);
 			}
+
+			if (!strcmp(argvp[1], "APP")) { /* in case of application */
+				DBG("(De)activate APP");
+				int opt;
+				while ((opt = getopt(argcp, argvp, "l:")) != -1) {
+					switch (opt) {
+					case 'l':
+						label = strdup(optarg);
+						DBG("activated label %s", label);
+						break;
+					default: /* '?' */
+						DBGE("Incorrect argument %s\n", item->args);
+						exit(1);
+					}
+				}
+
+				ret = pkgmgrinfo_appinfo_set_state_enabled(item->pkgid, val);
+				if (ret != PMINFO_R_OK) {
+					perror("fail to activate/deactivte package");
+					exit(1);
+				}
+
+				if (label) {
+					ret = pkgmgrinfo_appinfo_set_default_label(item->pkgid, label);
+					if (ret != PMINFO_R_OK) {
+						perror("fail to activate/deactivte package");
+						exit(1);
+					}
+
+					ret = ail_desktop_appinfo_modify_str(item->pkgid,
+								AIL_PROP_NAME_STR,
+								label, FALSE);
+					if (ret != AIL_ERROR_OK) {
+						perror("fail to activate/deactivte package");
+						exit(1);
+					}
+					free(label);
+				}
+
+				ret = ail_desktop_appinfo_modify_bool(item->pkgid,
+							AIL_PROP_X_SLP_ENABLED_BOOL,
+							val, TRUE);
+				if (ret != AIL_ERROR_OK) {
+					perror("fail to activate/deactivte package");
+					exit(1);
+				}
+			} else { /* in case of package */
+				DBG("(De)activate PKG");
+				pkgmgrinfo_pkginfo_h handle;
+				ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
+				if (ret != PMINFO_R_OK)
+					exit(1);
+				ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_ALL_APP, __app_func, &val);
+				if (ret != PMINFO_R_OK) {
+					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+					exit(1);
+				}
+				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+			}
+
 			_save_queue_status(item, "done");
-			exit(0);	/* exit with */
+			exit(0);
 			break;
 
 		case -1:	/* error */
@@ -1299,7 +1498,7 @@ pop:
 			_save_queue_status(item, "done");
 			if (NULL != backend_cmd)
 				free(backend_cmd);
-			exit(0);	/* exit */
+			exit(0);
 			break;
 
 		case -1:	/* error */
@@ -1650,7 +1849,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*Initialize inotify to monitor desktop file updates */
-	_pm_desktop_file_monitor_init();
+/*	_pm_desktop_file_monitor_init(); */
 
 	/*Allocate memory for holding pid, pkgtype and pkgid*/
 	ptr = (backend_info*)calloc(num_of_backends, sizeof(backend_info));
@@ -1690,7 +1889,7 @@ int main(int argc, char *argv[])
 	appcore_efl_main(PACKAGE, &argc, &argv, &ops);
 
 	DBG("Quit main loop.");
-	_pm_desktop_file_monitor_fini();
+/*	_pm_desktop_file_monitor_fini(); */
 	_pm_queue_final();
 	/*Free backend info */
 	if (begin) {

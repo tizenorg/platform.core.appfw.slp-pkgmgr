@@ -166,7 +166,7 @@ static int initdb_change_perm(const char *db_file)
 			return -1;
 		}
 
-		ret = chmod(files[i], S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		ret = chmod(files[i], S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 		if (ret == -1) {
 			strerror_r(errno, buf, sizeof(buf));
 			_E("FAIL : chmod %s 0664, because %s", db_file, buf);
@@ -198,6 +198,10 @@ int main(int argc, char *argv[])
 		_E("You are not an authorized user!\n");
 		return -1;
 	}
+
+	/* This is for AIL initializing */
+	ret = setenv("INITDB", "1", 1);
+	_D("INITDB : %d", ret);
 
 	ret = initdb_count_package();
 	if (ret > 0) {

@@ -1,14 +1,14 @@
 <manifest>
-        <define>
-                <domain name="pkgmgr"/>
-        </define>
+	<define>
+		<domain name="pkgmgr"/>
+	</define>
 	<request>
 		<domain name="pkgmgr"/>
 	</request>
 	<assign>
-                <filesystem path="/usr/bin/pkg_initdb" exec_label="pkgmgr"/>
-                <filesystem path="/usr/bin/pkgcmd" exec_label="pkgmgr"/>
-                <filesystem path="/usr/bin/pkginfo" exec_label="pkgmgr"/>
-                <filesystem path="/usr/lib/libpkgmgr_parser_lib_sample.so" label="_"/>
-        </assign>
+		<filesystem path="/usr/bin/pkg_initdb" exec_label="pkgmgr"/>
+		<filesystem path="/usr/bin/pkgcmd" exec_label="pkgmgr"/>
+		<filesystem path="/usr/bin/pkginfo" exec_label="pkgmgr"/>
+		<filesystem path="/usr/lib/libpkgmgr_parser_lib_sample.so" label="_"/>
+	</assign>
 </manifest>

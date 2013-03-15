@@ -223,8 +223,10 @@ comm_client_request(
 	DBusMessage *msg = NULL;
 	int r = COMM_RET_ERROR;	/* Default return */
 
-	if (!cc)
+	if (!cc){
+		ERR("Invalid dbus input");
 		return COMM_RET_ERROR;
+	}
 
 	/* Create a dbus message */
 	msg = dbus_message_new_method_call(COMM_PKG_MGR_DBUS_SERVICE,
@@ -233,6 +235,7 @@ comm_client_request(
 					   COMM_PKG_MGR_METHOD_REQUEST);
 	if (NULL == msg) {
 		r = COMM_RET_NOMEM;
+		ERR("dbus_message_new_method_call fail : msg is NULL");
 		goto ERROR_CLEANUP;
 	}
 
@@ -258,6 +261,7 @@ comm_client_request(
 				      DBUS_TYPE_STRING, &cookie,
 				      DBUS_TYPE_INVALID)) {
 		r = COMM_RET_ERROR;
+		ERR("dbus_message_append_args fail");
 		goto ERROR_CLEANUP;
 	}
 
@@ -266,11 +270,13 @@ comm_client_request(
 		if(!dbus_connection_send_with_reply_and_block(cc->conn, msg,
 							      5000, NULL)) {
 			r = COMM_RET_ERROR; 
+			ERR("dbus_connection_send_with_reply_and_block fail");
 			goto ERROR_CLEANUP;
 		}
 	} else {
 		if (!dbus_connection_send(cc->conn, msg, NULL)) {
 			r = COMM_RET_ERROR;
+			ERR("dbus_connection_send fail");
 			goto ERROR_CLEANUP;
 		}
 	}

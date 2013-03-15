@@ -41,7 +41,10 @@ static int __get_pkg_info(char *pkgid);
 static int __get_app_info(char *appid);
 static int __get_app_list(char *pkgid);
 static int __get_app_category_list(char *appid);
+static int __get_app_metadata_list(char *appid);
 static int __get_app_control_list(char *appid);
+static int __get_app_visibility(char *appid);
+static int __set_app_visibility(char *appid);
 static int __get_pkg_list(void);
 static int __get_installed_app_list();
 static int __add_app_filter(void);
@@ -57,6 +60,7 @@ char *__get_string_input_data(void);
 static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data);
 static int __app_category_list_cb(const char *category_name, void *user_data);
 static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data);
+static int __app_metadata_list_cb(const char *metadata_name, const char *metadata_value, void *user_data);
 int app_func(const pkgmgr_appinfo_h handle, void *user_data);
 
 static int __get_integer_input_data(void)
@@ -106,6 +110,8 @@ static void __print_usage()
 	printf("\tpkginfo --list <pkgid>\n\n");
 	printf("For Getting app category list for a particular application\n");
 	printf("\tpkginfo --category <appid>\n\n");
+	printf("For Getting app metadata  list for a particular application\n");
+	printf("\tpkginfo --metadata <appid>\n\n");
 	printf("For Getting app control list for a particular application\n");
 	printf("\tpkginfo --appcontrol <appid>\n\n");
 	printf("To insert|remove manifest info in DB\n");
@@ -124,6 +130,10 @@ static void __print_usage()
 	printf("\tpkginfo --app-flt\n\n");
 	printf("To add package filter values [Multiple values can be added]\n");
 	printf("\tpkginfo --pkg-flt\n\n");
+	printf("To get guest mode visibility of a particular application\n");
+	printf("\tpkginfo --getvisibility <appid>\n\n");
+	printf("To set guest mode visibility of a particular application\n");
+	printf("\tpkginfo --setvisibility <appid>\n\n");
 }
 
 static int __add_app_filter()
@@ -165,30 +175,30 @@ static int __add_app_filter()
 			ret = pkgmgrinfo_appinfo_filter_count(handle, &count);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_count() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			printf("App count = %d\n", count);
-			return 0;
+			break;
 		case 1:
 			ret = pkgmgrinfo_appinfo_filter_foreach_appinfo(handle, app_func, NULL);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_foreach_appinfo() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
-			return 0;
+			break;
 		case 2:
 			value = __get_string_input_data();
 			ret = pkgmgrinfo_appinfo_filter_add_string(handle,
 				PMINFO_APPINFO_PROP_APP_ID, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 3:
 			value = __get_string_input_data();
@@ -196,11 +206,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_COMPONENT, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 4:
 			value = __get_string_input_data();
@@ -208,11 +218,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_EXEC, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 5:
 			value = __get_string_input_data();
@@ -220,11 +230,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_ICON, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 6:
 			value = __get_string_input_data();
@@ -232,11 +242,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_TYPE, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 7:
 			value = __get_string_input_data();
@@ -244,11 +254,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_OPERATION, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 8:
 			value = __get_string_input_data();
@@ -256,11 +266,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_URI, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 9:
 			value = __get_string_input_data();
@@ -268,11 +278,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_MIME, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 10:
 			value = __get_string_input_data();
@@ -280,11 +290,11 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_CATEGORY, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_string() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		case 11:
 			val = __get_integer_input_data();
@@ -292,8 +302,8 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_NODISPLAY, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 12:
@@ -302,8 +312,8 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_MULTIPLE, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 13:
@@ -312,8 +322,8 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_ONBOOT, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 14:
@@ -322,8 +332,8 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_AUTORESTART, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 15:
@@ -332,8 +342,8 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_TASKMANAGE, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 16:
@@ -342,21 +352,22 @@ static int __add_app_filter()
 				PMINFO_APPINFO_PROP_APP_HWACCELERATION, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
-				pkgmgrinfo_appinfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
 			free(value);
+			value = NULL;
 			break;
 		default:
 			printf("Invalid filter property\n");
 				pkgmgrinfo_appinfo_filter_destroy(handle);
-			return -1;
+			ret = -1;
+			goto err;
 		}
 	}
-	pkgmgrinfo_appinfo_filter_destroy(handle);
 	ret = 0;
 err:
+	pkgmgrinfo_appinfo_filter_destroy(handle);
 	if (value) {
 		free(value);
 		value = NULL;
@@ -399,26 +410,25 @@ static int __add_pkg_filter()
 			ret = pkgmgrinfo_pkginfo_filter_count(handle, &count);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_count() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			printf("Package count = %d\n", count);
-			return 0;
+			break;
 		case 1:
 			ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkg_list_cb, NULL);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_foreach_pkginfo() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
-			return 0;
+			break;
 		case 2:
 			value = __get_string_input_data();
 			ret = pkgmgrinfo_pkginfo_filter_add_string(handle,
 				PMINFO_PKGINFO_PROP_PACKAGE_ID, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
@@ -431,7 +441,6 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_VERSION, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
@@ -444,7 +453,6 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_TYPE, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
@@ -457,7 +465,6 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_INSTALL_LOCATION, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
@@ -470,7 +477,6 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_AUTHOR_NAME, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
@@ -483,7 +489,6 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_AUTHOR_EMAIL, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
@@ -496,7 +501,6 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_AUTHOR_HREF, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				ret = -1;
 				goto err;
 			}
@@ -509,8 +513,8 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_REMOVABLE, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_bool() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 10:
@@ -519,8 +523,8 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_READONLY, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_bool() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 11:
@@ -529,8 +533,8 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_PRELOAD, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_bool() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		case 12:
@@ -539,19 +543,20 @@ static int __add_pkg_filter()
 				PMINFO_PKGINFO_PROP_PACKAGE_SIZE, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_int() failed\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
 			break;
 		default:
 			printf("Invalid filter property\n");
 				pkgmgrinfo_pkginfo_filter_destroy(handle);
-			return -1;
+			ret = -1;
+			goto err;
 		}
 	}
-	pkgmgrinfo_pkginfo_filter_destroy(handle);
 	ret = 0;
 err:
+	pkgmgrinfo_pkginfo_filter_destroy(handle);
 	if (value) {
 		free(value);
 		value = NULL;
@@ -649,7 +654,6 @@ static int __get_certinfo_from_db(char *pkgid)
 			return -1;
 		}
 	}
-	return 0;
 }
 
 static int __set_certinfo_in_db(char *pkgid)
@@ -1206,6 +1210,16 @@ static int __app_category_list_cb(const char *category_name, void *user_data)
 	return 0;
 }
 
+static int __app_metadata_list_cb(const char *metadata_name, const char *metadata_value, void *user_data)
+{
+	if (metadata_name && metadata_value) {
+		printf("Name: %s\n", metadata_name);
+		printf("Value: %s\n",  metadata_value);
+		printf("\n");
+	}
+	return 0;
+}
+
 static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data)
 {
 	printf("-------------------------------------------------------\n");
@@ -1268,6 +1282,25 @@ static int __get_app_category_list(char *appid)
 	return 0;
 }
 
+static int __get_app_metadata_list(char *appid)
+{
+	int ret = -1;
+	pkgmgr_appinfo_h handle;
+	ret = pkgmgr_appinfo_get_appinfo(appid, &handle);
+	if (ret < 0) {
+		printf("Failed to get handle\n");
+		return -1;
+	}
+	ret = pkgmgrinfo_appinfo_foreach_metadata(handle, __app_metadata_list_cb, NULL);
+	if (ret < 0) {
+		printf("pkgmgrinfo_appinfo_foreach_metadata() failed\n");
+		pkgmgr_appinfo_destroy_appinfo(handle);
+		return -1;
+	}
+	pkgmgr_appinfo_destroy_appinfo(handle);
+	return 0;
+}
+
 static int __get_app_control_list(char *appid)
 {
 	int ret = -1;
@@ -1284,6 +1317,57 @@ static int __get_app_control_list(char *appid)
 		return -1;
 	}
 	pkgmgr_appinfo_destroy_appinfo(handle);
+	return 0;
+}
+
+static int __get_app_visibility(char *appid)
+{
+	int ret = -1;
+	bool status = true;
+	pkgmgr_appinfo_h handle;
+	ret = pkgmgr_appinfo_get_appinfo(appid, &handle);
+	if (ret < 0) {
+		printf("Failed to get handle\n");
+		return -1;
+	}
+	ret = pkgmgrinfo_appinfo_is_guestmode_visibility(handle, &status);
+	if (ret < 0) {
+		printf("pkgmgrinfo_appinfo_is_guestmode_visibility failed\n");
+		pkgmgr_appinfo_destroy_appinfo(handle);
+		return -1;
+	}
+	pkgmgr_appinfo_destroy_appinfo(handle);
+	printf("visibility Status is %d\n",status);
+	return status;
+}
+
+static int __set_app_visibility(char *appid)
+{
+	int ret = 0;
+	int value = 0;
+	pkgmgrinfo_appinfo_h handle;
+	printf("Enter [0/1]: 0--Hide, 1-Show\n");
+	value = __get_integer_input_data();
+	ret = pkgmgrinfo_appinfo_get_appinfo(appid, &handle);
+	if (ret != PMINFO_R_OK)
+		return -1;
+	ret = pkgmgrinfo_appinfo_set_guestmode_visibility(handle, value);
+	if (ret != PMINFO_R_OK) {
+		pkgmgrinfo_appinfo_destroy_appinfo(handle);
+		return -1;
+	}
+	pkgmgrinfo_appinfo_destroy_appinfo(handle);
+	return 0;
+}
+
+static int __set_app_enabled(char *appid, bool enabled)
+{
+	int ret = -1;
+	ret = pkgmgrinfo_appinfo_set_state_enabled(appid, enabled);
+	if (ret < 0) {
+		printf("Failed to get handle\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -1452,6 +1536,7 @@ static int __get_app_info(char *appid)
 	int hwacceleration = 0;
 	bool onboot = 0;
 	bool autorestart = 0;
+	bool enabled = 0;
 	pkgmgr_appinfo_h handle;
 	int ret = -1;
 
@@ -1516,6 +1601,10 @@ static int __get_app_info(char *appid)
 	if (ret < 0) {
 		printf("Failed to get autorestart\n");
 	}
+	ret = pkgmgrinfo_appinfo_is_enabled(handle, &enabled);
+	if (ret < 0) {
+		printf("Failed to get enabled\n");
+	}
 
 	if (app_id)
 		printf("Appid: %s\n", app_id);
@@ -1553,6 +1642,8 @@ static int __get_app_info(char *appid)
 	} else {
 		printf("Invalid Component Type\n");
 	}
+
+	printf("Enabled: %d\n", enabled);
 
 	pkgmgr_appinfo_destroy_appinfo(handle);
 	return 0;
@@ -1624,7 +1715,22 @@ int main(int argc, char *argv[])
 			__print_usage();
 			return -1;
 		}
+	}else if (argc == 4) {
+		if (strcmp(argv[1], "--setappenabled") == 0) {
+			ret = __set_app_enabled(argv[2], (strcmp(argv[3], "0")==0)?false:true);
+			if (ret == -1) {
+				printf("set app enabled failed\n");
+				return -1;
+			}
+		} else if(strcmp(argv[1], "--setpkgenabled") == 0) {
+			ret = __set_app_enabled(argv[2], (strcmp(argv[3], "0")==0)?false:true);
+			if (ret == -1) {
+				printf("set pkg enabled failed\n");
+				return -1;
+			}
+		}
 	}
+
 	if (argc != 3) {
 		__print_usage();
 		return -1;
@@ -1700,10 +1806,28 @@ int main(int argc, char *argv[])
 			printf("get app category list failed\n");
 			return -1;
 		}
-	} else if (strcmp(argv[1], "--appcontrol") == 0) {
+	} else if (strcmp(argv[1], "--metadata") == 0) {
+		ret = __get_app_metadata_list(argv[2]);
+		if (ret == -1) {
+			printf("get app metadata list failed\n");
+			return -1;
+		}
+	}  else if (strcmp(argv[1], "--appcontrol") == 0) {
 		ret = __get_app_control_list(argv[2]);
 		if (ret == -1) {
 			printf("get app control list failed\n");
+			return -1;
+		}
+	} else if (strcmp(argv[1], "--getvisibility") == 0) {
+		ret = __get_app_visibility(argv[2]);
+		if (ret == -1) {
+			printf("get app visibility failed\n");
+			return -1;
+		}
+	} else if (strcmp(argv[1], "--setvisibility") == 0) {
+		ret = __set_app_visibility(argv[2]);
+		if (ret == -1) {
+			printf("set app visibility failed\n");
 			return -1;
 		}
 	} else

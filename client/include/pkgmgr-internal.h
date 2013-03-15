@@ -31,12 +31,8 @@
 #include <ctype.h>
 #include <dlog.h>
 
-#undef LOG_TAG
-#ifndef LOG_TAG
-#define LOG_TAG "PKGMGR"
-#endif				/* LOG_TAG */
-
 #include "package-manager-plugin.h"
+#include "pkgmgr-debug.h"
 
 typedef package_manager_pkg_info_t package_manager_app_info_t;
 
@@ -75,24 +71,6 @@ time_t _get_info_time(const char *key,
 #define PKG_STRING_LEN_MAX 1024
 #define PKG_EXT_LEN_MAX		 20
 #define PKG_ARGC_MAX		 16
-
-#define _LOGE(fmt, arg...) LOGE(fmt,##arg)
-#define _LOGD(fmt, arg...) LOGD(fmt,##arg)
-
-#define retvm_if(expr, val, fmt, arg...) do { \
-	if (expr) { \
-		_LOGE(fmt, ##arg); \
-		_LOGE("(%s) -> %s() return", #expr, __FUNCTION__); \
-		return (val); \
-	} \
-} while (0)
-
-#define retv_if(expr, val) do { \
-	if (expr) { \
-		_LOGE("(%s) -> %s() return", #expr, __FUNCTION__); \
-		return (val); \
-	} \
-} while (0)
 
 void _app_str_trim(char *input);
 char *_get_backend_path(const char *input_path);
