@@ -28,6 +28,7 @@
 
 #include <bundle.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -114,7 +115,7 @@ int main(int argc, char **argv)
 
 	char *mime_type;
 	char *file_path;
-	char *extension;
+	const char *extension;
 
 	if (__parse_argv(argc, argv, &mime_type, &file_path)) {
 		fprintf(stderr, "Failed to parse argv!\n");
@@ -131,9 +132,8 @@ int main(int argc, char **argv)
 
 	int pid = fork();
 	if (pid == 0) {
-		int req_id;
 		pkgmgr_client *pc = pkgmgr_client_new(PC_REQUEST);
-		req_id = pkgmgr_client_install(pc, extension, NULL, file_path, NULL,
+		pkgmgr_client_install(pc, extension, NULL, file_path, NULL,
 							PM_DEFAULT, NULL, NULL);
 		pkgmgr_client_free(pc);
 

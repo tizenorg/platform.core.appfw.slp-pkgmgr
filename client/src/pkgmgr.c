@@ -673,7 +673,7 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_mode mode,
 				pkgmgr_handler event_cb, void *data)
 {
-	const char *pkgtype;
+	char *pkgtype;
 	char *installer_path;
 	char *req_key;
 	int req_id;
@@ -1647,7 +1647,9 @@ API int pkgmgr_pkginfo_get_version(pkgmgr_pkginfo_h handle, char **version)
 API int pkgmgr_pkginfo_get_install_location(pkgmgr_pkginfo_h handle, pkgmgr_install_location *location)
 {
 	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_install_location(handle, location);
+	pkgmgrinfo_install_location loc;
+	ret = pkgmgrinfo_pkginfo_get_install_location(handle, &loc);
+	*location = loc;
 	return ret;
 }
 
@@ -1738,7 +1740,9 @@ API int pkgmgr_pkginfo_destroy_pkginfo(pkgmgr_pkginfo_h handle)
 API int pkgmgr_pkginfo_get_installed_storage(pkgmgr_pkginfo_h handle, pkgmgr_installed_storage *storage)
 {
 	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_installed_storage(handle, storage);
+	pkgmgrinfo_installed_storage sto;
+	ret = pkgmgrinfo_pkginfo_get_installed_storage(handle, &sto);
+	*storage = sto;
 	return ret;
 }
 
@@ -1817,7 +1821,9 @@ API int pkgmgr_appinfo_get_exec(pkgmgr_appinfo_h  handle, char **exec)
 API int pkgmgr_appinfo_get_component(pkgmgr_appinfo_h  handle, pkgmgr_app_component *component)
 {
 	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_component(handle, component);
+	pkgmgrinfo_app_component comp;
+	ret = pkgmgrinfo_appinfo_get_component(handle, &comp);
+	*component = comp;
 	return ret;
 }
 
@@ -1852,7 +1858,9 @@ API int pkgmgr_appinfo_is_taskmanage(pkgmgr_appinfo_h  handle, bool *taskmanage)
 API int pkgmgr_appinfo_get_hwacceleration(pkgmgr_appinfo_h  handle, pkgmgr_hwacceleration_type *hwacceleration)
 {
 	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_hwacceleration(handle, hwacceleration);
+	pkgmgrinfo_app_hwacceleration hwacc;
+	ret = pkgmgrinfo_appinfo_get_hwacceleration(handle, &hwacc);
+	*hwacceleration = hwacc;
 	return ret;
 }
 

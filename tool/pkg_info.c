@@ -67,14 +67,13 @@ static int __get_integer_input_data(void)
 {
 	char input_str[32] = { 0, };
 	int data = 0;
-	fflush(stdin);
 
 	if (fgets(input_str, sizeof(input_str), stdin) == NULL) {
 		printf("fgets() failed....\n");
 		return -1;
 	}
 
-	if (sscanf(input_str, "%d", &data) != 1) {
+	if (sscanf(input_str, "%4d", &data) != 1) {
 		printf("Input only integer option....\n");
 		return -1;
 	}
@@ -403,7 +402,10 @@ static int __add_pkg_filter()
 		printf("9  --> filter by package removable [0|1]\n");
 		printf("10 --> filter by package readonly [0|1]\n");
 		printf("11 --> filter by package preload [0|1]\n");
-		printf("12 --> filter by package size\n");
+		printf("12 --> filter by package update [0|1]\n");
+		printf("13 --> filter by package appsetting [0|1]\n");
+		printf("14 --> filter by package size\n");
+		printf("15 --> filter by package installed storage[installed_internal | installed_external]\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -539,6 +541,26 @@ static int __add_pkg_filter()
 			break;
 		case 12:
 			val = __get_integer_input_data();
+			ret = pkgmgrinfo_pkginfo_filter_add_bool(handle,
+				PMINFO_PKGINFO_PROP_PACKAGE_UPDATE, val);
+			if (ret < 0) {
+				printf("pkgmgrinfo_pkginfo_filter_add_bool() failed\n");
+				ret = -1;
+				goto err;
+			}
+			break;
+		case 13:
+			val = __get_integer_input_data();
+			ret = pkgmgrinfo_pkginfo_filter_add_bool(handle,
+				PMINFO_PKGINFO_PROP_PACKAGE_APPSETTING, val);
+			if (ret < 0) {
+				printf("pkgmgrinfo_pkginfo_filter_add_bool() failed\n");
+				ret = -1;
+				goto err;
+			}
+			break;
+		case 14:
+			val = __get_integer_input_data();
 			ret = pkgmgrinfo_pkginfo_filter_add_int(handle,
 				PMINFO_PKGINFO_PROP_PACKAGE_SIZE, val);
 			if (ret < 0) {
@@ -546,6 +568,18 @@ static int __add_pkg_filter()
 				ret = -1;
 				goto err;
 			}
+			break;
+		case 15:
+			value = __get_string_input_data();
+			ret = pkgmgrinfo_pkginfo_filter_add_string(handle,
+				PMINFO_PKGINFO_PROP_PACKAGE_INSTALLED_STORAGE, value);
+			if (ret < 0) {
+				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
+				ret = -1;
+				goto err;
+			}
+			free(value);
+			value = NULL;
 			break;
 		default:
 			printf("Invalid filter property\n");
@@ -588,7 +622,7 @@ static int __get_certinfo_from_db(char *pkgid)
 	int ret = 0;
 	int choice = -1;
 	int i = 0;
-	char *value = NULL;
+	const char *value = NULL;
 	pkgmgr_certinfo_h handle = NULL;
 	ret = pkgmgr_pkginfo_create_certinfo(&handle);
 	if (ret < 0) {
@@ -1035,7 +1069,7 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 	bool nodisplay = 0;
 	bool multiple = 0;
 	bool taskmanage = 0;
-	int hwacceleration = 0;
+	pkgmgr_hwacceleration_type hwacceleration;
 	bool onboot = 0;
 	bool autorestart = 0;
 	char *package = NULL;
@@ -1136,7 +1170,7 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 	}
 
 
-	printf("\n", data);
+	printf("\n%s\n", data);
 	return 0;
 }
 
@@ -1533,7 +1567,7 @@ static int __get_app_info(char *appid)
 	bool nodisplay = 0;
 	bool multiple = 0;
 	bool taskmanage = 0;
-	int hwacceleration = 0;
+	pkgmgr_hwacceleration_type hwacceleration;
 	bool onboot = 0;
 	bool autorestart = 0;
 	bool enabled = 0;

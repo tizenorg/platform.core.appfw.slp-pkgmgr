@@ -246,12 +246,8 @@ static int __xsystem(const char *argv[])
 
 static int __is_efl_tpk_app(char *pkgid)
 {
-        char command[1024] = {'\0'};
-        char cwd[1024] = {'\0'};
-        char *ptr = NULL;
         int ret = 0;
         char *type = NULL;
-        DIR * dir =  NULL;
 	const char *unzip_argv[] = { "/usr/bin/unzip", "-j", pkgid, "usr/share/packages/*", "-d", "/tmp/efltpk-unzip", NULL };
 	const char *unzip_opt_argv[] = { "/usr/bin/unzip", "-j", pkgid, "opt/share/packages/*", "-d", "/tmp/efltpk-unzip", NULL };
 	const char *delete_argv[] = { "/bin/rm", "-rf", "/tmp/efltpk-unzip", NULL };
@@ -518,7 +514,7 @@ void response_cb2(void *data, Evas_Object *notify, void *event_info)
 	return;
 }
 
-
+#if 0
 static char *__get_exe_path(const char *pkgid)
 {
 	ail_appinfo_h handle;
@@ -555,7 +551,7 @@ static char *__get_exe_path(const char *pkgid)
 
 	return exe_path;
 }
-
+#endif
 
 static int __X_rotate_disable_focus(Display *dpy, Window win)
 {
@@ -618,7 +614,6 @@ static int __X_rotate_get_rotation(Display *dpy)
 	int rotation = -1;
 	int ret;
 
-	int angles[2];
 
 	Atom atom_active_win;
 	Atom atom_win_rotate_angle;

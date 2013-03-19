@@ -85,7 +85,7 @@ int initdb_load_directory(const char *directory)
 {
 	DIR *dir;
 	struct dirent entry, *result;
-	int len, ret;
+	int ret;
 	char buf[BUFSZE];
 
 	// desktop file
@@ -96,7 +96,6 @@ int initdb_load_directory(const char *directory)
 		return -1;
 	}
 
-	len = strlen(directory) + 1;
 	_D("Loading manifest files from %s\n", directory);
 
 	for (ret = readdir_r(dir, &entry, &result);
