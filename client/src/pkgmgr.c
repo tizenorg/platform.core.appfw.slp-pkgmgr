@@ -572,6 +572,123 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	return req_id;
 }
 
+API int pkgmgr_client_reinstall(pkgmgr_client * pc, const char *pkg_type,
+			      const char *descriptor_path, const char *pkg_path,
+			      const char *optional_file, pkgmgr_mode mode,
+			      pkgmgr_handler event_cb, void *data)
+{
+	char *pkgtype = NULL;
+	char *installer_path = NULL;
+	char *req_key = NULL;
+	int req_id = 0;
+	int i = 0;
+	char *argv[PKG_ARGC_MAX] = { NULL, };
+	char *args = NULL;
+	int argcnt = 0;
+	int len = 0;
+	char *temp = NULL;
+	int ret = 0;
+	char *cookie = NULL;
+
+	/* Check for NULL value of pc */
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
+
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+
+	/* 0. check the pc type */
+	retv_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL);
+
+
+	/* 1. check argument */
+	if (descriptor_path) {
+		retv_if(strlen(descriptor_path) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL);
+		retv_if(access(descriptor_path, F_OK) != 0, PKGMGR_R_EINVAL);
+	}
+
+	if (pkg_path == NULL)
+		return PKGMGR_R_EINVAL;
+	else {
+		retv_if(strlen(pkg_path) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL);
+		retv_if(access(pkg_path, F_OK) != 0, PKGMGR_R_EINVAL);
+	}
+
+	if (optional_file) {
+		retv_if(strlen(optional_file) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL);
+		retv_if(access(optional_file, F_OK) != 0, PKGMGR_R_EINVAL);
+	}
+
+	/* 2. get installer path using pkg_path */
+	if (pkg_type) {
+		installer_path = _get_backend_path_with_type(pkg_type);
+		pkgtype = strdup(pkg_type);
+	} else {
+		installer_path = _get_backend_path(pkg_path);
+		pkgtype = __get_type_from_path(pkg_path);
+	}
+	tryvm_if(installer_path == NULL, ret = PKGMGR_R_EINVAL, "installer_path is null");
+
+	/* 3. generate req_key */
+	req_key = __get_req_key(pkg_path);
+
+	/* 4. add callback info - add callback info to pkgmgr_client */
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
+
+	/* 5. generate argv */
+
+	/*  argv[0] installer path */
+	argv[argcnt++] = installer_path;
+	/* argv[1] */
+	argv[argcnt++] = strdup("-k");
+	/* argv[2] */
+	argv[argcnt++] = req_key;
+	/* argv[3] */
+	argv[argcnt++] = strdup("-r");
+	/* argv[(4)] if exists */
+	if (descriptor_path)
+		argv[argcnt++] = strdup(descriptor_path);
+	/* argv[4] */
+	argv[argcnt++] = strdup(pkg_path);
+	/* argv[5] -q option should be located at the end of command !! */
+	if (mode == PM_QUIET)
+		argv[argcnt++] = strdup("-q");
+
+	/*** add quote in all string for special charactor like '\n'***   FIX */
+	for (i = 0; i < argcnt; i++) {
+		temp = g_shell_quote(argv[i]);
+		len += (strlen(temp) + 1);
+		g_free(temp);
+	}
+
+	args = (char *)calloc(len, sizeof(char));
+	tryvm_if(args == NULL, ret = PKGMGR_R_ERROR, "calloc failed");
+
+	strncpy(args, argv[0], len - 1);
+
+	for (i = 1; i < argcnt; i++) {
+		strncat(args, " ", strlen(" "));
+		temp = g_shell_quote(argv[i]);
+		strncat(args, temp, strlen(temp));
+		g_free(temp);
+	}
+	_LOGD("[args] %s [len] %d\n", args, len);
+	/******************* end of quote ************************/
+
+	/* 6. request install */
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_INSTALLER, pkgtype, pkg_path, args, cookie, 1);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed");
+
+	ret = req_id;
+
+catch:
+	for (i = 0; i < argcnt; i++)
+		free(argv[i]);
+
+	free(args);
+	free(pkgtype);
+
+	return ret;
+}
 
 static inline int __pkgmgr_read_proc(const char *path, char *buf, int size)
 {

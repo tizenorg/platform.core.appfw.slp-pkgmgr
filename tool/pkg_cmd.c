@@ -106,10 +106,11 @@ static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option);
 static int __app_list_cb(const pkgmgr_appinfo_h handle, void *user_data);
 
 /* Supported options */
-const char *short_options = "iumcCkaADL:lsd:p:t:n:T:qh";
+const char *short_options = "iurmcCkaADL:lsd:p:t:n:T:qh";
 const struct option long_options[] = {
 	{"install", 0, NULL, 'i'},
 	{"uninstall", 0, NULL, 'u'},
+	{"reinstall", 0, NULL, 'r'},
 	{"move", 0, NULL, 'm'},
 	{"clear", 0, NULL, 'c'},
 	{"activate", 0, NULL, 'A'},
@@ -133,6 +134,7 @@ const struct option long_options[] = {
 enum pm_tool_request_e {
 	INSTALL_REQ = 1,
 	UNINSTALL_REQ,
+	REINSTALL_REQ,
 	CLEAR_REQ,
 	MOVE_REQ,
 	ACTIVATE_REQ,
@@ -446,6 +448,7 @@ static void __print_usage()
 	printf("\nPackage Manager Tool Version: %s\n\n", PKG_TOOL_VERSION);
 	printf("-i, --install		install the package\n");
 	printf("-u, --uninstall		uninstall the package\n");
+	printf("-r, --reinstall		reinstall the package\n");
 	printf("-c, --clear		clear user data\n");
 	printf("-m, --move		move package\n");
 	printf("-l, --list		display list of installed packages\n");
@@ -460,18 +463,20 @@ static void __print_usage()
 	printf("-T, --move-type	provide move type [0 : move to internal /1: move to external]\n");
 	printf("-q, --quiet		quiet mode operation\n");
 	printf("-h, --help		print this help\n\n");
+
 	printf("Usage: pkgcmd [options] (--quiet)\n");
-	printf
-	    ("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-q)\n");
+	printf("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-q)\n");
 	printf("pkgcmd -u -t <pkg type> -n <pkg name> (-q)\n");
+	printf("pkgcmd -r -t <pkg type> -p <pkg name> (-q)\n");
 	printf("pkgcmd -l \n");
 	printf("pkgcmd -s -t <pkg type> -p <pkg path> (-q)\n");
-	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n\n");
+	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n");
 	printf("pkgcmd -m -t <pkg type> -T <move type> -n <pkg name> (-q)\n\n");
+
 	printf("Example:\n");
 	printf("pkgcmd -u -t rpm -n org.tizen.calculator\n");
-	printf
-	    ("pkgcmd -i -t rpm -p /mnt/nfs/org.tizen.calculator_0.1.2-95_armel.rpm\n");
+	printf("pkgcmd -i -t rpm -p /mnt/nfs/org.tizen.calculator_0.1.2-95_armel.rpm\n");
+	printf("pkgcmd -r -t rpm -p org.tizen.calculator\n");
 	printf("pkgcmd -c -t rpm -n org.tizen.hello\n");
 	printf("pkgcmd -m -t rpm -T 1 -n org.tizen.hello\n");
 	printf("pkgcmd -C -t rpm -n org.tizen.hello\n");
@@ -689,6 +694,41 @@ static int __process_request()
 		ret =
 		    pkgmgr_client_uninstall(pc, data.pkg_type, data.pkgid,
 					    mode, __return_cb, NULL);
+		if (ret < 0)
+			break;
+		g_main_loop_run(main_loop);
+		ret = data.result;
+		break;
+
+	case REINSTALL_REQ:
+		if (data.pkg_type[0] == '\0' || data.pkg_path[0] == '\0') {
+			printf("Please provide the arguments.\n");
+			printf("use -h option to see usage\n");
+			ret = -1;
+			break;
+		}
+		g_type_init();
+		main_loop = g_main_loop_new(NULL, FALSE);
+		pc = pkgmgr_client_new(PC_REQUEST);
+		if (pc == NULL) {
+			printf("PkgMgr Client Creation Failed\n");
+			ret = -1;
+			break;
+		}
+		if (data.quiet == 0)
+			mode = PM_DEFAULT;
+		else
+			mode = PM_QUIET;
+		if (data.des_path[0] == '\0')
+			ret =
+				pkgmgr_client_reinstall(pc, data.pkg_type, NULL,
+						  data.pkg_path, NULL, mode,
+						  __return_cb, pc);
+		else
+			ret =
+				pkgmgr_client_reinstall(pc, data.pkg_type,
+						  data.des_path, data.pkg_path,
+						  NULL, mode, __return_cb, pc);
 		if (ret < 0)
 			break;
 		g_main_loop_run(main_loop);
@@ -995,6 +1035,10 @@ int main(int argc, char *argv[])
 
 		case 'u':	/* uninstall */
 			data.request = UNINSTALL_REQ;
+			break;
+
+		case 'r':	/* reinstall */
+			data.request = REINSTALL_REQ;
 			break;
 
 		case 'c':	/* clear */

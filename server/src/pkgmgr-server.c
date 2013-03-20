@@ -123,6 +123,7 @@ typedef enum {
 	OPERATION_INSTALL = 0,
 	OPERATION_UNINSTALL,
 	OPERATION_ACTIVATE,
+	OPERATION_REINSTALL,
 	OPERATION_MAX
 } OPERATION_TYPE;
 
@@ -777,6 +778,8 @@ int create_popup(struct appdata *ad)
 		pkgid = app_name;
 
 		snprintf(sentence, sizeof(sentence) - 1, _("Uninstall?"));
+	} else if (ad->op_type == OPERATION_REINSTALL) {
+		snprintf(sentence, sizeof(sentence) - 1, _("Reinstall?"));
 	} else
 		snprintf(sentence, sizeof(sentence) - 1, _("Invalid request"));
 
@@ -958,7 +961,10 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 		   Change the mode temporarily. This should be removed */
 					/*strncat(item->args, " -q",
 						strlen(" -q"));*/
-				} else
+				} else if (strstr(args, " -r ")
+					|| strstr(args, " '-r' "))
+					ad->op_type = OPERATION_REINSTALL;
+				else
 					ad->op_type = OPERATION_MAX;
 
 				err = create_popup(ad);
