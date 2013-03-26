@@ -39,7 +39,7 @@
 #include <pkgmgr-info.h>
 
 
-#define MAX_STRLEN 512
+#define MAX_STRLEN 1024
 #define MAX_QUERY_LEN	4096
 
 #define CHK_PI_RET(r) \
@@ -54,6 +54,7 @@ struct pkgmgr_installer {
 	char *session_id;
 	char *license_path;
 	char *quiet_socket_path;
+	char *optional_data;
 
 	DBusConnection *conn;
 };
@@ -91,6 +92,8 @@ API int pkgmgr_installer_free(pkgmgr_installer *pi)
 		free(pi->pkgmgr_info);
 	if (pi->session_id)
 		free(pi->session_id);
+	if (pi->optional_data)
+		free(pi->optional_data);
 
 	if (pi->conn)
 		comm_status_broadcast_server_disconnect(pi->conn);
@@ -180,12 +183,16 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
-		case 'r':	/* recover */
+		case 'r':	/* reinstall */
 			if (mode) {
 				r = -EINVAL;
 				goto RET;
 			}
 			mode = 'r';
+			pi->request_type = PKGMGR_REQ_REINSTALL;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
 		case 't': /* move type*/
@@ -201,6 +208,10 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			   return
 			*/
 
+			break;
+
+		case 'o': /* optional data*/
+			pi->optional_data = strndup(optarg, MAX_STRLEN);
 			break;
 
 			/* Otherwise */
@@ -243,6 +254,12 @@ API const char *pkgmgr_installer_get_license_path(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->license_path;
+}
+
+API const char *pkgmgr_installer_get_optional_data(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->optional_data;
 }
 
 API int pkgmgr_installer_is_quiet(pkgmgr_installer *pi)

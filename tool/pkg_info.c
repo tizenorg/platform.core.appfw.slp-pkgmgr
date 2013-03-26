@@ -123,6 +123,10 @@ static void __print_usage()
 	printf("\tpkginfo --setcert <pkgid>\n\n");
 	printf("To get cert info from DB\n");
 	printf("\tpkginfo --getcert <pkgid>\n\n");
+	printf("To compare pkg cert info from DB\n");
+	printf("\tpkginfo --cmp-pkgcert <lhs_pkgid> <rhs_pkgid>\n\n");
+	printf("To compare app cert info from DB\n");
+	printf("\tpkginfo --cmp-appcert <lhs_appid> <rhs_appid>\n\n");
 	printf("To delete all cert info from DB\n");
 	printf("\tpkginfo --delcert <pkgid>\n\n");
 	printf("To add application filter values [Multiple values can be added]\n");
@@ -690,6 +694,44 @@ static int __get_certinfo_from_db(char *pkgid)
 	}
 }
 
+static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid)
+{
+	if (lhs_pkgid == NULL || rhs_pkgid == NULL) {
+		printf("pkgid is NULL\n");
+		return -1;
+	}
+
+	int ret = 0;
+	pkgmgrinfo_cert_compare_result_type_e result;
+	ret = pkgmgrinfo_pkginfo_compare_pkg_cert_info(lhs_pkgid, rhs_pkgid, &result);
+	if (ret != PMINFO_R_OK) {
+		return -1;
+	}
+
+	printf("Compare [match=0, mismatch=1, lhs_no=2, rhs_no=3, both_no=4]\n");
+	printf("pkgid =[%s] and [%s] compare result = [%d] \n", lhs_pkgid, rhs_pkgid, result);
+	return 0;
+}
+
+static int __compare_app_certinfo_from_db(char *lhs_appid, char *rhs_appid)
+{
+	if (lhs_appid == NULL || rhs_appid == NULL) {
+		printf("appid is NULL\n");
+		return -1;
+	}
+
+	int ret = 0;
+	pkgmgrinfo_cert_compare_result_type_e result;
+	ret = pkgmgrinfo_pkginfo_compare_app_cert_info(lhs_appid, rhs_appid, &result);
+	if (ret != PMINFO_R_OK) {
+		return -1;
+	}
+
+	printf("Compare [match=0, mismatch=1, lhs_no=2, rhs_no=3, both_no=4]\n");
+	printf("appid =[%s] and [%s] compare result = [%d] \n", lhs_appid, rhs_appid, result);
+	return 0;
+}
+
 static int __set_certinfo_in_db(char *pkgid)
 {
 	if (pkgid == NULL) {
@@ -724,6 +766,7 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_save_certinfo(pkgid, handle);
 			if (ret < 0) {
 				printf("pkgmgr_installer_save_certinfo failed\n");
+				pkgmgr_installer_destroy_certinfo_set_handle(handle);
 				return -1;
 			}
 			ret = pkgmgr_installer_destroy_certinfo_set_handle(handle);
@@ -738,9 +781,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 0, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 2:
 			printf("Enter Author Intermediate Certificate Value: \n");
@@ -748,9 +793,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 1, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 3:
 			printf("Enter Author Signer Certificate Value: \n");
@@ -758,9 +805,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 2, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 4:
 			printf("Enter Distributor Root Certificate Value: \n");
@@ -768,9 +817,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 3, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 5:
 			printf("Enter Distributor Intermediate Certificate Value: \n");
@@ -778,9 +829,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 4, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 6:
 			printf("Enter Distributor Signer Certificate Value: \n");
@@ -788,9 +841,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 5, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 7:
 			printf("Enter Distributor2 Root Certificate Value: \n");
@@ -798,9 +853,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 6, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 8:
 			printf("Enter Distributor2 Intermediate Certificate Value: \n");
@@ -808,9 +865,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 7, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		case 9:
 			printf("Enter Distributor2 Signer Certificate Value: \n");
@@ -818,9 +877,11 @@ static int __set_certinfo_in_db(char *pkgid)
 			ret = pkgmgr_installer_set_cert_value(handle, 8, value);
 			if (ret < 0) {
 				printf("pkgmgr_installer_set_cert_value failed\n");
-				pkgmgr_installer_destroy_certinfo_set_handle(handle);
-				return -1;
+				ret = -1;
+				goto err;
 			}
+			free(value);
+			value = NULL;
 			break;
 		default:
 			printf("Invalid Number Entered\n");
@@ -833,7 +894,13 @@ static int __set_certinfo_in_db(char *pkgid)
 			break;
 		}
 	}
-	return -1;
+err:
+	if (value) {
+		free(value);
+		value = NULL;
+	}
+	pkgmgr_installer_destroy_certinfo_set_handle(handle);
+	return ret;
 }
 
 static int __set_pkginfo_in_db(char *pkgid)
@@ -890,8 +957,10 @@ static int __set_pkginfo_in_db(char *pkgid)
 			if (ret < 0) {
 				printf("pkgmgr_set_type_to_pkgdbinfo failed\n");
 				pkgmgr_destroy_pkgdbinfo(handle);
+				free(type);
 				return -1;
 			}
+			free(type);
 			break;
 		case 2:
 			printf("Enter version: \n");
@@ -900,8 +969,10 @@ static int __set_pkginfo_in_db(char *pkgid)
 			if (ret < 0) {
 				printf("pkgmgr_set_version_to_pkgdbinfo failed\n");
 				pkgmgr_destroy_pkgdbinfo(handle);
+				free(version);
 				return -1;
 			}
+			free(version);
 			break;
 		case 3:
 			printf("Enter install location [0:internal | 1:external]: \n");
@@ -926,9 +997,11 @@ static int __set_pkginfo_in_db(char *pkgid)
 				printf("pkgmgr_set_label_to_pkgdbinfo failed\n");
 				pkgmgr_destroy_pkgdbinfo(handle);
 				free(locale);
+				free(label);
 				return -1;
 			}
 			free(locale);
+			free(label);
 			break;
 		case 5:
 			printf("Enter icon: \n");
@@ -943,9 +1016,11 @@ static int __set_pkginfo_in_db(char *pkgid)
 				printf("pkgmgr_set_icon_to_pkgdbinfo failed\n");
 				pkgmgr_destroy_pkgdbinfo(handle);
 				free(locale);
+				free(icon);
 				return -1;
 			}
 			free(locale);
+			free(icon);
 			break;
 		case 6:
 			printf("Enter description: \n");
@@ -960,9 +1035,11 @@ static int __set_pkginfo_in_db(char *pkgid)
 				printf("pkgmgr_set_description_to_pkgdbinfo failed\n");
 				pkgmgr_destroy_pkgdbinfo(handle);
 				free(locale);
+				free(description);
 				return -1;
 			}
 			free(locale);
+			free(description);
 			break;
 		case 7:
 			printf("Enter author name: \n");
@@ -981,9 +1058,15 @@ static int __set_pkginfo_in_db(char *pkgid)
 				printf("pkgmgr_set_author_to_pkgdbinfo failed\n");
 				pkgmgr_destroy_pkgdbinfo(handle);
 				free(locale);
+				free(author_name);
+				free(author_email);
+				free(author_href);
 				return -1;
 			}
 			free(locale);
+			free(author_name);
+			free(author_email);
+			free(author_href);
 			break;
 		case 8:
 			printf("Enter removable [0:false | 1:true]: \n");
@@ -1012,8 +1095,10 @@ static int __set_pkginfo_in_db(char *pkgid)
 			if (ret < 0) {
 				printf("pkgmgr_set_size_to_pkgdbinfo failed\n");
 				pkgmgr_destroy_pkgdbinfo(handle);
+				free(size);
 				return -1;
 			}
+			free(size);
 			break;
 		default:
 			printf("Invalid number entered\n");
@@ -1168,9 +1253,9 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 			printf("Autorestart: %d \n", autorestart);
 		}
 	}
+	if (data)
+		printf("user_data : %s\n\n", data);
 
-
-	printf("\n%s\n", data);
 	return 0;
 }
 
@@ -1701,15 +1786,24 @@ static int __check_manifest_validation(char *manifest)
 
 int main(int argc, char *argv[])
 {
-	int ret = -1;
+	int ret = 0;
 	char *locale = NULL;
+	long starttime;
+	long endtime;
+	struct timeval tv;
+
 	locale = vconf_get_str(VCONFKEY_LANGSET);
 	if (locale == NULL) {
 		printf("locale is NULL\n");
-		return -1;
+		ret = -1;
+		goto end;
 	}
 	else
 		printf("Locale is %s\n", locale);
+
+	gettimeofday(&tv, NULL);
+	starttime = tv.tv_sec * 1000l + tv.tv_usec / 1000l;
+
 	free(locale);
 	locale = NULL;
 	if (argc == 2) {
@@ -1717,155 +1811,185 @@ int main(int argc, char *argv[])
 			ret = __get_pkg_list();
 			if (ret == -1) {
 				printf("get pkg list failed\n");
-				return -1;
+				goto end;
 			} else {
-				return 0;
+				goto end;
 			}
 		} else if (strcmp(argv[1], "--app-flt") == 0) {
 			ret = __add_app_filter();
 			if (ret == -1) {
 				printf("Adding app filter failed\n");
-				return -1;
+				goto end;
 			} else {
-				return 0;
+				goto end;
 			}
 		} else if (strcmp(argv[1], "--pkg-flt") == 0) {
 			ret = __add_pkg_filter();
 			if (ret == -1) {
 				printf("Adding pkg filter failed\n");
-				return -1;
+				goto end;
 			} else {
-				return 0;
+				goto end;
 			}
 		} else if (strcmp(argv[1], "--listapp") == 0) {
 			ret = __get_installed_app_list();
 			if (ret == -1) {
 				printf("get installed app list failed\n");
-				return -1;
+				goto end;
 			} else {
-				return 0;
+				goto end;
 			}
 		} else {
 			__print_usage();
-			return -1;
+			ret = -1;
+			goto end;
 		}
 	}else if (argc == 4) {
 		if (strcmp(argv[1], "--setappenabled") == 0) {
 			ret = __set_app_enabled(argv[2], (strcmp(argv[3], "0")==0)?false:true);
 			if (ret == -1) {
 				printf("set app enabled failed\n");
-				return -1;
+				goto end;
 			}
+			goto end;
 		} else if(strcmp(argv[1], "--setpkgenabled") == 0) {
 			ret = __set_app_enabled(argv[2], (strcmp(argv[3], "0")==0)?false:true);
 			if (ret == -1) {
 				printf("set pkg enabled failed\n");
-				return -1;
+				goto end;
 			}
+			goto end;
+		} else if (strcmp(argv[1], "--cmp-pkgcert") == 0) {
+			ret = __compare_pkg_certinfo_from_db(argv[2], argv[3]);
+			if (ret == -1) {
+				printf("compare certinfo from db failed\n");
+				goto end;
+			}
+			goto end;
+		} else if (strcmp(argv[1], "--cmp-appcert") == 0) {
+			ret = __compare_app_certinfo_from_db(argv[2], argv[3]);
+			if (ret == -1) {
+				printf("compare certinfo from db failed\n");
+				goto end;
+			}
+			goto end;
+		} else {
+			__print_usage();
+			ret = -1;
+			goto end;
 		}
 	}
 
 	if (argc != 3) {
 		__print_usage();
-		return -1;
+		ret = -1;
+		goto end;
 	}
 	if (!argv[1] || !argv[2]) {
 			__print_usage();
-			return -1;
+			ret = -1;
+			goto end;
 	}
 
 	if (strcmp(argv[1], "--pkg") == 0) {
 		ret = __get_pkg_info(argv[2]);
 		if (ret == -1) {
 			printf("get pkg info failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--app") == 0) {
 		ret = __get_app_info(argv[2]);
 		if (ret == -1) {
 			printf("get app info failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--list") == 0) {
 		ret = __get_app_list(argv[2]);
 		if (ret == -1) {
 			printf("get app list failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--imd") == 0) {
 		ret = __insert_manifest_in_db(argv[2]);
 		if (ret == -1) {
 			printf("insert in db failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--rmd") == 0) {
 		ret = __remove_manifest_from_db(argv[2]);
 		if (ret == -1) {
 			printf("remove from db failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--setdb") == 0) {
 		ret = __set_pkginfo_in_db(argv[2]);
 		if (ret == -1) {
 			printf("set pkginfo in db failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--setcert") == 0) {
 		ret = __set_certinfo_in_db(argv[2]);
 		if (ret == -1) {
 			printf("set certinfo in db failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--getcert") == 0) {
 		ret = __get_certinfo_from_db(argv[2]);
 		if (ret == -1) {
 			printf("get certinfo from db failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--delcert") == 0) {
 		ret = __del_certinfo_from_db(argv[2]);
 		if (ret == -1) {
 			printf("del certinfo from db failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--check") == 0) {
 		ret = __check_manifest_validation(argv[2]);
 		if (ret == -1) {
 			printf("check manifest failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--category") == 0) {
 		ret = __get_app_category_list(argv[2]);
 		if (ret == -1) {
 			printf("get app category list failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--metadata") == 0) {
 		ret = __get_app_metadata_list(argv[2]);
 		if (ret == -1) {
 			printf("get app metadata list failed\n");
-			return -1;
+			goto end;
 		}
 	}  else if (strcmp(argv[1], "--appcontrol") == 0) {
 		ret = __get_app_control_list(argv[2]);
 		if (ret == -1) {
 			printf("get app control list failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--getvisibility") == 0) {
 		ret = __get_app_visibility(argv[2]);
 		if (ret == -1) {
 			printf("get app visibility failed\n");
-			return -1;
+			goto end;
 		}
 	} else if (strcmp(argv[1], "--setvisibility") == 0) {
 		ret = __set_app_visibility(argv[2]);
 		if (ret == -1) {
 			printf("set app visibility failed\n");
-			return -1;
+			goto end;
 		}
 	} else
 		__print_usage();
 
-	return 0;
+end:
+
+	gettimeofday(&tv, NULL);
+	endtime = tv.tv_sec * 1000l + tv.tv_usec / 1000l;
+
+	printf("spend time for pkginfo is [%d]ms\n", (int)(endtime - starttime));
+
+	return ret;
 }

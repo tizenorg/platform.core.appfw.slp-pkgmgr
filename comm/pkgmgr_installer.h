@@ -65,7 +65,8 @@ enum {
 	PKGMGR_REQ_UNINSTALL = 2,
 	PKGMGR_REQ_CLEAR = 3,
 	PKGMGR_REQ_MOVE = 4,
-	PKGMGR_REQ_RECOVER = 5
+	PKGMGR_REQ_RECOVER = 5,
+	PKGMGR_REQ_REINSTALL = 6
 };
 
 enum {
@@ -190,6 +191,9 @@ int main(int argc, char **argv)
 		case PKGMGR_REQ_RECOVER:
 			// Do recovere processing
 			break;
+		case PKGMGR_REQ_REINSTALL:
+			// Do reinstall processing
+			break;
 		default:
 			goto CLEANUP_END;
 	}
@@ -303,6 +307,40 @@ int main(int argc, char **argv)
 @endcode
  */
 const char *pkgmgr_installer_get_license_path(pkgmgr_installer *pi);
+
+/**
+	@brief		Get a optional data
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		optional data
+	@retval		NULL	on function failure
+	@remark		Returned string must not be modified.
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	char *optional_data = NULL;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	optional_data = (char *) pkgmgr_installer_get_optional_data(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+@endcode
+ */
+const char *pkgmgr_installer_get_optional_data(pkgmgr_installer *pi);
 
 /**
 	@brief		Get if a request is with quite mode or not

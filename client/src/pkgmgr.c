@@ -476,9 +476,6 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	if (optional_file) {
 		if (strlen(optional_file) >= PKG_STRING_LEN_MAX)
 			return PKGMGR_R_EINVAL;
-
-		if (access(optional_file, F_OK) != 0)
-			return PKGMGR_R_EINVAL;
 	}
 
 	/* 2. get installer path using pkg_path */
@@ -517,7 +514,12 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 		argv[argcnt++] = strdup(descriptor_path);
 	/* argv[4] */
 	argv[argcnt++] = strdup(pkg_path);
-	/* argv[5] -q option should be located at the end of command !! */
+	/* argv[(5)] if exists */
+	if (optional_file){
+		argv[argcnt++] = strdup("-o");
+		argv[argcnt++] = strdup(optional_file);
+	}
+	/* argv[6] -q option should be located at the end of command !! */
 	if (mode == PM_QUIET)
 		argv[argcnt++] = strdup("-q");
 
