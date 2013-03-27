@@ -574,9 +574,8 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	return req_id;
 }
 
-API int pkgmgr_client_reinstall(pkgmgr_client * pc, const char *pkg_type,
-			      const char *descriptor_path, const char *pkg_path,
-			      const char *optional_file, pkgmgr_mode mode,
+API int pkgmgr_client_reinstall(pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
+				  const char *optional_file, pkgmgr_mode mode,
 			      pkgmgr_handler event_cb, void *data)
 {
 	char *pkgtype = NULL;
@@ -602,35 +601,20 @@ API int pkgmgr_client_reinstall(pkgmgr_client * pc, const char *pkg_type,
 
 
 	/* 1. check argument */
-	if (descriptor_path) {
-		retv_if(strlen(descriptor_path) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL);
-		retv_if(access(descriptor_path, F_OK) != 0, PKGMGR_R_EINVAL);
-	}
-
-	if (pkg_path == NULL)
-		return PKGMGR_R_EINVAL;
-	else {
-		retv_if(strlen(pkg_path) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL);
-		retv_if(access(pkg_path, F_OK) != 0, PKGMGR_R_EINVAL);
-	}
-
+	retv_if(pkgid == NULL, PKGMGR_R_EINVAL);
+	retv_if(strlen(pkgid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL);
 	if (optional_file) {
-		retv_if(strlen(optional_file) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL);
-		retv_if(access(optional_file, F_OK) != 0, PKGMGR_R_EINVAL);
+		if (strlen(optional_file) >= PKG_STRING_LEN_MAX)
+			return PKGMGR_R_EINVAL;
 	}
 
 	/* 2. get installer path using pkg_path */
-	if (pkg_type) {
-		installer_path = _get_backend_path_with_type(pkg_type);
-		pkgtype = strdup(pkg_type);
-	} else {
-		installer_path = _get_backend_path(pkg_path);
-		pkgtype = __get_type_from_path(pkg_path);
-	}
+	installer_path = _get_backend_path_with_type(pkg_type);
+	pkgtype = strdup(pkg_type);
 	tryvm_if(installer_path == NULL, ret = PKGMGR_R_EINVAL, "installer_path is null");
 
 	/* 3. generate req_key */
-	req_key = __get_req_key(pkg_path);
+	req_key = __get_req_key(pkgid);
 
 	/* 4. add callback info - add callback info to pkgmgr_client */
 	req_id = _get_request_id();
@@ -646,11 +630,14 @@ API int pkgmgr_client_reinstall(pkgmgr_client * pc, const char *pkg_type,
 	argv[argcnt++] = req_key;
 	/* argv[3] */
 	argv[argcnt++] = strdup("-r");
-	/* argv[(4)] if exists */
-	if (descriptor_path)
-		argv[argcnt++] = strdup(descriptor_path);
 	/* argv[4] */
-	argv[argcnt++] = strdup(pkg_path);
+	argv[argcnt++] = strdup(pkgid);
+	/* argv[(5)] if exists */
+	if (optional_file){
+		argv[argcnt++] = strdup("-o");
+		argv[argcnt++] = strdup(optional_file);
+	}
+
 	/* argv[5] -q option should be located at the end of command !! */
 	if (mode == PM_QUIET)
 		argv[argcnt++] = strdup("-q");
@@ -677,7 +664,7 @@ API int pkgmgr_client_reinstall(pkgmgr_client * pc, const char *pkg_type,
 	/******************* end of quote ************************/
 
 	/* 6. request install */
-	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_INSTALLER, pkgtype, pkg_path, args, cookie, 1);
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_INSTALLER, pkgtype, pkgid, args, cookie, 1);
 	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed");
 
 	ret = req_id;

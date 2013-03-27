@@ -259,7 +259,6 @@ int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
  *
  * @param[in]	pc	pkgmgr_client
  * @param[in]	pkg_type		package type
- * @param[in]	descriptor_path	full path that descriptor is located
  * @param[in]	pkg_path		full path that package file is located
  * @param[in]	optional_file	optional file which is used for installation
  * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
@@ -270,8 +269,7 @@ int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ECOMM	communication error
 */
-int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type,
-			    const char *descriptor_path, const char *pkg_path,
+int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type, const char *pkgid,
 			    const char *optional_file, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data);
 

@@ -717,7 +717,7 @@ static int __process_request()
 		break;
 
 	case REINSTALL_REQ:
-		if (data.pkg_type[0] == '\0' || data.pkg_path[0] == '\0') {
+		if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
 			printf("Please provide the arguments.\n");
 			printf("use -h option to see usage\n");
 			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
@@ -731,20 +731,9 @@ static int __process_request()
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			break;
 		}
-		if (data.quiet == 0)
-			mode = PM_DEFAULT;
-		else
-			mode = PM_QUIET;
-		if (data.des_path[0] == '\0')
-			ret =
-				pkgmgr_client_reinstall(pc, data.pkg_type, NULL,
-						  data.pkg_path, NULL, mode,
-						  __return_cb, pc);
-		else
-			ret =
-				pkgmgr_client_reinstall(pc, data.pkg_type,
-						  data.des_path, data.pkg_path,
-						  NULL, mode, __return_cb, pc);
+
+		mode = PM_QUIET;
+		ret = pkgmgr_client_reinstall(pc, data.pkg_type, data.pkgid, NULL, mode, __return_cb, pc);
 		if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			if (access(data.pkg_path, F_OK) != 0)
