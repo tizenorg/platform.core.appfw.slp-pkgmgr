@@ -1,6 +1,14 @@
 <manifest>
 	<define>
 		<domain name="pkgmgr"/>
+		<request>
+			<smack request="dbus" type="rwx"/>
+			<smack request="system::homedir" type="rwxat"/>
+			<smack request="system::media" type="rwxat"/>
+			<smack request="ail::db" type="rwx"/>
+			<smack request="xorg" type="rwx"/>
+			<smack request="system::vconf" type="rwxat"/>
+		</request>
 	</define>
 	<request>
 		<domain name="pkgmgr"/>
@@ -10,5 +18,6 @@
 		<filesystem path="/usr/bin/pkgcmd" exec_label="pkgmgr"/>
 		<filesystem path="/usr/bin/pkginfo" exec_label="pkgmgr"/>
 		<filesystem path="/usr/lib/libpkgmgr_parser_lib_sample.so" label="_"/>
+		<filesystem path="/usr/share/dbus-1/services/com.samsung.slp.pkgmgr.service" label="_" exec_label="none"/>
 	</assign>
 </manifest>

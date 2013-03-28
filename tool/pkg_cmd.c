@@ -471,8 +471,8 @@ static void __print_usage()
 
 	printf("Usage: pkgcmd [options] (--quiet)\n");
 	printf("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-q)\n");
-	printf("pkgcmd -u -t <pkg type> -n <pkg name> (-q)\n");
-	printf("pkgcmd -r -t <pkg type> -p <pkg name> (-q)\n");
+	printf("pkgcmd -u -t <pkg type> -n <pkgid> (-q)\n");
+	printf("pkgcmd -r -t <pkg type> -n <pkgid> \n");
 	printf("pkgcmd -l (-t <pkg type>) \n");
 	printf("pkgcmd -s -t <pkg type> -p <pkg path> (-q)\n");
 	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n");
