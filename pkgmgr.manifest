@@ -18,6 +18,6 @@
 		<filesystem path="/usr/bin/pkgcmd" exec_label="pkgmgr"/>
 		<filesystem path="/usr/bin/pkginfo" exec_label="pkgmgr"/>
 		<filesystem path="/usr/lib/libpkgmgr_parser_lib_sample.so" label="_"/>
-		<filesystem path="/usr/share/dbus-1/services/com.samsung.slp.pkgmgr.service" label="_" exec_label="none"/>
+		<filesystem path="/usr/share/dbus-1/services/org.tizen.slp.pkgmgr.service" label="_" exec_label="none"/>
 	</assign>
 </manifest>
