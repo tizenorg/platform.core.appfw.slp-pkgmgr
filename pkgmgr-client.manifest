@@ -4,9 +4,6 @@
                 <provide>
                         <label name="pkgmgr-client::db"/>
                 </provide>
-                <permit>
-						<smack permit="pkgmgr" type="rwx"/>
-                </permit>
         </define>
 	<request>
 		<domain name="pkgmgr-client"/>
