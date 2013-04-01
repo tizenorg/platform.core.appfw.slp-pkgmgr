@@ -11,6 +11,7 @@
 			<mime name="application/vnd.wac.widget-sharing"/>
 			<mime name="application/x-rpm"/>
 			<mime name="application/x-redhat-package-manager"/>
+			<mime name="application/vnd.tizen.package"/>
 		</application-service>
 	</ui-application>
 </manifest>
