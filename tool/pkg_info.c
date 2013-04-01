@@ -133,10 +133,67 @@ static void __print_usage()
 	printf("\tpkginfo --app-flt\n\n");
 	printf("To add package filter values [Multiple values can be added]\n");
 	printf("\tpkginfo --pkg-flt\n\n");
+	printf("To add metadata filter values\n");
+	printf("\tpkginfo --metadata-flt\n\n");
 	printf("To get guest mode visibility of a particular application\n");
 	printf("\tpkginfo --getvisibility <appid>\n\n");
 	printf("To set guest mode visibility of a particular application\n");
 	printf("\tpkginfo --setvisibility <appid>\n\n");
+}
+
+static int __app_list_cb(pkgmgrinfo_appinfo_h handle, void *user_data)
+{
+	char *appid = NULL;
+	pkgmgrinfo_appinfo_get_appid(handle, &appid);
+	printf("appid : %s\n", appid);
+	return 0;
+}
+
+static int __add_metadata_filter()
+{
+	int ret = 0;
+	pkgmgrinfo_appinfo_metadata_filter_h handle;
+	char *key = NULL;
+	char *value = NULL;
+
+	ret = pkgmgrinfo_appinfo_metadata_filter_create(&handle);
+	if (ret != PMINFO_R_OK){
+		printf("pkgmgrinfo_appinfo_metadata_filter_create() failed\n");
+		return ret;
+	}
+
+	printf("enter metadata - key\n");
+	key = __get_string_input_data();
+	printf("enter metadata - value\n");
+	value = __get_string_input_data();
+	if(strlen(value) == 0)
+		value = NULL;
+
+	printf("filter condition : key=[%s], value=[%s]\n", key, value);
+
+	ret = pkgmgrinfo_appinfo_metadata_filter_add(handle, key, value);
+	if (ret != PMINFO_R_OK){
+		printf("pkgmgrinfo_appinfo_metadata_filter_add() failed\n");
+		goto err;
+	}
+
+	ret = pkgmgrinfo_appinfo_metadata_filter_foreach(handle, __app_list_cb, NULL);
+	if (ret != PMINFO_R_OK){
+		printf("pkgmgrinfo_appinfo_metadata_filter_add() failed\n");
+		goto err;
+	}
+
+err:
+	pkgmgrinfo_appinfo_metadata_filter_destroy(handle);
+	if (key) {
+		free(key);
+		key = NULL;
+	}
+	if (value) {
+		free(value);
+		value = NULL;
+	}
+	return ret;
 }
 
 static int __add_app_filter()
@@ -1825,6 +1882,14 @@ int main(int argc, char *argv[])
 			}
 		} else if (strcmp(argv[1], "--pkg-flt") == 0) {
 			ret = __add_pkg_filter();
+			if (ret == -1) {
+				printf("Adding pkg filter failed\n");
+				goto end;
+			} else {
+				goto end;
+			}
+		} else if (strcmp(argv[1], "--metadata-flt") == 0) {
+			ret = __add_metadata_filter();
 			if (ret == -1) {
 				printf("Adding pkg filter failed\n");
 				goto end;

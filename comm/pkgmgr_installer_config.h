@@ -32,7 +32,7 @@ extern "C" {
 #endif
 
 /* Supported options */
-const char *short_opts = "k:l:i:d:c:m:t:o:rq";
+const char *short_opts = "k:l:i:d:c:m:t:o:r:q";
 const struct option long_opts[] = {
 	{ "session-id", 1, NULL, 'k' },
 	{ "license-path", 1, NULL, 'l' },
