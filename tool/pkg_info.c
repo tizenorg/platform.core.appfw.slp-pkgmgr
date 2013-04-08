@@ -1324,6 +1324,9 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	char *pkgid;
 	char *pkg_type;
 	char *pkg_version;
+	bool preload = 0;
+	int installed_time = -1;
+
 	ret = pkgmgr_pkginfo_get_pkgid(handle, &pkgid);
 	if(ret < 0) {
 		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
@@ -1336,9 +1339,19 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	if(ret < 0) {
 		printf("pkgmgr_pkginfo_get_version() failed\n");
 	}
+	ret = pkgmgr_pkginfo_is_preload(handle, &preload);
+	if(ret < 0) {
+		printf("pkgmgr_pkginfo_is_preload() failed\n");
+	}
+	ret = pkgmgr_pkginfo_get_installed_time(handle, &installed_time);
+	if(ret < 0) {
+		printf("pkgmgr_pkginfo_get_installed_time() failed\n");
+	}
+
+
 	printf("---------------------------------------\n");
-	printf("pkg_type [%s]\tpkgid [%s]\tversion [%s]\n", pkg_type,
-	       pkgid, pkg_version);
+	printf("pkg_type [%s]\tpkgid [%s]\tversion [%s]\tpreload [%d]\tinstalled_time [%d]\n", pkg_type,
+	       pkgid, pkg_version, preload, installed_time);
 
 	printf("**List of Ui-Apps**\n");
 	ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, app_func, (void *)test_data);
