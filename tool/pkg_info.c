@@ -1862,6 +1862,9 @@ int main(int argc, char *argv[])
 	long endtime;
 	struct timeval tv;
 
+	gettimeofday(&tv, NULL);
+	starttime = tv.tv_sec * 1000l + tv.tv_usec / 1000l;
+
 	locale = vconf_get_str(VCONFKEY_LANGSET);
 	if (locale == NULL) {
 		printf("locale is NULL\n");
@@ -1871,8 +1874,6 @@ int main(int argc, char *argv[])
 	else
 		printf("Locale is %s\n", locale);
 
-	gettimeofday(&tv, NULL);
-	starttime = tv.tv_sec * 1000l + tv.tv_usec / 1000l;
 
 	free(locale);
 	locale = NULL;

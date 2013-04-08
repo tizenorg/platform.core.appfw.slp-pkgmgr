@@ -1226,8 +1226,11 @@ pop:
 
 			if (strcmp(item->pkg_type, "tpk") == 0) {
 				ret = __is_efl_tpk_app(item->pkgid);
-				if (ret == 1)
+				if (ret == 1) {
+					if (backend_cmd)
+						free(backend_cmd);
 					backend_cmd = _get_backend_cmd("efltpk");
+				}
 			}
 
 			if (NULL == backend_cmd)
