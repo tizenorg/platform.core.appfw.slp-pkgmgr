@@ -973,9 +973,11 @@ static int __set_pkginfo_in_db(char *pkgid)
 	int location = -1;
 	char *locale = NULL;
 	pkgmgr_pkgdbinfo_h handle = NULL;
-	ret = pkgmgr_create_pkgdbinfo(pkgid, &handle);
+	INSTALL_LOCATION storage = 0;
+
+	ret = pkgmgrinfo_create_pkgdbinfo(pkgid, &handle);
 	if (ret < 0) {
-		printf("pkgmgr_create_pkgdbinfo failed\n");
+		printf("pkgmgrinfo_create_pkgdbinfo failed\n");
 		return -1;
 	}
 	while (choice != 0)
@@ -992,28 +994,29 @@ static int __set_pkginfo_in_db(char *pkgid)
 		printf("8 --> pkg removable\n");
 		printf("9 --> pkg preload\n");
 		printf("10 --> pkg size\n");
+		printf("11 --> pkg installed storage\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
-			ret = pkgmgr_save_pkgdbinfo(handle);
+			ret = pkgmgrinfo_save_pkgdbinfo(handle);
 			if (ret < 0) {
-				printf("pkgmgr_save_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_save_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				return -1;
 			}
-			ret = pkgmgr_destroy_pkgdbinfo(handle);
+			ret = pkgmgrinfo_destroy_pkgdbinfo(handle);
 			if (ret < 0) {
-				printf("pkgmgr_destroy_pkgdbinfo failed\n");
+				printf("pkgmgrinfo_destroy_pkgdbinfo failed\n");
 				return -1;
 			}
 			break;
 		case 1:
 			printf("Enter type: \n");
 			char *type = __get_string_input_data();
-			ret = pkgmgr_set_type_to_pkgdbinfo(handle, type);
+			ret = pkgmgrinfo_set_type_to_pkgdbinfo(handle, type);
 			if (ret < 0) {
-				printf("pkgmgr_set_type_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_type_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				free(type);
 				return -1;
 			}
@@ -1022,10 +1025,10 @@ static int __set_pkginfo_in_db(char *pkgid)
 		case 2:
 			printf("Enter version: \n");
 			char *version = __get_string_input_data();
-			ret = pkgmgr_set_version_to_pkgdbinfo(handle, version);
+			ret = pkgmgrinfo_set_version_to_pkgdbinfo(handle, version);
 			if (ret < 0) {
-				printf("pkgmgr_set_version_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_version_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				free(version);
 				return -1;
 			}
@@ -1034,10 +1037,10 @@ static int __set_pkginfo_in_db(char *pkgid)
 		case 3:
 			printf("Enter install location [0:internal | 1:external]: \n");
 			location = __get_integer_input_data();
-			ret = pkgmgr_set_install_location_to_pkgdbinfo(handle, location);
+			ret = pkgmgrinfo_set_install_location_to_pkgdbinfo(handle, location);
 			if (ret < 0) {
-				printf("pkgmgr_set_install_location_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_install_location_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				return -1;
 			}
 			break;
@@ -1047,12 +1050,12 @@ static int __set_pkginfo_in_db(char *pkgid)
 			printf("Enter locale ['def' for default]: \n");
 			locale = __get_string_input_data();
 			if (strcmp(locale, "def") == 0)
-				ret = pkgmgr_set_label_to_pkgdbinfo(handle, label, NULL);
+				ret = pkgmgrinfo_set_label_to_pkgdbinfo(handle, label, NULL);
 			else
-				ret = pkgmgr_set_label_to_pkgdbinfo(handle, label, locale);
+				ret = pkgmgrinfo_set_label_to_pkgdbinfo(handle, label, locale);
 			if (ret < 0) {
-				printf("pkgmgr_set_label_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_label_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				free(locale);
 				free(label);
 				return -1;
@@ -1066,12 +1069,12 @@ static int __set_pkginfo_in_db(char *pkgid)
 			printf("Enter locale ['def' for default]: \n");
 			locale = __get_string_input_data();
 			if (strcmp(locale, "def") == 0)
-				ret = pkgmgr_set_icon_to_pkgdbinfo(handle, icon, NULL);
+				ret = pkgmgrinfo_set_icon_to_pkgdbinfo(handle, icon, NULL);
 			else
-				ret = pkgmgr_set_icon_to_pkgdbinfo(handle, icon, locale);
+				ret = pkgmgrinfo_set_icon_to_pkgdbinfo(handle, icon, locale);
 			if (ret < 0) {
-				printf("pkgmgr_set_icon_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_icon_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				free(locale);
 				free(icon);
 				return -1;
@@ -1085,12 +1088,12 @@ static int __set_pkginfo_in_db(char *pkgid)
 			printf("Enter locale ['def' for default]: \n");
 			locale = __get_string_input_data();
 			if (strcmp(locale, "def") == 0)
-				ret = pkgmgr_set_description_to_pkgdbinfo(handle, description, NULL);
+				ret = pkgmgrinfo_set_description_to_pkgdbinfo(handle, description, NULL);
 			else
-				ret = pkgmgr_set_description_to_pkgdbinfo(handle, description, locale);
+				ret = pkgmgrinfo_set_description_to_pkgdbinfo(handle, description, locale);
 			if (ret < 0) {
-				printf("pkgmgr_set_description_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_description_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				free(locale);
 				free(description);
 				return -1;
@@ -1108,12 +1111,12 @@ static int __set_pkginfo_in_db(char *pkgid)
 			printf("Enter author href: \n");
 			char *author_href = __get_string_input_data();
 			if (strcmp(locale, "def") == 0)
-				ret = pkgmgr_set_author_to_pkgdbinfo(handle, author_name, author_email, author_href, NULL);
+				ret = pkgmgrinfo_set_author_to_pkgdbinfo(handle, author_name, author_email, author_href, NULL);
 			else
-				ret = pkgmgr_set_author_to_pkgdbinfo(handle, author_name, author_email, author_href, locale);
+				ret = pkgmgrinfo_set_author_to_pkgdbinfo(handle, author_name, author_email, author_href, locale);
 			if (ret < 0) {
-				printf("pkgmgr_set_author_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_author_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				free(locale);
 				free(author_name);
 				free(author_email);
@@ -1128,34 +1131,44 @@ static int __set_pkginfo_in_db(char *pkgid)
 		case 8:
 			printf("Enter removable [0:false | 1:true]: \n");
 			removable = __get_integer_input_data();
-			ret = pkgmgr_set_removable_to_pkgdbinfo(handle, removable);
+			ret = pkgmgrinfo_set_removable_to_pkgdbinfo(handle, removable);
 			if (ret < 0) {
-				printf("pkgmgr_set_removable_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_removable_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				return -1;
 			}
 			break;
 		case 9:
 			printf("Enter preload [0:false | 1:true]: \n");
 			preload = __get_integer_input_data();
-			ret = pkgmgr_set_preload_to_pkgdbinfo(handle, preload);
+			ret = pkgmgrinfo_set_preload_to_pkgdbinfo(handle, preload);
 			if (ret < 0) {
-				printf("pkgmgr_set_preload_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_preload_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				return -1;
 			}
 			break;
 		case 10:
 			printf("Enter size in MB \n");
 			char *size = __get_string_input_data();
-			ret = pkgmgr_set_size_to_pkgdbinfo(handle, size);
+			ret = pkgmgrinfo_set_size_to_pkgdbinfo(handle, size);
 			if (ret < 0) {
-				printf("pkgmgr_set_size_to_pkgdbinfo failed\n");
-				pkgmgr_destroy_pkgdbinfo(handle);
+				printf("pkgmgrinfo_set_size_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
 				free(size);
 				return -1;
 			}
 			free(size);
+			break;
+		case 11:
+			printf("Enter insatlled storage [ 0:INTERNAL | 1:EXTERNAL ] \n");
+			storage = __get_integer_input_data();
+			ret = pkgmgrinfo_set_installed_storage_to_pkgdbinfo(handle, storage);
+			if (ret < 0) {
+				printf("pkgmgrinfo_set_installed_storage_to_pkgdbinfo failed\n");
+				pkgmgrinfo_destroy_pkgdbinfo(handle);
+				return -1;
+			}
 			break;
 		default:
 			printf("Invalid number entered\n");
