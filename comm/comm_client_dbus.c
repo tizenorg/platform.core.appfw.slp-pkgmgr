@@ -268,10 +268,15 @@ comm_client_request(
 	/* Send message */
 	if (is_block == 1){
 		if(!dbus_connection_send_with_reply_and_block(cc->conn, msg,
-							      5000, NULL)) {
-			r = COMM_RET_ERROR; 
-			ERR("dbus_connection_send_with_reply_and_block fail");
-			goto ERROR_CLEANUP;
+							      10000, NULL)) {
+			ERR("try send msg to dbus by timeout");
+			sleep(1);
+			if(!dbus_connection_send_with_reply_and_block(cc->conn, msg,
+									  10000, NULL)) {
+				r = COMM_RET_ERROR;
+				ERR("dbus_connection_send_with_reply_and_block fail");
+				goto ERROR_CLEANUP;
+			}
 		}
 	} else {
 		if (!dbus_connection_send(cc->conn, msg, NULL)) {
