@@ -257,6 +257,9 @@ static int __return_cb(int req_id, const char *pkg_type,
 		       req_id, pkg_type, pkgid, key, val);
 
 	if (strncmp(key, "end", strlen("end")) == 0) {
+		if ((strncmp(val, "fail", strlen("fail")) == 0) && data.result == 0){
+			data.result = PKGCMD_ERR_FATAL_ERROR;
+		}
 		g_main_loop_quit(main_loop);
 	}
 
