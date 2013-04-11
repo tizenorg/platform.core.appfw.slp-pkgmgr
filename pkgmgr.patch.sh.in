@@ -1,0 +1,5 @@
+echo "--------------------------------------"
+echo "Update package database..............."
+echo "--------------------------------------"
+/bin/rm /opt/dbspace/.pkgmgr_parser.db
+/usr/bin/pkg_initdb

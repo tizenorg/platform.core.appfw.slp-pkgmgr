@@ -1,7 +1,7 @@
 #sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.2.73
+Version:    0.2.74
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -101,6 +101,7 @@ rm -rf %{buildroot}
 
 mkdir -p /usr/etc/package-manager/backend
 mkdir -p /usr/etc/package-manager/backendlib
+mkdir -p /etc/opt/upgrade
 
 # For pkgmgr-install:
 # Update mime database to support package mime types
@@ -140,6 +141,7 @@ mkdir -p /usr/etc/package-manager/server
 %exclude %{_includedir}/pkgmgr/comm_status_broadcast_server.h
 %exclude %{_libdir}/libpkgmgr_backend_lib_sample.so
 %exclude /usr/etc/package-manager/server/queue_status
+/etc/opt/upgrade/pkgmgr.patch.sh
 
 %files client
 %manifest pkgmgr-client.manifest
