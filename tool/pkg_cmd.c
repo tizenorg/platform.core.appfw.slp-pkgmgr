@@ -108,7 +108,7 @@ static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option);
 static int __app_list_cb(const pkgmgr_appinfo_h handle, void *user_data);
 
 /* Supported options */
-const char *short_options = "iurmcCkaADL:lsd:p:t:n:T:qh";
+const char *short_options = "iurmcCkaADL:lsd:p:t:n:T:S:qh";
 const struct option long_options[] = {
 	{"install", 0, NULL, 'i'},
 	{"uninstall", 0, NULL, 'u'},
@@ -128,6 +128,7 @@ const struct option long_options[] = {
 	{"package-type", 1, NULL, 't'},
 	{"package-name", 1, NULL, 'n'},
 	{"move-type", 1, NULL, 'T'},
+	{"csc", 1, NULL, 'S'},
 	{"quiet", 0, NULL, 'q'},
 	{"help", 0, NULL, 'h'},
 	{0, 0, 0, 0}		/* sentinel */
@@ -137,6 +138,7 @@ enum pm_tool_request_e {
 	INSTALL_REQ = 1,
 	UNINSTALL_REQ,
 	REINSTALL_REQ,
+	CSC_REQ,
 	CLEAR_REQ,
 	MOVE_REQ,
 	ACTIVATE_REQ,
@@ -244,13 +246,25 @@ static int __return_cb(int req_id, const char *pkg_type,
 	if (strncmp(key, "error", strlen("error")) == 0) {
 		int ret_val;
 		char *errstr = NULL;
+		char delims[] = ":";
+		char *extra_str = NULL;
+		char *ret_result = NULL;
 
 		ret_val = atoi(val);
 		__error_no_to_string(ret_val, &errstr);
 		data.result = ret_val;
 
-		printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error_message[%s]\n",
-				   req_id, pkg_type, pkgid, key, ret_val, errstr);
+		ret_result = strtok(val, delims);
+		ret_result = strtok(NULL, delims);
+		if (ret_result){
+			extra_str = strdup(ret_result);
+			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error message: %s:%s\n",
+					   req_id, pkg_type, pkgid, key, ret_val, errstr, extra_str);
+			free(extra_str);
+		}
+		else
+			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error message: %s\n",
+					   req_id, pkg_type, pkgid, key, ret_val, errstr);
 	} else
 		printf("__return_cb req_id[%d] pkg_type[%s] "
 		       "pkgid[%s] key[%s] val[%s]\n",
@@ -923,19 +937,22 @@ static int __process_request()
 		ret = pkgmgr_pkginfo_get_pkginfo(data.pkgid, &handle);
 		if (ret < 0) {
 			printf("Failed to get handle\n");
-			return -1;
+			data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
+			return  0;
 		}
 		ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
 		if (ret < 0) {
 			printf("pkgmgr_appinfo_get_list() failed\n");
 			pkgmgr_pkginfo_destroy_pkginfo(handle);
-			return -1;
+			data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
+			return  0;
 		}
 		ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
 		if (ret < 0) {
 			printf("pkgmgr_appinfo_get_list() failed\n");
 			pkgmgr_pkginfo_destroy_pkginfo(handle);
-			return -1;
+			data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
+			return  0;
 		}
 		pkgmgr_pkginfo_destroy_pkginfo(handle);
 		ret = 0;
@@ -1000,6 +1017,12 @@ static int __process_request()
 		}
 		printf("Either pkgid or pkgpath should be supplied\n");
 		ret = -1;
+		break;
+
+	case CSC_REQ:
+		ret = pkgmgr_client_request_service(PM_REQUEST_CSC, NULL, NULL, NULL, data.des_path, NULL, NULL, (void *)data.pkg_path);
+		if (ret < 0)
+			data.result = PKGCMD_ERR_FATAL_ERROR;
 		break;
 
 	case HELP_REQ:
@@ -1090,6 +1113,13 @@ int main(int argc, char *argv[])
 			data.request = MOVE_REQ;
 			break;
 
+		case 'S': /* csc packages */
+			data.request = CSC_REQ;
+			if (optarg)
+				strncpy(data.des_path, optarg, PKG_NAME_STRING_LEN_MAX);
+			printf("csc file is %s\n", data.des_path);
+			break;
+
 		case 'A':	/* activate */
 			data.request = ACTIVATE_REQ;
 			break;
@@ -1134,7 +1164,7 @@ int main(int argc, char *argv[])
 				printf("conversion of relative path to absolute path failed\n");
 				return -1;
 			}
-			printf("package path is %s\n", data.pkg_path);
+			printf("path is %s\n", data.pkg_path);
 			break;
 
 		case 'd':	/* descriptor path */
@@ -1181,7 +1211,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	ret = __process_request();
-	if (ret == -1)
+	if ((ret == -1) && (data.result != 0))
 		data.result = PKGCMD_ERR_ARGUMENT_INVALID;
 
 	if (ret != 0) {

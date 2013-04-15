@@ -36,6 +36,7 @@
 #include <vconf.h>
 #include <db-util.h>
 #include <pkgmgr-info.h>
+#include <iniparser.h>
 
 #include "package-manager.h"
 #include "pkgmgr-internal.h"
@@ -88,6 +89,131 @@ typedef struct _iter_data {
 	void *data;
 } iter_data;
 
+typedef struct _csc_info {
+	int				count ;			/** Number of csc packages */
+	char 		**	type ;			/** package type */
+	char 		**  description ;	/** description */
+} csc_info ;
+
+static int __xsystem(const char *argv[])
+{
+	int status = 0;
+	pid_t pid;
+	pid = fork();
+	switch (pid) {
+	case -1:
+		perror("fork failed");
+		return -1;
+	case 0:
+		/* child */
+		execvp(argv[0], (char *const *)argv);
+		_exit(-1);
+	default:
+		/* parent */
+		break;
+	}
+	if (waitpid(pid, &status, 0) == -1) {
+		perror("waitpid failed");
+		return -1;
+	}
+	if (WIFSIGNALED(status)) {
+		perror("signal");
+		return -1;
+	}
+	if (!WIFEXITED(status)) {
+		/* shouldn't happen */
+		perror("should not happen");
+		return -1;
+	}
+	return WEXITSTATUS(status);
+}
+
+static int __csc_process(const char *csc_path, const char *result_path)
+{
+	int ret = 0;
+	int cnt = 0;
+	int count = 0;
+	int csc_fail = 0;
+	int fd = 0;
+	char *pkgtype = NULL;
+	char *des = NULL;
+	char buf[PKG_STRING_LEN_MAX] = {0,};
+	char type_buf[1024] = { 0 };
+	char des_buf[1024] = { 0 };
+	csc_info *csc = NULL;
+	FILE* file = NULL;
+
+	csc = iniparser_load(csc_path);
+	retvm_if(csc == NULL, PKGMGR_R_EINVAL, "cannot open parse file [%s]", csc_path);
+
+	file = fopen(result_path, "w");
+	retvm_if(file == NULL, PKGMGR_R_EINVAL, "cannot open result file [%s]", result_path);
+
+	count = iniparser_getint(csc, "csc packages:count", -1);
+	retvm_if(count == 0, PKGMGR_R_ERROR, "csc [%s] dont have packages", csc_path);
+
+	snprintf(buf, PKG_STRING_LEN_MAX, "[csc %d packages]\n", count);
+	fwrite(buf, 1, strlen(buf), file);
+
+	for(cnt = 1 ; cnt <= count ; cnt++)
+	{
+		snprintf(type_buf, PKG_STRING_LEN_MAX - 1, "csc packages:type_%03d", cnt);
+		snprintf(des_buf, PKG_STRING_LEN_MAX - 1, "csc packages:description_%03d", cnt);
+
+		pkgtype = iniparser_getstr(csc, type_buf);
+		des = iniparser_getstr(csc, des_buf);
+		ret = 0;
+
+		if (pkgtype == NULL) {
+			csc_fail++;
+			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d]Fail to get information[%s]\n", cnt, type_buf);
+			fwrite(buf, 1, strlen(buf), file);
+			continue;
+		} else if (des == NULL) {
+			csc_fail++;
+			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d]Fail to get information[%s]\n", cnt, des_buf);
+			fwrite(buf, 1, strlen(buf), file);
+			continue;
+		}
+
+		if (strcmp(pkgtype, "tpk") == 0) {
+			const char *ospinstaller_argv[] = { "/usr/bin/osp-installer", "-c", des, NULL };
+			ret = __xsystem(ospinstaller_argv);
+		} else if (strcmp(pkgtype, "wgt")== 0) {
+			const char *wrtinstaller_argv[] = { "/usr/bin/wrt-installer", "-c", des, NULL };
+			ret = __xsystem(wrtinstaller_argv);
+		} else {
+			csc_fail++;
+			ret = -1;
+		}
+
+		if (ret != 0)
+			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d][%s] csc result : Fail\n", cnt, pkgtype);
+		else
+			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d][%s] csc result : Sucess\n", cnt, pkgtype);
+
+		fwrite(buf, 1, strlen(buf), file);
+	}
+
+	if (csc_fail > 0) {
+		ret = PKGMGR_R_ERROR;
+		snprintf(buf, PKG_STRING_LEN_MAX, "[csc result] total : [%d], sucess : [%d]packages, fail : [%d]packages\n", count,  count-csc_fail, csc_fail);
+
+	} else {
+		ret = PKGMGR_R_OK;
+		snprintf(buf, PKG_STRING_LEN_MAX, "[csc result] total : [%d], sucess : all packages\n", count);
+
+	}
+	fwrite(buf, 1, strlen(buf), file);
+
+	iniparser_freedict(csc);
+	fflush(file);
+	fd = fileno(file);
+	fsync(fd);
+	fclose(file);
+
+	return ret;
+}
 
 static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
 			    const char *req_key, pkgmgr_handler event_cb,
@@ -1497,6 +1623,58 @@ API int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info)
 	return PKGMGR_R_OK;
 }
 
+API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
+				  pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
+			      const char *optional_file, void *optional_mode,
+			      pkgmgr_handler event_cb, void *data)
+{
+	char *installer_path;
+	char *req_key;
+	int req_id;
+	int ret;
+
+	/* Check for NULL value of service type */
+	retvm_if(service_type > PM_REQUEST_MAX, PKGMGR_R_EINVAL, "service type is not defined\n");
+
+	/* check optional_file length */
+	if (optional_file)
+		retvm_if(strlen(optional_file) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "optional_file over PKG_STRING_LEN_MAX");
+
+	/* add callback info - add callback info to pkgmgr_client if there is pc and pkgid */
+	if (pc && pkgid) {
+		pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+		retv_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL);
+		req_key = __get_req_key(pkgid);
+		req_id = _get_request_id();
+		__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
+	}
+
+	switch (service_type) {
+	case PM_REQUEST_CSC:
+		ret = __csc_process(optional_file, (char *)data);
+		if (ret < 0)
+			_LOGE("__csc_process fail \n");
+		break;
+
+	case PM_REQUEST_MOVE:
+		ret = 0;
+		break;
+
+	case PM_REQUEST_GET_SIZE:
+		ret = 0;
+		break;
+
+	default:
+		printf("Wrong Request\n");
+		ret = -1;
+		break;
+	}
+
+	return req_id;
+}
+
+
+#define __START_OF_OLD_API
 ail_cb_ret_e __appinfo_func(const ail_appinfo_h appinfo, void *user_data)
 {
 	char *type;
@@ -1520,10 +1698,6 @@ ail_cb_ret_e __appinfo_func(const ail_appinfo_h appinfo, void *user_data)
 
 	return AIL_CB_RET_CONTINUE;
 }
-
-
-
-#define __START_OF_OLD_API
 
 API int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data)
 {

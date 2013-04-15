@@ -79,6 +79,8 @@ int __get_app_id(const pkgmgrinfo_appinfo_h handle, void *user_data)
 		printf("Failed to get package\n");
 	}
 	printf("apptype [%s]\t appid [%s]\n", apptype, appid);
+
+	return 0;
 }
 
 static int __get_integer_input_data(void)

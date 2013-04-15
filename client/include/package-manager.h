@@ -205,6 +205,13 @@ typedef enum {
 	PM_DISTRIBUTOR2_SIGNER_CERT = 8,
 }pkgmgr_cert_type;
 
+typedef enum {
+	PM_REQUEST_CSC = 0,
+	PM_REQUEST_MOVE = 1,
+	PM_REQUEST_GET_SIZE = 2,
+	PM_REQUEST_MAX
+}pkgmgr_request_service_type;
+
 /**
  * @brief	This API creates pkgmgr client.
  *
@@ -454,6 +461,29 @@ pkgmgr_info *pkgmgr_client_check_pkginfo_from_file(const char *pkg_path);
  * @return	0 if success, error code(<0) if fail\n
 */
 int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
+
+/**
+ * @brief	This API installs package.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	service_type		pkgmgr_request_service_type
+ * @param[in]	pc				pkgmgr_client
+ * @param[in]	pkg_type		package type
+ * @param[in]	pkgid			package id
+ * @param[in]	optional_file		optional file which is used for checking
+ * @param[in]	optional_mode	optional mode which is used for checking
+ * @param[in]	event_cb		user callback
+ * @param[in]	data			user data
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_request_service(pkgmgr_request_service_type service_type,
+					pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
+					const char *optional_file, void *optional_mode,
+					pkgmgr_handler event_cb, void *data);
 
 /**
  * @brief	This API provides package list
