@@ -245,26 +245,24 @@ static int __return_cb(int req_id, const char *pkg_type,
 {
 	if (strncmp(key, "error", strlen("error")) == 0) {
 		int ret_val;
-		char *errstr = NULL;
 		char delims[] = ":";
 		char *extra_str = NULL;
 		char *ret_result = NULL;
 
 		ret_val = atoi(val);
-		__error_no_to_string(ret_val, &errstr);
 		data.result = ret_val;
 
 		ret_result = strtok(val, delims);
 		ret_result = strtok(NULL, delims);
 		if (ret_result){
 			extra_str = strdup(ret_result);
-			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error message: %s:%s\n",
-					   req_id, pkg_type, pkgid, key, ret_val, errstr, extra_str);
+			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error message: %s\n",
+					   req_id, pkg_type, pkgid, key, ret_val, extra_str);
 			free(extra_str);
 		}
 		else
-			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error message: %s\n",
-					   req_id, pkg_type, pkgid, key, ret_val, errstr);
+			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d]\n",
+					   req_id, pkg_type, pkgid, key, ret_val);
 	} else
 		printf("__return_cb req_id[%d] pkg_type[%s] "
 		       "pkgid[%s] key[%s] val[%s]\n",
@@ -1020,7 +1018,7 @@ static int __process_request()
 		break;
 
 	case CSC_REQ:
-		ret = pkgmgr_client_request_service(PM_REQUEST_CSC, NULL, NULL, NULL, data.des_path, NULL, NULL, (void *)data.pkg_path);
+		ret = pkgmgr_client_request_service(PM_REQUEST_CSC, 0, NULL, NULL, NULL, data.des_path, NULL, (void *)data.pkg_path);
 		if (ret < 0)
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 		break;

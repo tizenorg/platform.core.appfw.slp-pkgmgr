@@ -89,12 +89,6 @@ typedef struct _iter_data {
 	void *data;
 } iter_data;
 
-typedef struct _csc_info {
-	int				count ;			/** Number of csc packages */
-	char 		**	type ;			/** package type */
-	char 		**  description ;	/** description */
-} csc_info ;
-
 static int __xsystem(const char *argv[])
 {
 	int status = 0;
@@ -128,7 +122,7 @@ static int __xsystem(const char *argv[])
 	return WEXITSTATUS(status);
 }
 
-static int __csc_process(const char *csc_path, const char *result_path)
+static int __csc_process(const char *csc_path, char *result_path)
 {
 	int ret = 0;
 	int cnt = 0;
@@ -140,7 +134,7 @@ static int __csc_process(const char *csc_path, const char *result_path)
 	char buf[PKG_STRING_LEN_MAX] = {0,};
 	char type_buf[1024] = { 0 };
 	char des_buf[1024] = { 0 };
-	csc_info *csc = NULL;
+	dictionary *csc = NULL;
 	FILE* file = NULL;
 
 	csc = iniparser_load(csc_path);
@@ -1623,22 +1617,22 @@ API int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info)
 	return PKGMGR_R_OK;
 }
 
-API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
+API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, int service_mode,
 				  pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
-			      const char *optional_file, void *optional_mode,
-			      pkgmgr_handler event_cb, void *data)
+			      const char *custom_info, pkgmgr_handler event_cb, void *data)
 {
-	char *installer_path;
-	char *req_key;
-	int req_id;
-	int ret;
+	char *installer_path = NULL;
+	char *req_key = NULL;
+	int req_id = 0;
+	int ret =0;
 
 	/* Check for NULL value of service type */
 	retvm_if(service_type > PM_REQUEST_MAX, PKGMGR_R_EINVAL, "service type is not defined\n");
+	retvm_if(service_type < 0, PKGMGR_R_EINVAL, "service type is error\n");
 
 	/* check optional_file length */
-	if (optional_file)
-		retvm_if(strlen(optional_file) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "optional_file over PKG_STRING_LEN_MAX");
+	if (custom_info)
+		retvm_if(strlen(custom_info) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "optional_file over PKG_STRING_LEN_MAX");
 
 	/* add callback info - add callback info to pkgmgr_client if there is pc and pkgid */
 	if (pc && pkgid) {
@@ -1651,7 +1645,10 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type,
 
 	switch (service_type) {
 	case PM_REQUEST_CSC:
-		ret = __csc_process(optional_file, (char *)data);
+		retvm_if(custom_info == NULL, PKGMGR_R_EINVAL, "custom_info is NULL\n");
+		retvm_if(data == NULL, PKGMGR_R_EINVAL, "data is NULL\n");
+
+		ret = __csc_process(custom_info, (char *)data);
 		if (ret < 0)
 			_LOGE("__csc_process fail \n");
 		break;

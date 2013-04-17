@@ -463,16 +463,16 @@ pkgmgr_info *pkgmgr_client_check_pkginfo_from_file(const char *pkg_path);
 int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
 
 /**
- * @brief	This API installs package.
+ * @brief	This API requests service
  *
  * This API is for package-manager client application.\n
  *
  * @param[in]	service_type		pkgmgr_request_service_type
+ * @param[in]	service_mode 	mode which is used for addtional mode selection
  * @param[in]	pc				pkgmgr_client
  * @param[in]	pkg_type		package type
  * @param[in]	pkgid			package id
- * @param[in]	optional_file		optional file which is used for checking
- * @param[in]	optional_mode	optional mode which is used for checking
+ * @param[in]	custom_info		custom information which is used for addtional information
  * @param[in]	event_cb		user callback
  * @param[in]	data			user data
  * @return	request_id (>0) if success, error code(<0) if fail\n
@@ -480,10 +480,9 @@ int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ECOMM	communication error
 */
-int pkgmgr_client_request_service(pkgmgr_request_service_type service_type,
+int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, int service_mode,
 					pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
-					const char *optional_file, void *optional_mode,
-					pkgmgr_handler event_cb, void *data);
+					const char *custom_info, pkgmgr_handler event_cb, void *data);
 
 /**
  * @brief	This API provides package list
