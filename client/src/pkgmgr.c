@@ -1608,9 +1608,6 @@ API int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info)
 	if (info->icon_buf)
 		free(info->icon_buf);
 
-	if (info->privilege_list)
-		g_list_free(info->privilege_list);
-
 	free(info);
 	info = NULL;
 
