@@ -1,7 +1,7 @@
 #sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.2.77
+Version:    0.2.78
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -26,7 +26,6 @@ BuildRequires:  pkgmgr-info-parser
 Packager Manager client library package for packaging
 
 Requires(post): ail
-Requires(post): xkeyboard-config
 
 %package client
 Summary:    Package Manager client library develpoment package

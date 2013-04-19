@@ -252,7 +252,7 @@ static int __return_cb(int req_id, const char *pkg_type,
 		ret_val = atoi(val);
 		data.result = ret_val;
 
-		ret_result = strtok(val, delims);
+		strtok(val, delims);
 		ret_result = strtok(NULL, delims);
 		if (ret_result){
 			extra_str = strdup(ret_result);

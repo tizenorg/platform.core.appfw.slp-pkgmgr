@@ -141,10 +141,10 @@ static int __csc_process(const char *csc_path, char *result_path)
 	retvm_if(csc == NULL, PKGMGR_R_EINVAL, "cannot open parse file [%s]", csc_path);
 
 	file = fopen(result_path, "w");
-	retvm_if(file == NULL, PKGMGR_R_EINVAL, "cannot open result file [%s]", result_path);
+	tryvm_if(file == NULL, ret = PKGMGR_R_EINVAL, "cannot open result file [%s]", result_path);
 
 	count = iniparser_getint(csc, "csc packages:count", -1);
-	retvm_if(count == 0, PKGMGR_R_ERROR, "csc [%s] dont have packages", csc_path);
+	tryvm_if(count == 0, ret = PKGMGR_R_ERROR, "csc [%s] dont have packages", csc_path);
 
 	snprintf(buf, PKG_STRING_LEN_MAX, "[csc %d packages]\n", count);
 	fwrite(buf, 1, strlen(buf), file);
@@ -200,12 +200,14 @@ static int __csc_process(const char *csc_path, char *result_path)
 	}
 	fwrite(buf, 1, strlen(buf), file);
 
+catch:
 	iniparser_freedict(csc);
-	fflush(file);
-	fd = fileno(file);
-	fsync(fd);
-	fclose(file);
-
+	if (file != NULL) {
+		fflush(file);
+		fd = fileno(file);
+		fsync(fd);
+		fclose(file);
+	}
 	return ret;
 }
 
@@ -1642,8 +1644,8 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 
 	switch (service_type) {
 	case PM_REQUEST_CSC:
-		retvm_if(custom_info == NULL, PKGMGR_R_EINVAL, "custom_info is NULL\n");
-		retvm_if(data == NULL, PKGMGR_R_EINVAL, "data is NULL\n");
+		tryvm_if(custom_info == NULL, ret = PKGMGR_R_EINVAL, "custom_info is NULL\n");
+		tryvm_if(data == NULL, ret = PKGMGR_R_EINVAL, "data is NULL\n");
 
 		ret = __csc_process(custom_info, (char *)data);
 		if (ret < 0)
@@ -1664,7 +1666,11 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		break;
 	}
 
-	return req_id;
+catch:
+	if (req_key)
+		free(req_key);
+
+	return ret;
 }
 
 

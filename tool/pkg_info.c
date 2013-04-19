@@ -210,8 +210,6 @@ static int __add_metadata_filter()
 	key = __get_string_input_data();
 	printf("enter metadata - value\n");
 	value = __get_string_input_data();
-	if(strlen(value) == 0)
-		value = NULL;
 
 	printf("filter condition : key=[%s], value=[%s]\n", key, value);
 

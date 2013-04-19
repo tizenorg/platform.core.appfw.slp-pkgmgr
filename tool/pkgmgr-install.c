@@ -116,6 +116,7 @@ int main(int argc, char **argv)
 	char *mime_type;
 	char *file_path;
 	const char *extension;
+	int request_id = 0;
 
 	if (__parse_argv(argc, argv, &mime_type, &file_path)) {
 		fprintf(stderr, "Failed to parse argv!\n");
@@ -133,9 +134,14 @@ int main(int argc, char **argv)
 	int pid = fork();
 	if (pid == 0) {
 		pkgmgr_client *pc = pkgmgr_client_new(PC_REQUEST);
-		pkgmgr_client_install(pc, extension, NULL, file_path, NULL,
+		request_id = pkgmgr_client_install(pc, extension, NULL, file_path, NULL,
 							PM_DEFAULT, NULL, NULL);
-		pkgmgr_client_free(pc);
+		if (request_id < 0)
+			fprintf(stderr, "pkgmgr_client_install fail!\n");
+
+		request_id = pkgmgr_client_free(pc);
+		if (request_id < 0)
+			fprintf(stderr, "pkgmgr_client_free fail\n");
 
 		exit(0);
 	}
