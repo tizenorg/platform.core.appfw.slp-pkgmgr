@@ -43,55 +43,6 @@
 #define PKG_TOOL_VERSION	"0.1"
 #define APP_INSTALLATION_PATH_RW	"/opt/usr/apps"
 
-/* 1 -100 : Package command errors */
-/* 101-120 : reserved for Core installer */
-/* 121-140 : reserved for Web installer */
-/* 141-160 : reserved for Native installer */
-#define PKGCMD_ERR_PACKAGE_NOT_FOUND					1
-#define PKGCMD_ERR_PACKAGE_INVALID						2
-#define PKGCMD_ERR_PACKAGE_LOWER_VERSION				3
-#define PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND			4
-#define PKGCMD_ERR_MANIFEST_NOT_FOUND					11
-#define PKGCMD_ERR_MANIFEST_INVALID						12
-#define PKGCMD_ERR_CONFIG_NOT_FOUND						13
-#define PKGCMD_ERR_CONFIG_INVALID						14
-#define PKGCMD_ERR_SIGNATURE_NOT_FOUND					21
-#define PKGCMD_ERR_SIGNATURE_INVALID					22
-#define PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED		23
-#define PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND			31
-#define PKGCMD_ERR_CERTIFICATE_INVALID					32
-#define PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED	33
-#define PKGCMD_ERR_CERTIFICATE_EXPIRED					34
-#define PKGCMD_ERR_INVALID_PRIVILEGE					41
-#define PKGCMD_ERR_MENU_ICON_NOT_FOUND					51
-#define PKGCMD_ERR_FATAL_ERROR							61
-#define PKGCMD_ERR_OUT_OF_STORAGE						62
-#define PKGCMD_ERR_OUT_OF_MEMORY						63
-#define PKGCMD_ERR_ARGUMENT_INVALID						64
-
-#define PKGCMD_ERR_PACKAGE_NOT_FOUND_STR					"PACKAGE_NOT_FOUND"
-#define PKGCMD_ERR_PACKAGE_INVALID_STR						"PACKAGE_INVALID"
-#define PKGCMD_ERR_PACKAGE_LOWER_VERSION_STR				"PACKAGE_LOWER_VERSION"
-#define PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND_STR			"PACKAGE_EXECUTABLE_NOT_FOUND"
-#define PKGCMD_ERR_MANIFEST_NOT_FOUND_STR					"MANIFEST_NOT_FOUND"
-#define PKGCMD_ERR_MANIFEST_INVALID_STR						"MANIFEST_INVALID"
-#define PKGCMD_ERR_CONFIG_NOT_FOUND_STR						"CONFIG_NOT_FOUND"
-#define PKGCMD_ERR_CONFIG_INVALID_STR						"CONFIG_INVALID"
-#define PKGCMD_ERR_SIGNATURE_NOT_FOUND_STR					"SIGNATURE_NOT_FOUND"
-#define PKGCMD_ERR_SIGNATURE_INVALID_STR					"SIGNATURE_INVALID"
-#define PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED_STR		"SIGNATURE_VERIFICATION_FAILED"
-#define PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND_STR			"ROOT_CERTIFICATE_NOT_FOUND"
-#define PKGCMD_ERR_CERTIFICATE_INVALID_STR					"CERTIFICATE_INVALID"
-#define PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED_STR	"CERTIFICATE_CHAIN_VERIFICATION_FAILED"
-#define PKGCMD_ERR_CERTIFICATE_EXPIRED_STR					"CERTIFICATE_EXPIRED"
-#define PKGCMD_ERR_INVALID_PRIVILEGE_STR					"INVALID_PRIVILEGE"
-#define PKGCMD_ERR_MENU_ICON_NOT_FOUND_STR					"MENU_ICON_NOT_FOUND"
-#define PKGCMD_ERR_FATAL_ERROR_STR							"FATAL_ERROR"
-#define PKGCMD_ERR_OUT_OF_STORAGE_STR						"OUT_OF_STORAGE"
-#define PKGCMD_ERR_OUT_OF_MEMORY_STR						"OUT_OF_MEMORY"
-#define PKGCMD_ERR_ARGUMENT_INVALID_STR						"ARGUMENT_INVALID"
-#define PKGCMD_ERR_UNKNOWN_STR								"Unknown Error"
-
 static int __process_request();
 static void __print_usage();
 static int __is_authorized();
@@ -486,7 +437,7 @@ static void __print_usage()
 
 	printf("Usage: pkgcmd [options] (--quiet)\n");
 	printf("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-q)\n");
-	printf("pkgcmd -u -t <pkg type> -n <pkgid> (-q)\n");
+	printf("pkgcmd -u -n <pkgid> (-q)\n");
 	printf("pkgcmd -r -t <pkg type> -n <pkgid> \n");
 	printf("pkgcmd -l (-t <pkg type>) \n");
 	printf("pkgcmd -s -t <pkg type> -p <pkg path> (-q)\n");
@@ -693,7 +644,7 @@ static int __process_request()
 		break;
 
 	case UNINSTALL_REQ:
-		if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
+		if (data.pkgid[0] == '\0') {
 			printf("Please provide the arguments.\n");
 			printf("use -h option to see usage\n");
 			data.result = PKGCMD_ERR_ARGUMENT_INVALID;

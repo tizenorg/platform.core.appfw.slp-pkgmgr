@@ -122,6 +122,77 @@ static int __xsystem(const char *argv[])
 	return WEXITSTATUS(status);
 }
 
+static void __error_to_string(int errnumber, char **errstr)
+{
+	if (errstr == NULL)
+		return;
+	switch (errnumber) {
+	case PKGCMD_ERR_PACKAGE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_PACKAGE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_PACKAGE_INVALID:
+		*errstr = PKGCMD_ERR_PACKAGE_INVALID_STR;
+		break;
+	case PKGCMD_ERR_PACKAGE_LOWER_VERSION:
+		*errstr = PKGCMD_ERR_PACKAGE_LOWER_VERSION_STR;
+		break;
+	case PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_PACKAGE_EXECUTABLE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_MANIFEST_INVALID:
+		*errstr = PKGCMD_ERR_MANIFEST_INVALID_STR;
+		break;
+	case PKGCMD_ERR_CONFIG_NOT_FOUND:
+		*errstr = PKGCMD_ERR_CONFIG_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_CONFIG_INVALID:
+		*errstr = PKGCMD_ERR_CONFIG_INVALID_STR;
+		break;
+	case PKGCMD_ERR_SIGNATURE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_SIGNATURE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_SIGNATURE_INVALID:
+		*errstr = PKGCMD_ERR_SIGNATURE_INVALID_STR;
+		break;
+	case PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED:
+		*errstr = PKGCMD_ERR_SIGNATURE_VERIFICATION_FAILED_STR;
+		break;
+	case PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND:
+		*errstr = PKGCMD_ERR_ROOT_CERTIFICATE_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_CERTIFICATE_INVALID:
+		*errstr = PKGCMD_ERR_CERTIFICATE_INVALID_STR;
+		break;
+	case PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED:
+		*errstr = PKGCMD_ERR_CERTIFICATE_CHAIN_VERIFICATION_FAILED_STR;
+		break;
+	case PKGCMD_ERR_CERTIFICATE_EXPIRED:
+		*errstr = PKGCMD_ERR_CERTIFICATE_EXPIRED_STR;
+		break;
+	case PKGCMD_ERR_INVALID_PRIVILEGE:
+		*errstr = PKGCMD_ERR_INVALID_PRIVILEGE_STR;
+		break;
+	case PKGCMD_ERR_MENU_ICON_NOT_FOUND:
+		*errstr = PKGCMD_ERR_MENU_ICON_NOT_FOUND_STR;
+		break;
+	case PKGCMD_ERR_FATAL_ERROR:
+		*errstr = PKGCMD_ERR_FATAL_ERROR_STR;
+		break;
+	case PKGCMD_ERR_OUT_OF_STORAGE:
+		*errstr = PKGCMD_ERR_OUT_OF_STORAGE_STR;
+		break;
+	case PKGCMD_ERR_OUT_OF_MEMORY:
+		*errstr = PKGCMD_ERR_OUT_OF_MEMORY_STR;
+		break;
+	case PKGCMD_ERR_ARGUMENT_INVALID:
+		*errstr = PKGCMD_ERR_ARGUMENT_INVALID_STR;
+		break;
+	default:
+		*errstr = PKGCMD_ERR_UNKNOWN_STR;
+		break;
+	}
+}
+
 static int __csc_process(const char *csc_path, char *result_path)
 {
 	int ret = 0;
@@ -146,7 +217,9 @@ static int __csc_process(const char *csc_path, char *result_path)
 	count = iniparser_getint(csc, "csc packages:count", -1);
 	tryvm_if(count == 0, ret = PKGMGR_R_ERROR, "csc [%s] dont have packages", csc_path);
 
-	snprintf(buf, PKG_STRING_LEN_MAX, "[csc %d packages]\n", count);
+	snprintf(buf, PKG_STRING_LEN_MAX, "[result]\n");
+	fwrite(buf, 1, strlen(buf), file);
+	snprintf(buf, PKG_STRING_LEN_MAX, "count = %d\n", count);
 	fwrite(buf, 1, strlen(buf), file);
 
 	for(cnt = 1 ; cnt <= count ; cnt++)
@@ -160,15 +233,20 @@ static int __csc_process(const char *csc_path, char *result_path)
 
 		if (pkgtype == NULL) {
 			csc_fail++;
-			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d]Fail to get information[%s]\n", cnt, type_buf);
+			snprintf(buf, PKG_STRING_LEN_MAX, "%s = Fail to get pkgtype\n", type_buf);
 			fwrite(buf, 1, strlen(buf), file);
 			continue;
 		} else if (des == NULL) {
 			csc_fail++;
-			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d]Fail to get information[%s]\n", cnt, des_buf);
+			snprintf(buf, PKG_STRING_LEN_MAX, "%s = Fail to get description\n", des_buf);
 			fwrite(buf, 1, strlen(buf), file);
 			continue;
 		}
+
+		snprintf(buf, PKG_STRING_LEN_MAX, "type_%03d = %s\n", cnt, pkgtype);
+		fwrite(buf, 1, strlen(buf), file);
+		snprintf(buf, PKG_STRING_LEN_MAX, "description_%03d = %s\n", cnt, des);
+		fwrite(buf, 1, strlen(buf), file);
 
 		if (strcmp(pkgtype, "tpk") == 0) {
 			const char *ospinstaller_argv[] = { "/usr/bin/osp-installer", "-c", des, NULL };
@@ -181,24 +259,16 @@ static int __csc_process(const char *csc_path, char *result_path)
 			ret = -1;
 		}
 
-		if (ret != 0)
-			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d][%s] csc result : Fail\n", cnt, pkgtype);
+		if (ret != 0) {
+			char *errstr = NULL;
+			__error_to_string(ret, &errstr);
+			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = fail[%s]\n", cnt, pkgtype, errstr);
+		}
 		else
-			snprintf(buf, PKG_STRING_LEN_MAX, "[%03d][%s] csc result : Sucess\n", cnt, pkgtype);
+			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = success\n", cnt, pkgtype);
 
 		fwrite(buf, 1, strlen(buf), file);
 	}
-
-	if (csc_fail > 0) {
-		ret = PKGMGR_R_ERROR;
-		snprintf(buf, PKG_STRING_LEN_MAX, "[csc result] total : [%d], sucess : [%d]packages, fail : [%d]packages\n", count,  count-csc_fail, csc_fail);
-
-	} else {
-		ret = PKGMGR_R_OK;
-		snprintf(buf, PKG_STRING_LEN_MAX, "[csc result] total : [%d], sucess : all packages\n", count);
-
-	}
-	fwrite(buf, 1, strlen(buf), file);
 
 catch:
 	iniparser_freedict(csc);
@@ -411,7 +481,7 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 			_LOGE("client creation failed");
 			goto err;
 		}
-		ret = comm_client_set_status_callback(pc->info.request.cc,
+		ret = comm_client_set_status_callback(pc->info.listening.cc,
 						      __status_callback, pc);
 		if (ret < 0) {
 			_LOGE("comm_client_set_status_callback() failed - %d",
