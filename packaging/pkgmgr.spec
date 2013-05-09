@@ -1,7 +1,7 @@
 #sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.2.83
+Version:    0.2.84
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -109,6 +109,7 @@ mkdir -p /etc/opt/upgrade
 # Update mime database to support package mime types
 update-mime-database /usr/share/mime
 
+mkdir -p /usr/share/applications
 mkdir -p /opt/dbspace/
 chsmack -a 'pkgmgr::db' /opt/dbspace/.pkgmgr_parser.db*
 chsmack -a 'pkgmgr::db' /opt/dbspace/.pkgmgr_cert.db*
