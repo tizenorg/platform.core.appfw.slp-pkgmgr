@@ -42,10 +42,6 @@ extern "C" {
 #include <getopt.h>
 #include <dlog.h>
 
-#undef LOG_TAG
-#ifndef LOG_TAG
-#define LOG_TAG "PKGMGR_INSTALLER"
-#endif				/* LOG_TAG */
 
 #define _LOGE(fmt, arg...) LOGE(fmt,##arg)
 
@@ -66,7 +62,8 @@ enum {
 	PKGMGR_REQ_CLEAR = 3,
 	PKGMGR_REQ_MOVE = 4,
 	PKGMGR_REQ_RECOVER = 5,
-	PKGMGR_REQ_REINSTALL = 6
+	PKGMGR_REQ_REINSTALL = 6,
+	PKGMGR_REQ_GETSIZE = 7
 };
 
 enum {

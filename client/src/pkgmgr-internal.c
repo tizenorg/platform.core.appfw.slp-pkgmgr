@@ -32,6 +32,7 @@
 #include <xdgmime.h>
 
 #include "pkgmgr-internal.h"
+#include "pkgmgr-debug.h"
 
 #include <unistd.h>
 #include <dlfcn.h>
@@ -41,6 +42,11 @@
 
 #include "package-manager.h"
 #include <pkgmgr-info.h>
+
+#undef LOG_TAG
+#ifndef LOG_TAG
+#define LOG_TAG "PKGMGR"
+#endif				/* LOG_TAG */
 
 #define IS_WHITESPACE(CHAR) \
 	((CHAR == ' ' || CHAR == '\t' || CHAR == '\r' || CHAR == '\n') ? \

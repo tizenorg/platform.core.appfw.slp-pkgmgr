@@ -29,10 +29,8 @@
 
 #include <unistd.h>
 #include <ctype.h>
-#include <dlog.h>
 
 #include "package-manager-plugin.h"
-#include "pkgmgr-debug.h"
 
 typedef package_manager_pkg_info_t package_manager_app_info_t;
 

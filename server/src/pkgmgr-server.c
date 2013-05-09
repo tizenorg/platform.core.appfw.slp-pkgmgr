@@ -1034,6 +1034,16 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 		free(item);
 		*ret = COMM_RET_OK;
 		break;
+	case COMM_REQ_GET_SIZE:
+		err = _pm_queue_push(item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		__set_backend_mode(p);
+		/* Free resource */
+		free(item);
+		if (err == 0)
+			g_idle_add(queue_job, NULL);
+		*ret = COMM_RET_OK;
+		break;
 	default:
 		DBG("Check your request..\n");
 		*ret = COMM_RET_ERROR;
@@ -1516,6 +1526,100 @@ pop:
 			break;
 		}
 		break;
+
+	case COMM_REQ_GET_SIZE:
+		DBG("COMM_REQ_GET_SIZE pkgid = %s\n", item->pkgid);
+		_save_queue_status(item, "processing");
+		DBG("saved queue status. Now try fork()");
+		/*save pkg type and pkg name for future*/
+		x = (pos + num_of_backends - 1) % num_of_backends;
+		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
+		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
+		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
+		(ptr + x)->pid = fork();
+		DBG("child forked [%d]\n", (ptr + x)->pid);
+
+		switch ((ptr + x)->pid) {
+		case 0:	/* child */
+			DBG("before run _get_backend_cmd()");
+			backend_cmd = strdup("/usr/bin/pkg_getsize");
+			if (NULL == backend_cmd)
+				break;
+
+			DBG("Try to exec [%s][%s]", item->pkg_type,
+			    backend_cmd);
+			fprintf(stdout, "Try to exec [%s][%s]\n",
+				item->pkg_type, backend_cmd);
+
+			/* Create args vector
+			 * req_id + pkgid + args
+			 *
+			 * vector size = # of args +
+			 *(req_id + pkgid + NULL termination = 3)
+			 * Last value must be NULL for execv.
+			 */
+			gboolean ret_parse;
+			gint argcp;
+			gchar **argvp;
+			GError *gerr = NULL;
+			ret_parse = g_shell_parse_argv(item->args,
+						       &argcp, &argvp, &gerr);
+			if (FALSE == ret_parse) {
+				DBG("Failed to split args: %s", item->args);
+				DBG("messsage: %s", gerr->message);
+				exit(1);
+			}
+
+			/* Setup argument !!! */
+			/*char **args_vector =
+			   calloc(argcp + 4, sizeof(char *)); */
+			char **args_vector = calloc(argcp + 1, sizeof(char *));
+			/*args_vector[0] = strdup(backend_cmd);
+			   args_vector[1] = strdup(item->req_id);
+			   args_vector[2] = strdup(item->pkgid); */
+			int arg_idx;
+			for (arg_idx = 0; arg_idx < argcp; arg_idx++) {
+				/* args_vector[arg_idx+3] = argvp[arg_idx]; */
+				args_vector[arg_idx] = argvp[arg_idx];
+			}
+
+			/* dbg */
+			/*for(arg_idx = 0; arg_idx < argcp+3; arg_idx++) { */
+			for (arg_idx = 0; arg_idx < argcp + 1; arg_idx++) {
+				DBG(">>>>>> args_vector[%d]=%s",
+				    arg_idx, args_vector[arg_idx]);
+			}
+
+			/* Execute backend !!! */
+			ret = execv(backend_cmd, args_vector);
+
+			/* Code below: exec failure. Should not be happened! */
+			DBG(">>>>>> OOPS 2!!!");
+
+			/* g_strfreev(args_vector); *//* FIXME: causes error */
+
+			if (ret == -1) {
+				perror("fail to exec");
+				exit(1);
+			}
+			_save_queue_status(item, "done");
+			if (NULL != backend_cmd)
+				free(backend_cmd);
+			exit(0);
+			break;
+
+		case -1:	/* error */
+			fprintf(stderr, "Fail to execute fork()\n");
+			exit(1);
+			break;
+
+		default:	/* parent */
+			DBG("parent \n");
+			_save_queue_status(item, "done");
+			break;
+		}
+		break;
+
 	default:
 		break;
 	}

@@ -39,6 +39,11 @@
 #include <pkgmgr-info.h>
 
 
+#undef LOG_TAG
+#ifndef LOG_TAG
+#define LOG_TAG "PKGMGR_INSTALLER"
+#endif				/* LOG_TAG */
+
 #define MAX_STRLEN 1024
 #define MAX_QUERY_LEN	4096
 

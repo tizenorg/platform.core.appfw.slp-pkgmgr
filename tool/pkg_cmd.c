@@ -59,13 +59,14 @@ static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option);
 static int __app_list_cb(const pkgmgr_appinfo_h handle, void *user_data);
 
 /* Supported options */
-const char *short_options = "iurmcCkaADL:lsd:p:t:n:T:S:qh";
+const char *short_options = "iurmcgCkaADL:lsd:p:t:n:T:S:qh";
 const struct option long_options[] = {
 	{"install", 0, NULL, 'i'},
 	{"uninstall", 0, NULL, 'u'},
 	{"reinstall", 0, NULL, 'r'},
 	{"move", 0, NULL, 'm'},
 	{"clear", 0, NULL, 'c'},
+	{"getsize", 0, NULL, 'g'},
 	{"activate", 0, NULL, 'A'},
 	{"deactivate", 0, NULL, 'D'},
 	{"activate with Label", 1, NULL, 'L'},
@@ -90,6 +91,7 @@ enum pm_tool_request_e {
 	UNINSTALL_REQ,
 	REINSTALL_REQ,
 	CSC_REQ,
+	GETSIZE_REQ,
 	CLEAR_REQ,
 	MOVE_REQ,
 	ACTIVATE_REQ,
@@ -214,7 +216,11 @@ static int __return_cb(int req_id, const char *pkg_type,
 		else
 			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d]\n",
 					   req_id, pkg_type, pkgid, key, ret_val);
-	} else
+	} else if (strncmp(key, "size", strlen("size")) == 0) {
+		printf("pkg[%s] size = %d\n", pkgid, atoi(val));
+		g_main_loop_quit(main_loop);
+	}
+	else
 		printf("__return_cb req_id[%d] pkg_type[%s] "
 		       "pkgid[%s] key[%s] val[%s]\n",
 		       req_id, pkg_type, pkgid, key, val);
@@ -422,6 +428,7 @@ static void __print_usage()
 	printf("-r, --reinstall		reinstall the package\n");
 	printf("-c, --clear		clear user data\n");
 	printf("-m, --move		move package\n");
+	printf("-g, --getsize		get size of given package\n");
 	printf("-l, --list		display list of installed packages\n");
 	printf("-s, --show		show detail package info\n");
 	printf("-a, --app-path		show app installation path\n");
@@ -443,6 +450,7 @@ static void __print_usage()
 	printf("pkgcmd -s -t <pkg type> -p <pkg path> (-q)\n");
 	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n");
 	printf("pkgcmd -m -t <pkg type> -T <move type> -n <pkg name> (-q)\n\n");
+	printf("pkgcmd -g -n <pkgid> \n");
 
 	printf("Example:\n");
 	printf("pkgcmd -u -t rpm -n org.tizen.calculator\n");
@@ -456,6 +464,7 @@ static void __print_usage()
 	printf("pkgcmd -a -t rpm -n org.tizen.hello\n");
 	printf("pkgcmd -l\n");
 	printf("pkgcmd -l -t tpk\n");
+	printf("pkgcmd -g -n com.samsung.calculator\n");
 
 	exit(0);
 
@@ -974,6 +983,34 @@ static int __process_request()
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 		break;
 
+	case GETSIZE_REQ:
+		if (data.pkgid[0] == '\0') {
+			printf("Please provide the arguments.\n");
+			printf("use -h option to see usage\n");
+			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
+			break;
+		}
+
+		g_type_init();
+		main_loop = g_main_loop_new(NULL, FALSE);
+		pc = pkgmgr_client_new(PC_REQUEST);
+		if (pc == NULL) {
+			printf("PkgMgr Client Creation Failed\n");
+			data.result = PKGCMD_ERR_FATAL_ERROR;
+			break;
+		}
+
+		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, 0, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
+		if (ret < 0){
+			data.result = PKGCMD_ERR_FATAL_ERROR;
+			if (access(data.pkg_path, F_OK) != 0)
+				data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
+			break;
+		}
+		g_main_loop_run(main_loop);
+		ret = data.result;
+		break;
+
 	case HELP_REQ:
 		__print_usage();
 		ret = 0;
@@ -1056,6 +1093,10 @@ int main(int argc, char *argv[])
 
 		case 'c':	/* clear */
 			data.request = CLEAR_REQ;
+			break;
+
+		case 'g':	/* get pkg size */
+			data.request = GETSIZE_REQ;
 			break;
 
 		case 'm':	/* move */

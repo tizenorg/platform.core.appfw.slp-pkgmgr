@@ -111,6 +111,9 @@ enum {
 	/* cancel job */
 	COMM_REQ_CANCEL,
 
+	/*get package size */
+	COMM_REQ_GET_SIZE,
+
 	COMM_REQ_MAX_SENTINEL
 };
 

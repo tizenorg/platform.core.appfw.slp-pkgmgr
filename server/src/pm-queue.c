@@ -399,13 +399,11 @@ void _pm_queue_final()
 			cur = head[c]->next;
 
 			while (cur->next) {
-				printf(" -- [%p]\n", cur);
 				prev = cur;
 				cur = cur->next;
 			}
 
 			tail = cur;
-			printf("%p\n", tail);
 
 			free(tail->msg);
 			free(tail);
@@ -479,9 +477,7 @@ void _save_queue_status(pm_dbus_msg *item, char *status)
 	}
 
 	fprintf(fp_status, "%s\n", status);
-	printf("[%s]\n", status);
 	fprintf(fp_status, "%s\n", item->pkg_type);
-	printf("[%s]\n", item->pkg_type);
 
 	fsync(fp_status->_fileno);
 	fclose(fp_status);
@@ -502,18 +498,10 @@ void _print_queue(int position)
 	}
 	int index = 1;
 	if (!cur) {
-		printf(" ** queue is NULL **\n");
 		return;
 	}
 
 	while (cur) {
-		printf(" * queue[%d]: [%s] [%d] [%s] [%s] [%s] [%s]\n",
-		       index,
-		       cur->msg->req_id,
-		       cur->msg->req_type,
-		       cur->msg->pkg_type,
-		       cur->msg->pkgid, cur->msg->args, cur->msg->cookie);
-
 		index++;
 		cur = cur->next;
 	}

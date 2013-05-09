@@ -1,7 +1,7 @@
 #sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.2.82
+Version:    0.2.83
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -133,6 +133,7 @@ mkdir -p /usr/etc/package-manager/server
 %defattr(-,root,root,-)
 %{_bindir}/pkgcmd
 %{_bindir}/pkg_initdb
+%{_bindir}/pkg_getsize
 %{_bindir}/pkginfo
 %{_bindir}/pkgmgr-install
 %{_datadir}/packages/org.tizen.pkgmgr-install.xml

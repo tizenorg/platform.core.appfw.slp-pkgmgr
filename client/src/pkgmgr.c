@@ -40,10 +40,15 @@
 
 #include "package-manager.h"
 #include "pkgmgr-internal.h"
+#include "pkgmgr-debug.h"
 #include "pkgmgr-api.h"
 #include "comm_client.h"
 #include "comm_status_broadcast_server.h"
 
+#undef LOG_TAG
+#ifndef LOG_TAG
+#define LOG_TAG "PKGMGR"
+#endif				/* LOG_TAG */
 
 static int _get_request_id()
 {
@@ -191,94 +196,6 @@ static void __error_to_string(int errnumber, char **errstr)
 		*errstr = PKGCMD_ERR_UNKNOWN_STR;
 		break;
 	}
-}
-
-static int __csc_process(const char *csc_path, char *result_path)
-{
-	int ret = 0;
-	int cnt = 0;
-	int count = 0;
-	int csc_fail = 0;
-	int fd = 0;
-	char *pkgtype = NULL;
-	char *des = NULL;
-	char buf[PKG_STRING_LEN_MAX] = {0,};
-	char type_buf[1024] = { 0 };
-	char des_buf[1024] = { 0 };
-	dictionary *csc = NULL;
-	FILE* file = NULL;
-
-	csc = iniparser_load(csc_path);
-	retvm_if(csc == NULL, PKGMGR_R_EINVAL, "cannot open parse file [%s]", csc_path);
-
-	file = fopen(result_path, "w");
-	tryvm_if(file == NULL, ret = PKGMGR_R_EINVAL, "cannot open result file [%s]", result_path);
-
-	count = iniparser_getint(csc, "csc packages:count", -1);
-	tryvm_if(count == 0, ret = PKGMGR_R_ERROR, "csc [%s] dont have packages", csc_path);
-
-	snprintf(buf, PKG_STRING_LEN_MAX, "[result]\n");
-	fwrite(buf, 1, strlen(buf), file);
-	snprintf(buf, PKG_STRING_LEN_MAX, "count = %d\n", count);
-	fwrite(buf, 1, strlen(buf), file);
-
-	for(cnt = 1 ; cnt <= count ; cnt++)
-	{
-		snprintf(type_buf, PKG_STRING_LEN_MAX - 1, "csc packages:type_%03d", cnt);
-		snprintf(des_buf, PKG_STRING_LEN_MAX - 1, "csc packages:description_%03d", cnt);
-
-		pkgtype = iniparser_getstr(csc, type_buf);
-		des = iniparser_getstr(csc, des_buf);
-		ret = 0;
-
-		if (pkgtype == NULL) {
-			csc_fail++;
-			snprintf(buf, PKG_STRING_LEN_MAX, "%s = Fail to get pkgtype\n", type_buf);
-			fwrite(buf, 1, strlen(buf), file);
-			continue;
-		} else if (des == NULL) {
-			csc_fail++;
-			snprintf(buf, PKG_STRING_LEN_MAX, "%s = Fail to get description\n", des_buf);
-			fwrite(buf, 1, strlen(buf), file);
-			continue;
-		}
-
-		snprintf(buf, PKG_STRING_LEN_MAX, "type_%03d = %s\n", cnt, pkgtype);
-		fwrite(buf, 1, strlen(buf), file);
-		snprintf(buf, PKG_STRING_LEN_MAX, "description_%03d = %s\n", cnt, des);
-		fwrite(buf, 1, strlen(buf), file);
-
-		if (strcmp(pkgtype, "tpk") == 0) {
-			const char *ospinstaller_argv[] = { "/usr/bin/osp-installer", "-c", des, NULL };
-			ret = __xsystem(ospinstaller_argv);
-		} else if (strcmp(pkgtype, "wgt")== 0) {
-			const char *wrtinstaller_argv[] = { "/usr/bin/wrt-installer", "-c", des, NULL };
-			ret = __xsystem(wrtinstaller_argv);
-		} else {
-			csc_fail++;
-			ret = -1;
-		}
-
-		if (ret != 0) {
-			char *errstr = NULL;
-			__error_to_string(ret, &errstr);
-			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = fail[%s]\n", cnt, pkgtype, errstr);
-		}
-		else
-			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = success\n", cnt, pkgtype);
-
-		fwrite(buf, 1, strlen(buf), file);
-	}
-
-catch:
-	iniparser_freedict(csc);
-	if (file != NULL) {
-		fflush(file);
-		fd = fileno(file);
-		fsync(fd);
-		fclose(file);
-	}
-	return ret;
 }
 
 static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
@@ -443,6 +360,318 @@ static void __status_callback(void *cb_data, const char *req_id,
 	return;
 }
 
+static char *__get_req_key(const char *pkg_path)
+{
+	struct timeval tv;
+	long curtime;
+	char timestr[PKG_STRING_LEN_MAX];
+	char *str_req_key;
+	int size;
+
+	gettimeofday(&tv, NULL);
+	curtime = tv.tv_sec * 1000000 + tv.tv_usec;
+	snprintf(timestr, sizeof(timestr), "%ld", curtime);
+
+	size = strlen(pkg_path) + strlen(timestr) + 2;
+	str_req_key = (char *)calloc(size, sizeof(char));
+	if (str_req_key == NULL) {
+		_LOGD("calloc failed");
+		return NULL;
+	}
+	snprintf(str_req_key, size, "%s_%s", pkg_path, timestr);
+
+	return str_req_key;
+}
+
+static char *__get_type_from_path(const char *pkg_path)
+{
+	int ret;
+	char mimetype[255] = { '\0', };
+	char extlist[256] = { '\0', };
+	char *pkg_type;
+
+	ret = _get_mime_from_file(pkg_path, mimetype, sizeof(mimetype));
+	if (ret) {
+		_LOGE("_get_mime_from_file() failed - error code[%d]\n",
+		      ret);
+		return NULL;
+	}
+
+	ret = _get_mime_extension(mimetype, extlist, sizeof(extlist));
+	if (ret) {
+		_LOGE("_get_mime_extension() failed - error code[%d]\n",
+		      ret);
+		return NULL;
+	}
+
+	if (strlen(extlist) == 0)
+		return NULL;
+
+	if (strchr(extlist, ',')) {
+		extlist[strlen(extlist) - strlen(strchr(extlist, ','))] = '\0';
+	}
+	pkg_type = strchr(extlist, '.') + 1;
+	return strdup(pkg_type);
+}
+
+static inline int __pkgmgr_read_proc(const char *path, char *buf, int size)
+{
+	int fd;
+	int ret;
+
+	if (buf == NULL || path == NULL)
+		return -1;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return -1;
+
+	ret = read(fd, buf, size - 1);
+	if (ret <= 0) {
+		close(fd);
+		return -1;
+	} else
+		buf[ret] = 0;
+
+	close(fd);
+
+	return ret;
+}
+
+static inline int __pkgmgr_find_pid_by_cmdline(const char *dname,
+				      const char *cmdline, const char *apppath)
+{
+	int pid = 0;
+
+	if (strncmp(cmdline, apppath, PKG_STRING_LEN_MAX-1) == 0) {
+		pid = atoi(dname);
+		if (pid != getpgid(pid))
+			pid = 0;
+	}
+
+	return pid;
+}
+
+
+static int __pkgmgr_proc_iter_kill_cmdline(const char *apppath)
+{
+	DIR *dp;
+	struct dirent *dentry;
+	int pid;
+	int ret;
+	char buf[PKG_STRING_LEN_MAX];
+
+	dp = opendir("/proc");
+	if (dp == NULL) {
+		return -1;
+	}
+
+	while ((dentry = readdir(dp)) != NULL) {
+		if (!isdigit(dentry->d_name[0]))
+			continue;
+
+		snprintf(buf, sizeof(buf), "/proc/%s/cmdline", dentry->d_name);
+		ret = __pkgmgr_read_proc(buf, buf, sizeof(buf));
+		if (ret <= 0)
+			continue;
+
+		pid = __pkgmgr_find_pid_by_cmdline(dentry->d_name, buf, apppath);
+
+		if (pid > 0) {
+			int pgid;
+
+			pgid = getpgid(pid);
+			if (pgid <= 1) {
+				closedir(dp);
+				return -1;
+			}
+
+			if (killpg(pgid, SIGKILL) < 0) {
+				closedir(dp);
+				return -1;
+			}
+		}
+	}
+
+	closedir(dp);
+	return 0;
+}
+
+
+static int __app_list_cb (const pkgmgr_appinfo_h handle,
+						void *user_data)
+{
+	char *exec = NULL;
+	pkgmgr_appinfo_get_exec(handle, &exec);
+
+	__pkgmgr_proc_iter_kill_cmdline(exec);
+
+	return 0;
+}
+
+static int __csc_process(const char *csc_path, char *result_path)
+{
+	int ret = 0;
+	int cnt = 0;
+	int count = 0;
+	int csc_fail = 0;
+	int fd = 0;
+	char *pkgtype = NULL;
+	char *des = NULL;
+	char buf[PKG_STRING_LEN_MAX] = {0,};
+	char type_buf[1024] = { 0 };
+	char des_buf[1024] = { 0 };
+	dictionary *csc = NULL;
+	FILE* file = NULL;
+
+	csc = iniparser_load(csc_path);
+	retvm_if(csc == NULL, PKGMGR_R_EINVAL, "cannot open parse file [%s]", csc_path);
+
+	file = fopen(result_path, "w");
+	tryvm_if(file == NULL, ret = PKGMGR_R_EINVAL, "cannot open result file [%s]", result_path);
+
+	count = iniparser_getint(csc, "csc packages:count", -1);
+	tryvm_if(count == 0, ret = PKGMGR_R_ERROR, "csc [%s] dont have packages", csc_path);
+
+	snprintf(buf, PKG_STRING_LEN_MAX, "[result]\n");
+	fwrite(buf, 1, strlen(buf), file);
+	snprintf(buf, PKG_STRING_LEN_MAX, "count = %d\n", count);
+	fwrite(buf, 1, strlen(buf), file);
+
+	for(cnt = 1 ; cnt <= count ; cnt++)
+	{
+		snprintf(type_buf, PKG_STRING_LEN_MAX - 1, "csc packages:type_%03d", cnt);
+		snprintf(des_buf, PKG_STRING_LEN_MAX - 1, "csc packages:description_%03d", cnt);
+
+		pkgtype = iniparser_getstr(csc, type_buf);
+		des = iniparser_getstr(csc, des_buf);
+		ret = 0;
+
+		if (pkgtype == NULL) {
+			csc_fail++;
+			snprintf(buf, PKG_STRING_LEN_MAX, "%s = Fail to get pkgtype\n", type_buf);
+			fwrite(buf, 1, strlen(buf), file);
+			continue;
+		} else if (des == NULL) {
+			csc_fail++;
+			snprintf(buf, PKG_STRING_LEN_MAX, "%s = Fail to get description\n", des_buf);
+			fwrite(buf, 1, strlen(buf), file);
+			continue;
+		}
+
+		snprintf(buf, PKG_STRING_LEN_MAX, "type_%03d = %s\n", cnt, pkgtype);
+		fwrite(buf, 1, strlen(buf), file);
+		snprintf(buf, PKG_STRING_LEN_MAX, "description_%03d = %s\n", cnt, des);
+		fwrite(buf, 1, strlen(buf), file);
+
+		if (strcmp(pkgtype, "tpk") == 0) {
+			const char *ospinstaller_argv[] = { "/usr/bin/osp-installer", "-c", des, NULL };
+			ret = __xsystem(ospinstaller_argv);
+		} else if (strcmp(pkgtype, "wgt")== 0) {
+			const char *wrtinstaller_argv[] = { "/usr/bin/wrt-installer", "-c", des, NULL };
+			ret = __xsystem(wrtinstaller_argv);
+		} else {
+			csc_fail++;
+			ret = -1;
+		}
+
+		if (ret != 0) {
+			char *errstr = NULL;
+			__error_to_string(ret, &errstr);
+			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = fail[%s]\n", cnt, pkgtype, errstr);
+		}
+		else
+			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = success\n", cnt, pkgtype);
+
+		fwrite(buf, 1, strlen(buf), file);
+	}
+
+catch:
+	iniparser_freedict(csc);
+	if (file != NULL) {
+		fflush(file);
+		fd = fileno(file);
+		fsync(fd);
+		fclose(file);
+	}
+	return ret;
+}
+
+static int __get_size_process(pkgmgr_client * pc, char *pkgid, pkgmgr_handler event_cb)
+{
+	char *req_key = NULL;
+	int req_id = 0;
+	int ret =0;
+	pkgmgrinfo_pkginfo_h handle;
+	char *pkgtype = NULL;
+	char *installer_path = NULL;
+	char *argv[PKG_ARGC_MAX] = { NULL, };
+	char *args = NULL;
+	int argcnt = 0;
+	int len = 0;
+	char *temp = NULL;
+	int i = 0;
+
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
+
+	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_pkginfo failed");
+
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_type failed");
+
+	installer_path = _get_backend_path_with_type(pkgtype);
+	req_key = __get_req_key(pkgid);
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL);
+
+	argv[argcnt++] = installer_path;
+	/* argv[1] */
+	argv[argcnt++] = strdup("-k");
+	/* argv[2] */
+	argv[argcnt++] = req_key;
+	/* argv[3] */
+	argv[argcnt++] = strdup("-d");
+	/* argv[4] */
+	argv[argcnt++] = strdup(pkgid);
+
+	/*** add quote in all string for special charactor like '\n'***   FIX */
+	for (i = 0; i < argcnt; i++) {
+		temp = g_shell_quote(argv[i]);
+		len += (strlen(temp) + 1);
+		g_free(temp);
+	}
+
+	args = (char *)calloc(len, sizeof(char));
+	tryvm_if(args == NULL, ret = PKGMGR_R_EINVAL, "installer_path fail");
+
+	strncpy(args, argv[0], len - 1);
+
+	for (i = 1; i < argcnt; i++) {
+		strncat(args, " ", strlen(" "));
+		temp = g_shell_quote(argv[i]);
+		strncat(args, temp, strlen(temp));
+		g_free(temp);
+	}
+	_LOGD("[args] %s [len] %d\n", args, len);
+
+	/* 6. request install */
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_GET_SIZE, pkgtype, pkgid, args, NULL, 1);
+	if (ret < 0)
+		_LOGE("request failed, ret=%d\n", ret);
+
+catch:
+	for (i = 0; i < argcnt; i++)
+		free(argv[i]);
+
+	if(args)
+		free(args);
+
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+	return ret;
+}
+
 API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 {
 	pkgmgr_client_t *pc = NULL;
@@ -561,60 +790,6 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 		mpc = NULL;
 	}
 	return PKGMGR_R_ERROR;
-}
-
-static char *__get_req_key(const char *pkg_path)
-{
-	struct timeval tv;
-	long curtime;
-	char timestr[PKG_STRING_LEN_MAX];
-	char *str_req_key;
-	int size;
-
-	gettimeofday(&tv, NULL);
-	curtime = tv.tv_sec * 1000000 + tv.tv_usec;
-	snprintf(timestr, sizeof(timestr), "%ld", curtime);
-
-	size = strlen(pkg_path) + strlen(timestr) + 2;
-	str_req_key = (char *)calloc(size, sizeof(char));
-	if (str_req_key == NULL) {
-		_LOGD("calloc failed");
-		return NULL;
-	}
-	snprintf(str_req_key, size, "%s_%s", pkg_path, timestr);
-
-	return str_req_key;
-}
-
-static char *__get_type_from_path(const char *pkg_path)
-{
-	int ret;
-	char mimetype[255] = { '\0', };
-	char extlist[256] = { '\0', };
-	char *pkg_type;
-
-	ret = _get_mime_from_file(pkg_path, mimetype, sizeof(mimetype));
-	if (ret) {
-		_LOGE("_get_mime_from_file() failed - error code[%d]\n",
-		      ret);
-		return NULL;
-	}
-
-	ret = _get_mime_extension(mimetype, extlist, sizeof(extlist));
-	if (ret) {
-		_LOGE("_get_mime_extension() failed - error code[%d]\n",
-		      ret);
-		return NULL;
-	}
-
-	if (strlen(extlist) == 0)
-		return NULL;
-
-	if (strchr(extlist, ',')) {
-		extlist[strlen(extlist) - strlen(strchr(extlist, ','))] = '\0';
-	}
-	pkg_type = strchr(extlist, '.') + 1;
-	return strdup(pkg_type);
 }
 
 API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
@@ -870,102 +1045,6 @@ catch:
 
 	return ret;
 }
-
-static inline int __pkgmgr_read_proc(const char *path, char *buf, int size)
-{
-	int fd;
-	int ret;
-
-	if (buf == NULL || path == NULL)
-		return -1;
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		return -1;
-
-	ret = read(fd, buf, size - 1);
-	if (ret <= 0) {
-		close(fd);
-		return -1;
-	} else
-		buf[ret] = 0;
-
-	close(fd);
-
-	return ret;
-}
-
-static inline int __pkgmgr_find_pid_by_cmdline(const char *dname,
-				      const char *cmdline, const char *apppath)
-{
-	int pid = 0;
-
-	if (strncmp(cmdline, apppath, PKG_STRING_LEN_MAX-1) == 0) {
-		pid = atoi(dname);
-		if (pid != getpgid(pid))
-			pid = 0;
-	}
-
-	return pid;
-}
-
-
-static int __pkgmgr_proc_iter_kill_cmdline(const char *apppath)
-{
-	DIR *dp;
-	struct dirent *dentry;
-	int pid;
-	int ret;
-	char buf[PKG_STRING_LEN_MAX];
-
-	dp = opendir("/proc");
-	if (dp == NULL) {
-		return -1;
-	}
-
-	while ((dentry = readdir(dp)) != NULL) {
-		if (!isdigit(dentry->d_name[0]))
-			continue;
-
-		snprintf(buf, sizeof(buf), "/proc/%s/cmdline", dentry->d_name);
-		ret = __pkgmgr_read_proc(buf, buf, sizeof(buf));
-		if (ret <= 0)
-			continue;
-
-		pid = __pkgmgr_find_pid_by_cmdline(dentry->d_name, buf, apppath);
-
-		if (pid > 0) {
-			int pgid;
-
-			pgid = getpgid(pid);
-			if (pgid <= 1) {
-				closedir(dp);
-				return -1;
-			}
-
-			if (killpg(pgid, SIGKILL) < 0) {
-				closedir(dp);
-				return -1;
-			}
-		}
-	}
-
-	closedir(dp);
-	return 0;
-}
-
-
-static int __app_list_cb (const pkgmgr_appinfo_h handle,
-						void *user_data)
-{
-	char *exec = NULL;
-	pkgmgr_appinfo_get_exec(handle, &exec);
-
-	__pkgmgr_proc_iter_kill_cmdline(exec);
-
-	return 0;
-}
-
 
 API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_mode mode,
@@ -1690,36 +1769,24 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 				  pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
 			      const char *custom_info, pkgmgr_handler event_cb, void *data)
 {
-	char *installer_path = NULL;
-	char *req_key = NULL;
-	int req_id = 0;
 	int ret =0;
 
 	/* Check for NULL value of service type */
 	retvm_if(service_type > PM_REQUEST_MAX, PKGMGR_R_EINVAL, "service type is not defined\n");
 	retvm_if(service_type < 0, PKGMGR_R_EINVAL, "service type is error\n");
 
-	/* check optional_file length */
-	if (custom_info)
-		retvm_if(strlen(custom_info) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "optional_file over PKG_STRING_LEN_MAX");
-
-	/* add callback info - add callback info to pkgmgr_client if there is pc and pkgid */
-	if (pc && pkgid) {
-		pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
-		retv_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL);
-		req_key = __get_req_key(pkgid);
-		req_id = _get_request_id();
-		__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
-	}
-
 	switch (service_type) {
 	case PM_REQUEST_CSC:
 		tryvm_if(custom_info == NULL, ret = PKGMGR_R_EINVAL, "custom_info is NULL\n");
+		tryvm_if(strlen(custom_info) >= PKG_STRING_LEN_MAX, ret = PKGMGR_R_EINVAL, "optional_file over PKG_STRING_LEN_MAX");
 		tryvm_if(data == NULL, ret = PKGMGR_R_EINVAL, "data is NULL\n");
 
 		ret = __csc_process(custom_info, (char *)data);
 		if (ret < 0)
 			_LOGE("__csc_process fail \n");
+		else
+			ret = PKGMGR_R_OK;
+
 		break;
 
 	case PM_REQUEST_MOVE:
@@ -1727,18 +1794,24 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		break;
 
 	case PM_REQUEST_GET_SIZE:
-		ret = 0;
+		tryvm_if(pkgid == NULL, ret = PKGMGR_R_EINVAL, "pkgid is NULL\n");
+		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
+
+		ret = __get_size_process(pc, pkgid, event_cb);
+		if (ret < 0)
+			_LOGE("__get_size_process fail \n");
+		else
+			ret = PKGMGR_R_OK;
+
 		break;
 
 	default:
-		printf("Wrong Request\n");
+		_LOGE("Wrong Request\n");
 		ret = -1;
 		break;
 	}
 
 catch:
-	if (req_key)
-		free(req_key);
 
 	return ret;
 }
