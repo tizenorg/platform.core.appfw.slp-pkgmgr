@@ -672,6 +672,91 @@ catch:
 	return ret;
 }
 
+static int __move_pkg_process(pkgmgr_client * pc, char *pkgid, pkgmgr_move_type move_type, pkgmgr_handler event_cb)
+{
+	char *req_key = NULL;
+	int req_id = 0;
+	int ret =0;
+	pkgmgrinfo_pkginfo_h handle;
+	char *pkgtype = NULL;
+	char *installer_path = NULL;
+	char *argv[PKG_ARGC_MAX] = { NULL, };
+	char *args = NULL;
+	int argcnt = 0;
+	int len = 0;
+	char *temp = NULL;
+	int i = 0;
+	char buf[128] = {'\0'};
+
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
+
+	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_pkginfo failed");
+
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_type failed");
+
+	installer_path = _get_backend_path_with_type(pkgtype);
+	req_key = __get_req_key(pkgid);
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL);
+
+	/* generate argv */
+	snprintf(buf, 128, "%d", move_type);
+	/* argv[0] installer path */
+	argv[argcnt++] = installer_path;
+	/* argv[1] */
+	argv[argcnt++] = strdup("-k");
+	/* argv[2] */
+	argv[argcnt++] = req_key;
+	/* argv[3] */
+	argv[argcnt++] = strdup("-m");
+	/* argv[4] */
+	argv[argcnt++] = strdup(pkgid);
+	/* argv[5] */
+	argv[argcnt++] = strdup("-t");
+	/* argv[6] */
+	argv[argcnt++] = strdup(buf);
+	/* argv[7] */
+	argv[argcnt++] = strdup("-q");
+
+	/*** add quote in all string for special charactor like '\n'***   FIX */
+	for (i = 0; i < argcnt; i++) {
+		temp = g_shell_quote(argv[i]);
+		len += (strlen(temp) + 1);
+		g_free(temp);
+	}
+
+	args = (char *)calloc(len, sizeof(char));
+	tryvm_if(args == NULL, ret = PKGMGR_R_EINVAL, "installer_path fail");
+
+	strncpy(args, argv[0], len - 1);
+
+	for (i = 1; i < argcnt; i++) {
+		strncat(args, " ", strlen(" "));
+		temp = g_shell_quote(argv[i]);
+		strncat(args, temp, strlen(temp));
+		g_free(temp);
+	}
+	_LOGD("[args] %s [len] %d\n", args, len);
+
+	/* 6. request install */
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_MOVER, pkgtype, pkgid, args, NULL, 1);
+	if (ret < 0)
+		_LOGE("request failed, ret=%d\n", ret);
+
+catch:
+	for (i = 0; i < argcnt; i++)
+		free(argv[i]);
+
+	if(args)
+		free(args);
+
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+	return ret;
+}
+
 API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 {
 	pkgmgr_client_t *pc = NULL;
@@ -1790,7 +1875,16 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		break;
 
 	case PM_REQUEST_MOVE:
-		ret = 0;
+		tryvm_if(pkgid == NULL, ret = PKGMGR_R_EINVAL, "pkgid is NULL\n");
+		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
+		tryvm_if((service_mode < PM_MOVE_TO_INTERNAL) || (service_mode > PM_MOVE_TO_SDCARD), ret = PKGMGR_R_EINVAL, "service_mode is wrong\n");
+
+		ret = __move_pkg_process(pc, pkgid, service_mode, event_cb);
+		if (ret < 0)
+			_LOGE("__move_pkg_process fail \n");
+		else
+			ret = PKGMGR_R_OK;
+
 		break;
 
 	case PM_REQUEST_GET_SIZE:

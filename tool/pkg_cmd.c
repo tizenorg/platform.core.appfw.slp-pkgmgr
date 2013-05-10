@@ -817,36 +817,65 @@ static int __process_request()
 		break;
 
 	case MOVE_REQ:
-		if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
-			printf("Please provide the arguments.\n");
-			printf("use -h option to see usage\n");
-			ret = -1;
-			break;
-		}
-		if (data.move_type < 0 || data.move_type > 1) {
-			printf("Invalid move type...See usage\n");
-			ret = -1;
-			break;
-		}
-		pc = pkgmgr_client_new(PC_REQUEST);
-		if (pc == NULL) {
-			printf("PkgMgr Client Creation Failed\n");
-			ret = -1;
-			break;
-		}
-		if (data.quiet == 0)
-			mode = PM_DEFAULT;
-		else
+		if (data.quiet == 1) {
+			if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
+				printf("Please provide the arguments.\n");
+				printf("use -h option to see usage\n");
+				ret = -1;
+				break;
+			}
+			if (data.move_type < 0 || data.move_type > 1) {
+				printf("Invalid move type...See usage\n");
+				ret = -1;
+				break;
+			}
+			pc = pkgmgr_client_new(PC_REQUEST);
+			if (pc == NULL) {
+				printf("PkgMgr Client Creation Failed\n");
+				ret = -1;
+				break;
+			}
 			mode = PM_QUIET;
-		ret = __is_app_installed(data.pkgid);
-		if (ret == -1) {
-			printf("package is not installed\n");
-			break;
+			ret = __is_app_installed(data.pkgid);
+			if (ret == -1) {
+				printf("package is not installed\n");
+				break;
+			}
+			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.move_type, mode);
+			if (ret < 0)
+				break;
+			ret = data.result;
+		} else {
+			if (data.pkgid[0] == '\0') {
+				printf("Please provide the arguments.\n");
+				printf("use -h option to see usage\n");
+				ret = -1;
+				break;
+			}
+			if (data.move_type < 0 || data.move_type > 1) {
+				printf("Invalid move type...See usage\n");
+				ret = -1;
+				break;
+			}
+			g_type_init();
+			main_loop = g_main_loop_new(NULL, FALSE);
+			pc = pkgmgr_client_new(PC_REQUEST);
+			if (pc == NULL) {
+				printf("PkgMgr Client Creation Failed\n");
+				ret = -1;
+				break;
+			}
+			ret = __is_app_installed(data.pkgid);
+			if (ret == -1) {
+				printf("package is not installed\n");
+				break;
+			}
+			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.move_type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
+			if (ret < 0)
+				break;
+			g_main_loop_run(main_loop);
+			ret = data.result;
 		}
-		ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.move_type, mode);
-		if (ret < 0)
-			break;
-		ret = data.result;
 		break;
 
 	case APPPATH_REQ:
