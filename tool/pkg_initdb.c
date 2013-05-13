@@ -39,6 +39,12 @@
 #define USR_MANIFEST_DIRECTORY "/usr/share/packages"
 #define PACKAGE_INFO_DB_FILE "/opt/dbspace/.pkgmgr_parser.db"
 
+#define PKG_PARSER_DB_FILE "/opt/dbspace/.pkgmgr_parser.db"
+#define PKG_PARSER_DB_FILE_JOURNAL "/opt/dbspace/.pkgmgr_parser.db-journal"
+#define PKG_CERT_DB_FILE "/opt/dbspace/.pkgmgr_cert.db"
+#define PKG_CERT_DB_FILE_JOURNAL "/opt/dbspace/.pkgmgr_cert.db-journal"
+#define PKG_INFO_DB_LABEL "pkgmgr::db"
+
 #ifdef _E
 #undef _E
 #endif
@@ -56,6 +62,38 @@ static int initdb_count_package(void)
 	return total;
 }
 
+static int initdb_xsystem(const char *argv[])
+{
+	int status = 0;
+	pid_t pid;
+	pid = fork();
+	switch (pid) {
+	case -1:
+		perror("fork failed");
+		return -1;
+	case 0:
+		/* child */
+		execvp(argv[0], (char *const *)argv);
+		_exit(-1);
+	default:
+		/* parent */
+		break;
+	}
+	if (waitpid(pid, &status, 0) == -1) {
+		perror("waitpid failed");
+		return -1;
+	}
+	if (WIFSIGNALED(status)) {
+		perror("signal");
+		return -1;
+	}
+	if (!WIFEXITED(status)) {
+		/* shouldn't happen */
+		perror("should not happen");
+		return -1;
+	}
+	return WEXITSTATUS(status);
+}
 
 
 char* _manifest_to_package(const char* manifest)
@@ -223,6 +261,15 @@ int main(int argc, char *argv[])
 		_E("cannot chown.");
 		return -1;
 	}
+
+	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
+	initdb_xsystem(argv_parser);
+	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
+	initdb_xsystem(argv_parserjn);
+	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE, NULL };
+	initdb_xsystem(argv_cert);
+	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
+	initdb_xsystem(argv_certjn);
 
 	return 0;
 }

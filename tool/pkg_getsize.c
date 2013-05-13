@@ -44,8 +44,9 @@ static int _pkg_getsize(int argc, char **argv)
 	char *pkgid = NULL;
 	char *type = NULL;
 	pkgmgr_installer *pi = NULL;
-	pkgmgrinfo_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle = NULL;
 	int size = 0;
+	int get_type = -1;
 	char buf[MAX_PKG_BUF_LEN] = {'\0'};
 
 	/*make new pkgmgr_installer handle*/
@@ -60,6 +61,9 @@ static int _pkg_getsize(int argc, char **argv)
 	pkgid = pkgmgr_installer_get_request_info(pi);
 	tryvm_if(pkgid == NULL, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_request_info failed");
 
+	get_type = pkgmgr_installer_get_move_type(pi);
+	tryvm_if(pkgid < 0, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_request_info failed");
+
 	/*get pkgmgr handle from pkgid*/
 	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 	tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_pkginfo[pkgid=%s] failed", pkgid);
@@ -68,9 +72,20 @@ static int _pkg_getsize(int argc, char **argv)
 	ret = pkgmgrinfo_pkginfo_get_type(handle, &type);
 	tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_type[pkgid=%s] failed", pkgid);
 
-	/*get size info from handle*/
-	ret = pkgmgrinfo_pkginfo_get_total_size(handle, &size);
-	tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_total_size[pkgid=%s] failed", pkgid);
+	/*get size info from handle
+	typedef enum {
+		PM_GET_TOTAL_SIZE= 0,
+		PM_GET_DATA_SIZE = 1,
+	}pkgmgr_getsize_type;
+
+	*/
+	if (get_type == 0) {
+		ret = pkgmgrinfo_pkginfo_get_total_size(handle, &size);
+		tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_total_size[pkgid=%s] failed", pkgid);
+	} else {
+		ret = pkgmgrinfo_pkginfo_get_data_size(handle, &size);
+		tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_data_size[pkgid=%s] failed", pkgid);
+	}
 
 	snprintf(buf, MAX_PKG_BUF_LEN - 1, "%d", size);
 

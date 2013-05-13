@@ -80,6 +80,7 @@ const struct option long_options[] = {
 	{"package-type", 1, NULL, 't'},
 	{"package-name", 1, NULL, 'n'},
 	{"move-type", 1, NULL, 'T'},
+	{"getsize-type", 1, NULL, 'T'},
 	{"csc", 1, NULL, 'S'},
 	{"quiet", 0, NULL, 'q'},
 	{"help", 0, NULL, 'h'},
@@ -113,7 +114,7 @@ struct pm_tool_args_t {
 	char des_path[PKG_NAME_STRING_LEN_MAX];
 	char label[PKG_NAME_STRING_LEN_MAX];
 	int quiet;
-	int move_type;
+	int type;
 	int result;
 };
 typedef struct pm_tool_args_t pm_tool_args;
@@ -429,6 +430,7 @@ static void __print_usage()
 	printf("-c, --clear		clear user data\n");
 	printf("-m, --move		move package\n");
 	printf("-g, --getsize		get size of given package\n");
+	printf("-T, --getsize-type	get type [0 : total size /1: data size]\n");
 	printf("-l, --list		display list of installed packages\n");
 	printf("-s, --show		show detail package info\n");
 	printf("-a, --app-path		show app installation path\n");
@@ -450,21 +452,21 @@ static void __print_usage()
 	printf("pkgcmd -s -t <pkg type> -p <pkg path> (-q)\n");
 	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n");
 	printf("pkgcmd -m -t <pkg type> -T <move type> -n <pkg name> (-q)\n\n");
-	printf("pkgcmd -g -n <pkgid> \n");
+	printf("pkgcmd -g -T <getsize type> -n <pkgid> \n");
 
 	printf("Example:\n");
-	printf("pkgcmd -u -t rpm -n org.tizen.calculator\n");
-	printf("pkgcmd -i -t rpm -p /mnt/nfs/org.tizen.calculator_0.1.2-95_armel.rpm\n");
-	printf("pkgcmd -r -t rpm -p org.tizen.calculator\n");
-	printf("pkgcmd -c -t rpm -n org.tizen.hello\n");
-	printf("pkgcmd -m -t rpm -T 1 -n org.tizen.hello\n");
-	printf("pkgcmd -C -t rpm -n org.tizen.hello\n");
-	printf("pkgcmd -k -t rpm -n org.tizen.hello\n");
+	printf("pkgcmd -u -n com.samsung.calculator\n");
+	printf("pkgcmd -i -t rpm -p /mnt/nfs/com.samsung.calculator_0.1.2-95_armel.rpm\n");
+	printf("pkgcmd -r -t rpm -n com.samsung.calculator\n");
+	printf("pkgcmd -c -t rpm -n com.samsung.hello\n");
+	printf("pkgcmd -m -t rpm -T 1 -n com.samsung.hello\n");
+	printf("pkgcmd -C -t rpm -n com.samsung.hello\n");
+	printf("pkgcmd -k -t rpm -n com.samsung.hello\n");
 	printf("pkgcmd -a\n");
-	printf("pkgcmd -a -t rpm -n org.tizen.hello\n");
+	printf("pkgcmd -a -t rpm -n com.samsung.hello\n");
 	printf("pkgcmd -l\n");
 	printf("pkgcmd -l -t tpk\n");
-	printf("pkgcmd -g -n com.samsung.calculator\n");
+	printf("pkgcmd -g -T 0 -n com.samsung.calculator\n");
 
 	exit(0);
 
@@ -824,7 +826,7 @@ static int __process_request()
 				ret = -1;
 				break;
 			}
-			if (data.move_type < 0 || data.move_type > 1) {
+			if (data.type < 0 || data.type > 1) {
 				printf("Invalid move type...See usage\n");
 				ret = -1;
 				break;
@@ -841,7 +843,7 @@ static int __process_request()
 				printf("package is not installed\n");
 				break;
 			}
-			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.move_type, mode);
+			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
 			if (ret < 0)
 				break;
 			ret = data.result;
@@ -852,7 +854,7 @@ static int __process_request()
 				ret = -1;
 				break;
 			}
-			if (data.move_type < 0 || data.move_type > 1) {
+			if (data.type < 0 || data.type > 1) {
 				printf("Invalid move type...See usage\n");
 				ret = -1;
 				break;
@@ -870,7 +872,7 @@ static int __process_request()
 				printf("package is not installed\n");
 				break;
 			}
-			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.move_type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
+			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
 			if (ret < 0)
 				break;
 			g_main_loop_run(main_loop);
@@ -1019,6 +1021,11 @@ static int __process_request()
 			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
 			break;
 		}
+		if (data.type < 0 || data.type > 1) {
+			printf("Invalid get type...See usage\n");
+			ret = -1;
+			break;
+		}
 
 		g_type_init();
 		main_loop = g_main_loop_new(NULL, FALSE);
@@ -1029,11 +1036,9 @@ static int __process_request()
 			break;
 		}
 
-		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, 0, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
+		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
 		if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
-			if (access(data.pkg_path, F_OK) != 0)
-				data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
 			break;
 		}
 		g_main_loop_run(main_loop);
@@ -1101,7 +1106,7 @@ int main(int argc, char *argv[])
 	memset(data.label, '\0', PKG_TYPE_STRING_LEN_MAX);
 	data.quiet = 0;
 	data.result = 0;
-	data.move_type = -1;
+	data.type = -1;
 	while (1) {
 		c = getopt_long(argc, argv, short_options, long_options,
 				&opt_idx);
@@ -1205,7 +1210,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'T':	/* move type */
-			data.move_type = atoi(optarg);
+			data.type = atoi(optarg);
 			break;
 
 		case 'h':	/* help */

@@ -260,6 +260,11 @@ typedef enum {
 	PM_REQUEST_MAX
 }pkgmgr_request_service_type;
 
+typedef enum {
+	PM_GET_TOTAL_SIZE= 0,
+	PM_GET_DATA_SIZE = 1,
+}pkgmgr_getsize_type;
+
 /**
  * @brief	This API creates pkgmgr client.
  *
