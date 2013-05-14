@@ -127,6 +127,12 @@ typedef enum {
 	OPERATION_MAX
 } OPERATION_TYPE;
 
+typedef enum {
+	PMSVC_ALL_APP = 0,
+	PMSVC_UI_APP,
+	PMSVC_SVC_APP
+}pkgmgr_svc_app_component;
+
 struct appdata {
 	Evas_Object *win;
 	Evas_Object *notify;
@@ -1044,6 +1050,20 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 			g_idle_add(queue_job, NULL);
 		*ret = COMM_RET_OK;
 		break;
+	case COMM_REQ_KILL_APP:
+		/* In case of activate, there is no popup */
+		err = _pm_queue_push(item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		__set_backend_mode(p);
+		/* Free resource */
+		free(item);
+
+/*		g_idle_add(queue_job, NULL); */
+		if (err == 0)
+			queue_job(NULL);
+		*ret = COMM_RET_OK;
+		break;
+
 	default:
 		DBG("Check your request..\n");
 		*ret = COMM_RET_ERROR;
@@ -1185,6 +1205,111 @@ int __app_func(const pkgmgrinfo_appinfo_h handle, void *user_data)
 	return 0;
 }
 
+static int __pkgcmd_read_proc(const char *path, char *buf, int size)
+{
+	int fd;
+	int ret;
+	if (buf == NULL || path == NULL)
+		return -1;
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return -1;
+	ret = read(fd, buf, size - 1);
+	if (ret <= 0) {
+		close(fd);
+		return -1;
+	} else
+		buf[ret] = 0;
+	close(fd);
+	return ret;
+}
+
+static int __pkgcmd_find_pid_by_cmdline(const char *dname,
+			const char *cmdline, const char *apppath)
+{
+	int pid = 0;
+
+	if (strcmp(cmdline, apppath) == 0) {
+		pid = atoi(dname);
+		if (pid != getpgid(pid))
+			pid = 0;
+	}
+	return pid;
+}
+
+static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option)
+{
+	DIR *dp;
+	struct dirent *dentry;
+	int pid;
+	int ret;
+	char buf[1024] = {'\0'};
+	int pgid;
+
+	dp = opendir("/proc");
+	if (dp == NULL) {
+		return -1;
+	}
+
+	while ((dentry = readdir(dp)) != NULL) {
+		if (!isdigit(dentry->d_name[0]))
+			continue;
+
+		snprintf(buf, sizeof(buf), "/proc/%s/cmdline", dentry->d_name);
+		ret = __pkgcmd_read_proc(buf, buf, sizeof(buf));
+		if (ret <= 0)
+			continue;
+
+		pid = __pkgcmd_find_pid_by_cmdline(dentry->d_name, buf, apppath);
+		if (pid > 0) {
+			if (option == 0) {
+				closedir(dp);
+				return pid;
+			}
+			pgid = getpgid(pid);
+			if (pgid <= 1) {
+				closedir(dp);
+				return -1;
+			}
+			if (killpg(pgid, SIGKILL) < 0) {
+				closedir(dp);
+				return -1;
+			}
+			closedir(dp);
+			return pid;
+		}
+	}
+	closedir(dp);
+	return 0;
+}
+
+static int __app_list_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
+{
+	char *exec = NULL;
+	char *appid = NULL;
+	int ret = 0;
+	int pid = -1;
+	if (handle == NULL) {
+		perror("appinfo handle is NULL\n");
+		exit(1);
+	}
+	ret = pkgmgrinfo_appinfo_get_exec(handle, &exec);
+	if (ret) {
+		perror("Failed to get app exec path\n");
+		exit(1);
+	}
+	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
+	if (ret) {
+		perror("Failed to get appid\n");
+		exit(1);
+	}
+
+	pid = __pkgcmd_proc_iter_kill_cmdline(exec, 1);
+	if (pid > 0)
+		DBG("Appid: %s is Terminated\n", appid);
+
+	return 0;
+}
 
 gboolean queue_job(void *data)
 {
@@ -1619,6 +1744,60 @@ pop:
 			break;
 		}
 		break;
+
+	case COMM_REQ_KILL_APP:
+		DBG("COMM_REQ_KILL_APP start");
+		_save_queue_status(item, "processing");
+		DBG("saved queue status. Now try fork()");
+		/*save pkg type and pkg name for future*/
+		x = (pos + num_of_backends - 1) % num_of_backends;
+		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
+		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
+		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
+		(ptr + x)->pid = fork();
+		DBG("child forked [%d]\n", (ptr + x)->pid);
+
+		switch ((ptr + x)->pid) {
+		case 0:	/* child */
+			DBG("child run parse argv()");
+
+			pkgmgrinfo_pkginfo_h handle;
+			ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
+			if (ret < 0) {
+				DBG("Failed to get handle\n");
+				exit(1);
+			}
+			ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __app_list_cb, NULL);
+			if (ret < 0) {
+				DBG("pkgmgrinfo_appinfo_get_list() failed\n");
+				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+				exit(1);
+			}
+			ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_SVC_APP, __app_list_cb, NULL);
+			if (ret < 0) {
+				DBG("pkgmgrinfo_appinfo_get_list() failed\n");
+				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+				exit(1);
+			}
+
+			pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+
+			_save_queue_status(item, "done");
+			exit(0);
+			break;
+
+		case -1:	/* error */
+			fprintf(stderr, "Fail to execute fork()\n");
+			exit(1);
+			break;
+
+		default:	/* parent */
+			DBG("parent exit\n");
+			_save_queue_status(item, "done");
+			break;
+		}
+		break;
+
 
 	default:
 		break;

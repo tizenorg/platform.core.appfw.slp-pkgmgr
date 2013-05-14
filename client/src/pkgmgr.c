@@ -764,6 +764,40 @@ catch:
 	return ret;
 }
 
+static int __kill_app_process(pkgmgr_client * pc, const char *pkgid)
+{
+	const char *pkgtype;
+	char *req_key;
+	char *cookie = NULL;
+	int ret;
+	pkgmgrinfo_pkginfo_h handle;
+
+	/* Check for NULL value of pc */
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
+
+	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_pkginfo failed");
+
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_type failed");
+
+	/* 2. generate req_key */
+	req_key = __get_req_key(pkgid);
+
+	/* 3. request activate */
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_KILL_APP, pkgtype, pkgid, NULL, NULL, 1);
+	if (ret < 0)
+		_LOGE("request failed, ret=%d\n", ret);
+
+catch:
+	free(req_key);
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+
+	return ret;
+
+}
+
 API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 {
 	pkgmgr_client_t *pc = NULL;
@@ -1902,6 +1936,18 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		ret = __get_size_process(pc, pkgid, (pkgmgr_getsize_type)service_mode, event_cb, data);
 		if (ret < 0)
 			_LOGE("__get_size_process fail \n");
+		else
+			ret = PKGMGR_R_OK;
+
+		break;
+
+	case PM_REQUEST_KILL_APP:
+		tryvm_if(pkgid == NULL, ret = PKGMGR_R_EINVAL, "pkgid is NULL\n");
+		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
+
+		ret = __kill_app_process(pc, pkgid);
+		if (ret < 0)
+			_LOGE("__kill_app_process fail \n");
 		else
 			ret = PKGMGR_R_OK;
 

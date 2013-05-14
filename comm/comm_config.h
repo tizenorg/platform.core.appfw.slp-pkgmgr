@@ -114,6 +114,9 @@ enum {
 	/*get package size */
 	COMM_REQ_GET_SIZE,
 
+	/*kill app */
+	COMM_REQ_KILL_APP,
+
 	COMM_REQ_MAX_SENTINEL
 };
 

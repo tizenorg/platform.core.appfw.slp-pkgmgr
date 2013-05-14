@@ -915,6 +915,28 @@ static int __process_request()
 		break;
 
 	case KILLAPP_REQ:
+		if (data.pkgid[0] == '\0') {
+			printf("Please provide the arguments.\n");
+			printf("use -h option to see usage\n");
+			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
+			break;
+		}
+
+		pc = pkgmgr_client_new(PC_REQUEST);
+		if (pc == NULL) {
+			printf("PkgMgr Client Creation Failed\n");
+			data.result = PKGCMD_ERR_FATAL_ERROR;
+			break;
+		}
+
+		ret = pkgmgr_client_request_service(PM_REQUEST_KILL_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, NULL);
+		if (ret < 0){
+			data.result = PKGCMD_ERR_FATAL_ERROR;
+			break;
+		}
+		ret = data.result;
+		break;
+
 	case CHECKAPP_REQ:
 		if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
 			printf("Please provide the arguments.\n");
