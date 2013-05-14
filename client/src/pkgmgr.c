@@ -597,7 +597,7 @@ catch:
 	return ret;
 }
 
-static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb)
+static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data)
 {
 	char *req_key = NULL;
 	int req_id = 0;
@@ -625,7 +625,7 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_gets
 	installer_path = _get_backend_path_with_type(pkgtype);
 	req_key = __get_req_key(pkgid);
 	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL);
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
 
 
 	snprintf(buf, 128, "%d", get_type);
@@ -679,7 +679,7 @@ catch:
 	return ret;
 }
 
-static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_move_type move_type, pkgmgr_handler event_cb)
+static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_move_type move_type, pkgmgr_handler event_cb, void *data)
 {
 	char *req_key = NULL;
 	int req_id = 0;
@@ -707,7 +707,7 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_move
 	installer_path = _get_backend_path_with_type(pkgtype);
 	req_key = __get_req_key(pkgid);
 	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL);
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
 
 	/* generate argv */
 	snprintf(buf, 128, "%d", move_type);
@@ -1886,7 +1886,7 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
 		tryvm_if((service_mode < PM_MOVE_TO_INTERNAL) || (service_mode > PM_MOVE_TO_SDCARD), ret = PKGMGR_R_EINVAL, "service_mode is wrong\n");
 
-		ret = __move_pkg_process(pc, pkgid, (pkgmgr_move_type)service_mode, event_cb);
+		ret = __move_pkg_process(pc, pkgid, (pkgmgr_move_type)service_mode, event_cb, data);
 		if (ret < 0)
 			_LOGE("__move_pkg_process fail \n");
 		else
@@ -1899,7 +1899,7 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
 		tryvm_if((service_mode < PM_GET_TOTAL_SIZE) || (service_mode > PM_GET_DATA_SIZE), ret = PKGMGR_R_EINVAL, "service_mode is wrong\n");
 
-		ret = __get_size_process(pc, pkgid, (pkgmgr_getsize_type)service_mode, event_cb);
+		ret = __get_size_process(pc, pkgid, (pkgmgr_getsize_type)service_mode, event_cb, data);
 		if (ret < 0)
 			_LOGE("__get_size_process fail \n");
 		else
