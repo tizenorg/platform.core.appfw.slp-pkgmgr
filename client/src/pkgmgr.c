@@ -525,7 +525,7 @@ static int __sync_process(char *req_key)
 	{
 		check_cnt ++;
 		if (access(info_file, F_OK) != 0) {
-			_LOGD("file is not generated yet.... wait\n", info_file);
+			_LOGD("file is not generated yet.... wait\n");
 			usleep(10 * 1000);	/* 10ms sleep*/
 		} else {
 			fp = fopen(info_file, "r");
@@ -741,6 +741,7 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_move
 	char *temp = NULL;
 	int i = 0;
 	char buf[128] = {'\0'};
+	char info_file[PKG_STRING_LEN_MAX] = {'\0', };
 
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
@@ -799,7 +800,8 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_move
 	if (ret < 0)
 		_LOGE("comm_client_request failed, ret=%d\n", ret);
 
-	ret = __sync_process(pkgid);
+	snprintf(info_file, PKG_STRING_LEN_MAX, "app2sd_%s", pkgid);
+	ret = __sync_process(info_file);
 	if (ret != 0)
 		_LOGE("move pkg failed, ret=%d\n", ret);
 
