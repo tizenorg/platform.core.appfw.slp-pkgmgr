@@ -36,7 +36,8 @@
 #define LOG_TAG "PKGMGR"
 #endif				/* LOG_TAG */
 
-#define MAX_PKG_BUF_LEN	128
+#define MAX_PKG_BUF_LEN	1024
+#define PKG_TMP_PATH "/opt/usr/apps/tmp"
 
 static int _pkg_getsize(int argc, char **argv)
 {
@@ -48,6 +49,10 @@ static int _pkg_getsize(int argc, char **argv)
 	int size = 0;
 	int get_type = -1;
 	char buf[MAX_PKG_BUF_LEN] = {'\0'};
+	char device_path[MAX_PKG_BUF_LEN] = {'\0', };
+	FILE* file = NULL;
+	char *pkeyid = NULL;
+	int fd = 0;
 
 	/*make new pkgmgr_installer handle*/
 	pi = pkgmgr_installer_new();
@@ -60,6 +65,9 @@ static int _pkg_getsize(int argc, char **argv)
 	/*get pkgid from installer handle*/
 	pkgid = pkgmgr_installer_get_request_info(pi);
 	tryvm_if(pkgid == NULL, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_request_info failed");
+
+	pkeyid = pkgmgr_installer_get_session_id(pi);
+	tryvm_if(pkeyid == NULL, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_session_id failed");
 
 	get_type = pkgmgr_installer_get_move_type(pi);
 	tryvm_if(pkgid < 0, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_request_info failed");
@@ -87,16 +95,25 @@ static int _pkg_getsize(int argc, char **argv)
 		tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_data_size[pkgid=%s] failed", pkgid);
 	}
 
-	snprintf(buf, MAX_PKG_BUF_LEN - 1, "%d", size);
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s/%s", PKG_TMP_PATH, pkeyid);
 
-	/*send size to dbus*/
-	ret =pkgmgr_installer_send_signal(pi, type, pkgid, "size", buf);
-	tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgr_installer_send_signal[pkgid=%s] failed", pkgid);
+	file = fopen(device_path, "w");
+	tryvm_if(file == NULL, ret = PMINFO_R_ERROR, "cannot open result file [%s]", device_path);
+
+	snprintf(buf, MAX_PKG_BUF_LEN - 1, "%d\n", size);
+	fwrite(buf, 1, strlen(buf), file);
 
 catch:
 
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	pkgmgr_installer_free(pi);
+
+	if (file != NULL) {
+		fflush(file);
+		fd = fileno(file);
+		fsync(fd);
+		fclose(file);
+	}
 
 	return ret;
 }

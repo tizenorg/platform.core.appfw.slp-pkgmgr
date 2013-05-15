@@ -50,6 +50,8 @@
 #define LOG_TAG "PKGMGR"
 #endif				/* LOG_TAG */
 
+#define PKG_TMP_PATH "/opt/usr/apps/tmp"
+
 static int _get_request_id()
 {
 	static int internal_req_id = 1;
@@ -612,6 +614,11 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_gets
 	char *temp = NULL;
 	int i = 0;
 	char buf[128] = {'\0'};
+	char size_info_file[PKG_STRING_LEN_MAX] = {'\0', };
+	int pkg_size = 0;
+	int check_cnt = 0;
+	FILE *fp;
+	char buffer[PKG_ARGC_MAX] = {'\0', };
 
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
@@ -625,8 +632,6 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_gets
 	installer_path = _get_backend_path_with_type(pkgtype);
 	req_key = __get_req_key(pkgid);
 	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
-
 
 	snprintf(buf, 128, "%d", get_type);
 	argv[argcnt++] = installer_path;
@@ -665,6 +670,43 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_gets
 
 	/* 6. request install */
 	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_GET_SIZE, pkgtype, pkgid, args, NULL, 1);
+
+	snprintf(size_info_file, PKG_STRING_LEN_MAX, "%s/%s", PKG_TMP_PATH, req_key);
+	while(1)
+	{
+		check_cnt ++;
+		if (access(size_info_file, F_OK) != 0) {
+			_LOGD("file is not generated yet.... wait\n", size_info_file);
+			usleep(10 * 1000);	/* 10ms sleep*/
+		} else {
+			_LOGD("size_info_file file is generated!!\n");
+
+			fp = fopen(size_info_file, "r");
+			if (fp == NULL) {
+				_LOGE("fopen failed\n");
+				break;
+			}
+			fread(&buffer, sizeof(buffer), 1, fp);
+			fclose(fp);
+
+			pkg_size = atoi(buffer);
+			_LOGD("pkg_sizepkg_size  == > %d!!\n", pkg_size);
+
+			break;
+		}
+
+		if (check_cnt > 500) {	/* 5s time over*/
+			_LOGD("wait time over!!\n");
+			break;
+		}
+	}
+
+	const char *rm_argv[] = { "/bin/rm", "-rf", size_info_file, NULL };
+	ret = __xsystem(rm_argv);
+	if (ret < 0)
+		_LOGE("__xsystem failed, ret=%d\n", ret);
+
+	ret = pkg_size;
 	if (ret < 0)
 		_LOGE("request failed, ret=%d\n", ret);
 
@@ -1936,8 +1978,6 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		ret = __get_size_process(pc, pkgid, (pkgmgr_getsize_type)service_mode, event_cb, data);
 		if (ret < 0)
 			_LOGE("__get_size_process fail \n");
-		else
-			ret = PKGMGR_R_OK;
 
 		break;
 

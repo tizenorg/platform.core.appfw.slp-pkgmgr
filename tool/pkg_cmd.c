@@ -217,14 +217,10 @@ static int __return_cb(int req_id, const char *pkg_type,
 		else
 			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d]\n",
 					   req_id, pkg_type, pkgid, key, ret_val);
-	} else if (strncmp(key, "size", strlen("size")) == 0) {
-		printf("pkg[%s] size = %d\n", pkgid, atoi(val));
-		g_main_loop_quit(main_loop);
-	}
-	else
+	} else
 		printf("__return_cb req_id[%d] pkg_type[%s] "
-		       "pkgid[%s] key[%s] val[%s]\n",
-		       req_id, pkg_type, pkgid, key, val);
+			   "pkgid[%s] key[%s] val[%s]\n",
+			   req_id, pkg_type, pkgid, key, val);
 
 	if (strncmp(key, "end", strlen("end")) == 0) {
 		if ((strncmp(val, "fail", strlen("fail")) == 0) && data.result == 0){
@@ -1049,8 +1045,6 @@ static int __process_request()
 			break;
 		}
 
-		g_type_init();
-		main_loop = g_main_loop_new(NULL, FALSE);
 		pc = pkgmgr_client_new(PC_REQUEST);
 		if (pc == NULL) {
 			printf("PkgMgr Client Creation Failed\n");
@@ -1063,7 +1057,8 @@ static int __process_request()
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			break;
 		}
-		g_main_loop_run(main_loop);
+
+		printf("pkg[%s] size = %d\n", data.pkgid, ret);
 		ret = data.result;
 		break;
 
