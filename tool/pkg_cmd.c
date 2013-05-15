@@ -815,65 +815,39 @@ static int __process_request()
 		break;
 
 	case MOVE_REQ:
-		if (data.quiet == 1) {
-			if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
-				printf("Please provide the arguments.\n");
-				printf("use -h option to see usage\n");
-				ret = -1;
-				break;
-			}
-			if (data.type < 0 || data.type > 1) {
-				printf("Invalid move type...See usage\n");
-				ret = -1;
-				break;
-			}
-			pc = pkgmgr_client_new(PC_REQUEST);
-			if (pc == NULL) {
-				printf("PkgMgr Client Creation Failed\n");
-				ret = -1;
-				break;
-			}
-			mode = PM_QUIET;
-			ret = __is_app_installed(data.pkgid);
-			if (ret == -1) {
-				printf("package is not installed\n");
-				break;
-			}
-			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
-			if (ret < 0)
-				break;
-			ret = data.result;
-		} else {
-			if (data.pkgid[0] == '\0') {
-				printf("Please provide the arguments.\n");
-				printf("use -h option to see usage\n");
-				ret = -1;
-				break;
-			}
-			if (data.type < 0 || data.type > 1) {
-				printf("Invalid move type...See usage\n");
-				ret = -1;
-				break;
-			}
-			g_type_init();
-			main_loop = g_main_loop_new(NULL, FALSE);
-			pc = pkgmgr_client_new(PC_REQUEST);
-			if (pc == NULL) {
-				printf("PkgMgr Client Creation Failed\n");
-				ret = -1;
-				break;
-			}
-			ret = __is_app_installed(data.pkgid);
-			if (ret == -1) {
-				printf("package is not installed\n");
-				break;
-			}
-			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
-			if (ret < 0)
-				break;
-			g_main_loop_run(main_loop);
-			ret = data.result;
+		if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
+			printf("Please provide the arguments.\n");
+			printf("use -h option to see usage\n");
+			ret = -1;
+			break;
 		}
+		if (data.type < 0 || data.type > 1) {
+			printf("Invalid move type...See usage\n");
+			ret = -1;
+			break;
+		}
+		pc = pkgmgr_client_new(PC_REQUEST);
+		if (pc == NULL) {
+			printf("PkgMgr Client Creation Failed\n");
+			ret = -1;
+			break;
+		}
+		mode = PM_QUIET;
+		ret = __is_app_installed(data.pkgid);
+		if (ret == -1) {
+			printf("package is not installed\n");
+			break;
+		}
+		if (data.quiet == 0)
+			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
+		else
+			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
+
+		printf("pkg[%s] move result = %d\n", data.pkgid, ret);
+
+		if (ret < 0)
+			break;
+		ret = data.result;
 		break;
 
 	case APPPATH_REQ:
@@ -1052,7 +1026,7 @@ static int __process_request()
 			break;
 		}
 
-		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
+		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
 		if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			break;
