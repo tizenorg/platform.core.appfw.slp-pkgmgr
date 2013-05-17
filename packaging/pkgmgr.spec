@@ -94,6 +94,7 @@ make %{?jobs:-j%jobs}
 %install
 %make_install
 rm -rf  %{buildroot}%{_bindir}/pkgmgr_backend_sample
+rm -rf %{buildroot}%{_libdir}/libpkgmgr_backend_lib_sample.so
 
 
 %post
@@ -142,7 +143,6 @@ mkdir -p /usr/etc/package-manager/server
 %exclude %{_includedir}/pkgmgr/comm_client.h
 %exclude %{_includedir}/pkgmgr/comm_config.h
 %exclude %{_includedir}/pkgmgr/comm_status_broadcast_server.h
-%exclude %{_libdir}/libpkgmgr_backend_lib_sample.so
 %exclude /usr/etc/package-manager/server/queue_status
 /etc/opt/upgrade/pkgmgr.patch.sh
 
