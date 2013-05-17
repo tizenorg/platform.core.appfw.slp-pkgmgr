@@ -88,7 +88,7 @@ Package Manager client types develpoment package for packaging
 %setup -q
 
 %build
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
+%cmake . 
 make %{?jobs:-j%jobs}
 
 %install
@@ -139,7 +139,6 @@ mkdir -p /usr/etc/package-manager/server
 %{_datadir}/packages/org.tizen.pkgmgr-install.xml
 %{_datadir}/mime/packages/mime.wac.xml
 %{_datadir}/mime/packages/mime.tpk.xml
-%{_libdir}/libpkgmgr_parser_lib_sample.so
 %exclude %{_includedir}/pkgmgr/comm_client.h
 %exclude %{_includedir}/pkgmgr/comm_config.h
 %exclude %{_includedir}/pkgmgr/comm_status_broadcast_server.h
