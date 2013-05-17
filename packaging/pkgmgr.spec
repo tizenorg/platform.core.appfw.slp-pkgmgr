@@ -1,10 +1,9 @@
-#sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
 Version:    0.2.89
 Release:    1
 Group:      System/Libraries
-License:    Apache License, Version 2.0
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 BuildRequires:  cmake
 BuildRequires:  unzip
@@ -88,14 +87,13 @@ Package Manager client types develpoment package for packaging
 %prep
 %setup -q
 
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
-
 %build
-
+cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
 make %{?jobs:-j%jobs}
+
 %install
-rm -rf %{buildroot}
 %make_install
+rm -rf  %{buildroot}%{_bindir}/pkgmgr_backend_sample
 
 
 %post
@@ -141,7 +139,6 @@ mkdir -p /usr/etc/package-manager/server
 %{_datadir}/mime/packages/mime.wac.xml
 %{_datadir}/mime/packages/mime.tpk.xml
 %{_libdir}/libpkgmgr_parser_lib_sample.so
-%exclude %{_bindir}/pkgmgr_backend_sample
 %exclude %{_includedir}/pkgmgr/comm_client.h
 %exclude %{_includedir}/pkgmgr/comm_config.h
 %exclude %{_includedir}/pkgmgr/comm_status_broadcast_server.h
