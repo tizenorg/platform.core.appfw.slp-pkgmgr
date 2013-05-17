@@ -93,8 +93,10 @@ make %{?jobs:-j%jobs}
 
 %install
 %make_install
-rm -rf  %{buildroot}%{_bindir}/pkgmgr_backend_sample
-rm -rf %{buildroot}%{_libdir}/libpkgmgr_backend_lib_sample.so
+rm -f  %{buildroot}%{_bindir}/pkgmgr_backend_sample
+rm -f %{buildroot}%{_libdir}/libpkgmgr_backend_lib_sample.so
+rm -f %{buildroot}%{_libdir}/libpkgmgr_parser_lib_sample.so
+
 
 
 %post

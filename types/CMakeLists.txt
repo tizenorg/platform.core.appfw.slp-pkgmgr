@@ -6,4 +6,4 @@ INSTALL(FILES
 			${CMAKE_CURRENT_SOURCE_DIR}/include/package-manager-plugin.h
 		DESTINATION include)
 		
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-types.pc DESTINATION lib/pkgconfig)
+    INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-types.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)

@@ -136,7 +136,7 @@ INSTALL(TARGETS
 			pkgmgr_installer_client 
 			pkgmgr_installer_status_broadcast_server
 			pkgmgr_installer
-		DESTINATION lib
+            DESTINATION ${LIB_INSTALL_DIR}
 		COMPONENT RuntimeLibraries)
 INSTALL(FILES 
 			comm_client.h 
@@ -150,7 +150,7 @@ INSTALL(FILES
 		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-client.pc 
 		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-status-broadcast-server.pc 
 		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc 
-		DESTINATION lib/pkgconfig)
+        DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
 
 
 
