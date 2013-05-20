@@ -1,0 +1,8 @@
+Change-Id: I55327296876b23f580a4060c585cce23c297e875
+Code-Review+2: Anas Nashif
+Verified+1: Rusty Lynch <rusty.lynch@intel.com>
+Submitted-by: Anas Nashif
+Submitted-at: Mon, 20 May 2013 16:18:00 -0700
+Reviewed-on: https://review.tizen.org/gerrit/3597
+Project: platform/core/appfw/slp-pkgmgr
+Branch: refs/heads/tizen
