@@ -1,23 +1,5 @@
 <manifest>
-	<define>
-		<domain name="pkgmgr"/>
-		<request>
-			<smack request="dbus" type="rwx"/>
-			<smack request="system::homedir" type="rwxat"/>
-			<smack request="system::media" type="rwxat"/>
-			<smack request="ail::db" type="rwx"/>
-			<smack request="system::vconf" type="rwxat"/>
-			<smack request="pkgmgr::db" type="rwx"/>
-		</request>
-	</define>
 	<request>
-		<domain name="pkgmgr"/>
+		<domain name="_"/>
 	</request>
-	<assign>
-		<filesystem path="/usr/bin/pkg_initdb" exec_label="pkgmgr"/>
-		<filesystem path="/usr/bin/pkgcmd" exec_label="pkgmgr"/>
-		<filesystem path="/usr/bin/pkginfo" exec_label="pkgmgr"/>
-		<filesystem path="/usr/lib/libpkgmgr_parser_lib_sample.so" label="_"/>
-		<filesystem path="/usr/share/dbus-1/services/org.tizen.slp.pkgmgr.service" label="_" exec_label="none"/>
-	</assign>
 </manifest>

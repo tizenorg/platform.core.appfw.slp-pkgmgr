@@ -27,6 +27,7 @@ Packager Manager client library package for packaging
 
 Requires(post): ail
 Requires(post): pkgmgr-info
+Requires(post): /usr/bin/chsmack
 
 %package client
 Summary:    Package Manager client library develpoment package
@@ -57,7 +58,7 @@ Requires:   %{name} = %{version}-%{release}
 Package Manager server for packaging
 
 %package installer
-Summary:    Library for installer frontend/backend.
+Summary:    Library for installer frontend/backend
 Group:      TO_BE/FILLED_IN
 Requires:   %{name} = %{version}-%{release}
 Requires(post): /sbin/ldconfig
