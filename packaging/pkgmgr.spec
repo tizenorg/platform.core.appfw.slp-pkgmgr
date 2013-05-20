@@ -57,7 +57,7 @@ Requires:   %{name} = %{version}-%{release}
 Package Manager server for packaging
 
 %package installer
-Summary:    Library for installer frontend/backend.
+Summary:    Library for installer frontend/backend
 Group:      TO_BE/FILLED_IN
 Requires:   %{name} = %{version}-%{release}
 Requires(post): /sbin/ldconfig
@@ -108,13 +108,17 @@ mkdir -p /etc/opt/upgrade
 
 # For pkgmgr-install:
 # Update mime database to support package mime types
-update-mime-database /usr/share/mime
+if [ -x /usr/bin/update-mime-database ]; then
+    update-mime-database /usr/share/mime
+fi
 
 mkdir -p /usr/share/applications
 mkdir -p /opt/dbspace/
-chsmack -a 'pkgmgr::db' /opt/dbspace/.pkgmgr_parser.db*
-chsmack -a 'pkgmgr::db' /opt/dbspace/.pkgmgr_cert.db*
-chsmack -a 'ail::db' /opt/dbspace/.app_info.db*
+if [ -x /usr/bin/chsmack ]; then
+    chsmack -a 'pkgmgr::db' /opt/dbspace/.pkgmgr_parser.db*
+    chsmack -a 'pkgmgr::db' /opt/dbspace/.pkgmgr_cert.db*
+    chsmack -a 'ail::db' /opt/dbspace/.app_info.db*
+fi
 rm -rf /opt/usr/apps/tmp/pkgmgr_tmp.txt
 
 %post server
