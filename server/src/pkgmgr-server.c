@@ -41,6 +41,7 @@
 
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#include <security-server.h>
 
 #include "pkgmgr_installer.h"
 #include "comm_pkg_mgr_server.h"
@@ -199,6 +200,56 @@ static void __set_backend_mode(int position)
 static void __unset_backend_mode(int position)
 {
 	backend_mode = backend_mode & ~(1<<position);
+}
+
+static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
+{
+	guchar *cookie = NULL;
+	gsize size;
+	char *smack_label = NULL;
+	int ret = PMINFO_R_OK;	//temp to success , it should be PMINFO_R_ERROR
+
+	if (e_cookie == NULL)	{
+		DBG("e_cookie is NULL!!!\n");
+		return PMINFO_R_ERROR;
+	}
+
+	cookie = g_base64_decode(e_cookie, &size);
+	if (cookie == NULL)	{
+		DBG("Unable to decode cookie!!!\n");
+		return PMINFO_R_ERROR;
+	}
+
+	switch (req_type) {
+		case COMM_REQ_TO_INSTALLER:
+			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "r"))
+				ret = PMINFO_R_OK;
+
+			break;
+
+		case COMM_REQ_TO_MOVER:
+			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "w"))
+				ret = PMINFO_R_OK;
+			break;
+
+		case COMM_REQ_GET_SIZE:
+			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::info", "r"))
+				ret = PMINFO_R_OK;
+			break;
+
+		default:
+			DBG("Check your request[%d]..\n", req_type);
+			break;
+	}
+
+	DBG("security_server[req-type:%d] check cookie result = %d, \n", req_type, ret);
+
+	if (cookie){
+		g_free(cookie);
+		cookie = NULL;
+	}
+
+	return ret;
 }
 
 static int __get_position_from_pkg_type(char *pkgtype)
@@ -893,6 +944,7 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 	static int sig_reg = 0;
 	int err = -1;
 	int p = 0;
+	int cookie_result = 0;
 
 	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s]",
 	    req_id, req_type, pkg_type, pkgid, args, cookie);
@@ -933,6 +985,14 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 
 	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:
+		/* check caller privilege */
+		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
+		if (cookie_result < 0){
+			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
+
 		/* -q option should be located at the end of command !! */
 		if (((quiet = strstr(args, " -q")) &&
 		     (quiet[strlen(quiet)] == '\0')) ||
@@ -1020,6 +1080,14 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_MOVER:
+		/* check caller privilege */
+		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
+		if (cookie_result < 0){
+			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
+
 		/* In case of mover, there is no popup */
 		err = _pm_queue_push(item);
 		p = __get_position_from_pkg_type(item->pkg_type);
@@ -1041,6 +1109,14 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_GET_SIZE:
+		/* check caller privilege */
+		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
+		if (cookie_result < 0){
+			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
+
 		err = _pm_queue_push(item);
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);

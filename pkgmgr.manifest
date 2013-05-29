@@ -1,6 +1,10 @@
 <manifest>
 	<define>
 		<domain name="pkgmgr"/>
+		<provide>
+			<label name="pkgmgr::svc"/>
+			<label name="pkgmgr::info"/>
+		</provide>
 		<request>
 			<smack request="dbus" type="rwx"/>
 			<smack request="system::homedir" type="rwxat"/>
