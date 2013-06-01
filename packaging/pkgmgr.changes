@@ -1,3 +1,6 @@
+* Sat Jun 01 2013 Anas Nashif <anas.nashif@intel.com> submit/tizen/20130517.185027@a8c5788
+- Remove license/group placeholders
+
 * Fri May 17 2013 Anas Nashif <anas.nashif@intel.com> submit/tizen/20130517.044823@933748f
 - do not exclude binaries, just delete them
 

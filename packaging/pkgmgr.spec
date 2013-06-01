@@ -2,7 +2,7 @@ Name:       pkgmgr
 Summary:    Packager Manager client library package
 Version:    0.2.89
 Release:    1
-Group:      System/Libraries
+Group:      Application Framwork/Libraries
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 BuildRequires:  cmake
@@ -25,12 +25,9 @@ BuildRequires:  pkgmgr-info-parser
 %description
 Packager Manager client library package for packaging
 
-Requires(post): ail
-Requires(post): pkgmgr-info
-
 %package client
 Summary:    Package Manager client library develpoment package
-Group:      TO_BE/FILLED_IN
+Group:      Application Framwork/Utilities
 Requires:   %{name} = %{version}-%{release}
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -42,7 +39,7 @@ Package Manager client library develpoment package for packaging
 
 %package client-devel
 Summary:    Package Manager client library develpoment package
-Group:      TO_BE/FILLED_IN
+Group:      Development/Application Framwork
 Requires:   %{name} = %{version}-%{release}
 
 %description client-devel
@@ -50,7 +47,7 @@ Package Manager client library develpoment package for packaging
 
 %package server
 Summary:    Package Manager server
-Group:      TO_BE/FILLED_IN
+Group:      Application Framwork/Service
 Requires:   %{name} = %{version}-%{release}
 
 %description server
@@ -58,7 +55,7 @@ Package Manager server for packaging
 
 %package installer
 Summary:    Library for installer frontend/backend.
-Group:      TO_BE/FILLED_IN
+Group:      Application Framwork/Utilities
 Requires:   %{name} = %{version}-%{release}
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -68,7 +65,7 @@ Library for installer frontend/backend for packaging.
 
 %package installer-devel
 Summary:    Dev package for libpkgmgr-installer
-Group:      TO_BE/FILLED_IN
+Group:      Development/Application Framwork
 Requires:   %{name} = %{version}-%{release}
 
 %description installer-devel
@@ -77,7 +74,7 @@ Dev package for libpkgmgr-installer for packaging.
 
 %package types-devel
 Summary:    Package Manager manifest parser develpoment package
-Group:      TO_BE/FILLED_IN
+Group:      Development/Application Framwork
 Requires:   %{name} = %{version}-%{release}
 
 %description types-devel
@@ -118,7 +115,6 @@ chsmack -a 'ail::db' /opt/dbspace/.app_info.db*
 rm -rf /opt/usr/apps/tmp/pkgmgr_tmp.txt
 
 %post server
-
 /sbin/ldconfig
 mkdir -p /usr/etc/package-manager/server
 
