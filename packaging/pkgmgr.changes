@@ -1,5 +1,11 @@
+* Mon Jun 03 2013 Anas Nashif <anas.nashif@intel.com> submit/tizen/20130601.183631@fff80e8
+- Fixed build on 64 bit systems
+
 * Sat Jun 01 2013 Anas Nashif <anas.nashif@intel.com> submit/tizen/20130517.185027@a8c5788
 - Remove license/group placeholders
+
+* Mon May 20 2013 Rusty Lynch <rusty.lynch@intel.com> accepted/tizen/20130520.103548@a8c5788
+- Fix install of package in a buildroot environment
 
 * Fri May 17 2013 Anas Nashif <anas.nashif@intel.com> submit/tizen/20130517.044823@933748f
 - do not exclude binaries, just delete them

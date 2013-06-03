@@ -29,8 +29,6 @@ Packager Manager client library package for packaging
 Summary:    Package Manager client library develpoment package
 Group:      Application Framwork/Utilities
 Requires:   %{name} = %{version}-%{release}
-Requires(post): /sbin/ldconfig
-Requires(postun): /sbin/ldconfig
 Requires: shared-mime-info
 Requires(post): pkgmgr
 
@@ -54,11 +52,9 @@ Requires:   %{name} = %{version}-%{release}
 Package Manager server for packaging
 
 %package installer
-Summary:    Library for installer frontend/backend.
+Summary:    Library for installer frontend/backend
 Group:      Application Framwork/Utilities
 Requires:   %{name} = %{version}-%{release}
-Requires(post): /sbin/ldconfig
-Requires(postun): /sbin/ldconfig
 
 %description installer
 Library for installer frontend/backend for packaging.
