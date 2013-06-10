@@ -6,6 +6,8 @@
 			<label name="pkgmgr::info"/>
 		</provide>
 		<request>
+			<smack request="pkgmgr::svc" type="rwx"/>
+			<smack request="pkgmgr::info" type="rwx"/>
 			<smack request="dbus" type="rwx"/>
 			<smack request="system::homedir" type="rwxat"/>
 			<smack request="system::media" type="rwxat"/>

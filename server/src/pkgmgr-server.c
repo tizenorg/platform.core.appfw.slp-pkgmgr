@@ -228,7 +228,7 @@ static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
 			break;
 
 		case COMM_REQ_TO_MOVER:
-			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "w"))
+			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "x"))
 				ret = PMINFO_R_OK;
 			break;
 

@@ -548,19 +548,12 @@ static int __sync_process(char *req_key)
 	while(1)
 	{
 		check_cnt ++;
-		if (access(info_file, F_OK) != 0) {
+
+		vconf_get_int(VCONFKEY_PKGMGR_STATUS, &result);
+		if (result < 0) {
 			_LOGD("file is not generated yet.... wait\n");
 			usleep(10 * 1000);	/* 10ms sleep*/
 		} else {
-			fp = fopen(info_file, "r");
-			if (fp == NULL) {
-				_LOGE("fopen failed\n");
-				break;
-			}
-			fread(&buffer, sizeof(buffer), 1, fp);
-			fclose(fp);
-
-			result = atoi(buffer);
 			_LOGD("info_file file is generated, result = %d. \n", result);
 			break;
 		}
@@ -571,10 +564,7 @@ static int __sync_process(char *req_key)
 		}
 	}
 
-	const char *rm_argv[] = { "/bin/rm", "-rf", info_file, NULL };
-	ret = __xsystem(rm_argv);
-	if (ret < 0)
-		_LOGE("__xsystem failed, ret=%d\n", ret);
+	vconf_set_int(VCONFKEY_PKGMGR_STATUS, -1);
 
 	return result;
 }
@@ -1984,6 +1974,7 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 	/* Check for NULL value of service type */
 	retvm_if(service_type > PM_REQUEST_MAX, PKGMGR_R_EINVAL, "service type is not defined\n");
 	retvm_if(service_type < 0, PKGMGR_R_EINVAL, "service type is error\n");
+	vconf_set_int(VCONFKEY_PKGMGR_STATUS, -1);
 
 	switch (service_type) {
 	case PM_REQUEST_CSC:

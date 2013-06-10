@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <pkgmgr-info.h>
+#include <vconf.h>
 
 #include "pkgmgr_installer.h"
 #include "pkgmgr-debug.h"
@@ -46,13 +47,10 @@ static int _pkg_getsize(int argc, char **argv)
 	char *type = NULL;
 	pkgmgr_installer *pi = NULL;
 	pkgmgrinfo_pkginfo_h handle = NULL;
-	int size = 0;
+	int size = -1;
 	int get_type = -1;
 	char buf[MAX_PKG_BUF_LEN] = {'\0'};
-	char device_path[MAX_PKG_BUF_LEN] = {'\0', };
-	FILE* file = NULL;
 	char *pkeyid = NULL;
-	int fd = 0;
 
 	/*make new pkgmgr_installer handle*/
 	pi = pkgmgr_installer_new();
@@ -95,25 +93,12 @@ static int _pkg_getsize(int argc, char **argv)
 		tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_data_size[pkgid=%s] failed", pkgid);
 	}
 
-	snprintf(device_path, MAX_PKG_BUF_LEN, "%s/%s", PKG_TMP_PATH, pkeyid);
-
-	file = fopen(device_path, "w");
-	tryvm_if(file == NULL, ret = PMINFO_R_ERROR, "cannot open result file [%s]", device_path);
-
-	snprintf(buf, MAX_PKG_BUF_LEN - 1, "%d\n", size);
-	fwrite(buf, 1, strlen(buf), file);
+	vconf_set_int(VCONFKEY_PKGMGR_STATUS, size);
 
 catch:
 
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	pkgmgr_installer_free(pi);
-
-	if (file != NULL) {
-		fflush(file);
-		fd = fileno(file);
-		fsync(fd);
-		fclose(file);
-	}
 
 	return ret;
 }
