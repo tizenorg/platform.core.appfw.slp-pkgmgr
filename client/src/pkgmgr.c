@@ -844,13 +844,13 @@ catch:
 	return ret;
 }
 
-static int __kill_app_process(pkgmgr_client * pc, const char *pkgid)
+static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_client * pc, const char *pkgid, void *data)
 {
 	const char *pkgtype;
 	char *req_key;
-	char *cookie = NULL;
 	int ret;
 	pkgmgrinfo_pkginfo_h handle;
+	int pid = -1;
 
 	/* Check for NULL value of pc */
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
@@ -866,9 +866,16 @@ static int __kill_app_process(pkgmgr_client * pc, const char *pkgid)
 	req_key = __get_req_key(pkgid);
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_KILL_APP, pkgtype, pkgid, NULL, NULL, 1);
+	if (service_type == PM_REQUEST_KILL_APP)
+		ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_KILL_APP, pkgtype, pkgid, NULL, NULL, 1);
+	else if (service_type == PM_REQUEST_CHECK_APP)
+		ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_CHECK_APP, pkgtype, pkgid, NULL, NULL, 1);
+
 	if (ret < 0)
 		_LOGE("request failed, ret=%d\n", ret);
+
+	pid  = __sync_process(req_key);
+	* (int *) data = pid;
 
 catch:
 	free(req_key);
@@ -2132,12 +2139,13 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 		break;
 
 	case PM_REQUEST_KILL_APP:
+	case PM_REQUEST_CHECK_APP:
 		tryvm_if(pkgid == NULL, ret = PKGMGR_R_EINVAL, "pkgid is NULL\n");
 		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
 
-		ret = __kill_app_process(pc, pkgid);
+		ret = __check_app_process(service_type, pc, pkgid, data);
 		if (ret < 0)
-			_LOGE("__kill_app_process fail \n");
+			_LOGE("__check_app_process fail \n");
 		else
 			ret = PKGMGR_R_OK;
 

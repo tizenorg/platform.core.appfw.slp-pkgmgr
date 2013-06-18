@@ -258,6 +258,7 @@ typedef enum {
 	PM_REQUEST_MOVE = 1,
 	PM_REQUEST_GET_SIZE = 2,
 	PM_REQUEST_KILL_APP = 3,
+	PM_REQUEST_CHECK_APP = 4,
 	PM_REQUEST_MAX
 }pkgmgr_request_service_type;
 

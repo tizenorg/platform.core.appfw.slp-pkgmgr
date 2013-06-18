@@ -1630,9 +1630,12 @@ static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data
 	int oc = 0;
 	int mc = 0;
 	int uc = 0;
+	int sc = 0;
 	char **operation = NULL;
 	char **uri = NULL;
 	char **mime = NULL;
+	char **subapp = NULL;
+
 	ret = pkgmgrinfo_appinfo_get_operation(handle, &oc, &operation);
 	if (ret < 0) {
 		printf("Get Operation Failed\n");
@@ -1648,6 +1651,12 @@ static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data
 		printf("Get Mime Failed\n");
 		return -1;
 	}
+	ret = pkgmgrinfo_appinfo_get_subapp(handle, &sc, &subapp);
+	if (ret < 0) {
+		printf("Get subapp Failed\n");
+		return -1;
+	}
+
 	for (i = 0; i < oc; i++) {
 		if (operation && operation[i])
 			printf("Operation: %s\n", operation[i]);
@@ -1660,6 +1669,11 @@ static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data
 		if (mime && mime[i])
 			printf("Mime: %s\n", mime[i]);
 	}
+	for (i = 0; i < sc; i++) {
+		if (subapp && subapp[i])
+			printf("subapp: %s\n", subapp[i]);
+	}
+
 	printf("-------------------------------------------------------\n\n");
 	return 0;
 }
@@ -1939,6 +1953,7 @@ static int __get_app_info(char *appid)
 	bool onboot = 0;
 	bool autorestart = 0;
 	bool enabled = 0;
+	bool preload = 0;
 	pkgmgr_appinfo_h handle;
 	int ret = -1;
 
@@ -2007,6 +2022,10 @@ static int __get_app_info(char *appid)
 	if (ret < 0) {
 		printf("Failed to get enabled\n");
 	}
+	ret = pkgmgrinfo_appinfo_is_preload(handle, &preload);
+	if (ret < 0) {
+		printf("Failed to get preload\n");
+	}
 
 	if (app_id)
 		printf("Appid: %s\n", app_id);
@@ -2046,6 +2065,7 @@ static int __get_app_info(char *appid)
 	}
 
 	printf("Enabled: %d\n", enabled);
+	printf("Preload: %d\n", preload);
 
 	pkgmgr_appinfo_destroy_appinfo(handle);
 	return 0;

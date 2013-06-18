@@ -117,6 +117,9 @@ enum {
 	/*kill app */
 	COMM_REQ_KILL_APP,
 
+	/*check app */
+	COMM_REQ_CHECK_APP,
+
 	COMM_REQ_MAX_SENTINEL
 };
 

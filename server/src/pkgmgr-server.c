@@ -43,6 +43,8 @@
 #include <X11/Xutil.h>
 #include <security-server.h>
 
+#include <vconf.h>
+
 #include "pkgmgr_installer.h"
 #include "comm_pkg_mgr_server.h"
 #include "pkgmgr-server.h"
@@ -1126,6 +1128,8 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 			g_idle_add(queue_job, NULL);
 		*ret = COMM_RET_OK;
 		break;
+
+	case COMM_REQ_CHECK_APP:
 	case COMM_REQ_KILL_APP:
 		/* In case of activate, there is no popup */
 		err = _pm_queue_push(item);
@@ -1359,10 +1363,9 @@ static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option)
 	return 0;
 }
 
-static int __app_list_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
+static int __pkgcmd_app_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 {
 	char *exec = NULL;
-	char *appid = NULL;
 	int ret = 0;
 	int pid = -1;
 	if (handle == NULL) {
@@ -1374,15 +1377,13 @@ static int __app_list_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 		perror("Failed to get app exec path\n");
 		exit(1);
 	}
-	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
-	if (ret) {
-		perror("Failed to get appid\n");
-		exit(1);
-	}
 
-	pid = __pkgcmd_proc_iter_kill_cmdline(exec, 1);
-	if (pid > 0)
-		DBG("Appid: %s is Terminated\n", appid);
+	if (strcmp(user_data, "kill") == 0)
+		pid = __pkgcmd_proc_iter_kill_cmdline(exec, 1);
+	else if(strcmp(user_data, "check") == 0)
+		pid = __pkgcmd_proc_iter_kill_cmdline(exec, 0);
+
+	vconf_set_int(VCONFKEY_PKGMGR_STATUS, pid);
 
 	return 0;
 }
@@ -1822,7 +1823,8 @@ pop:
 		break;
 
 	case COMM_REQ_KILL_APP:
-		DBG("COMM_REQ_KILL_APP start");
+	case COMM_REQ_CHECK_APP:
+		DBG("COMM_REQ_CHECK_APP start");
 		_save_queue_status(item, "processing");
 		DBG("saved queue status. Now try fork()");
 		/*save pkg type and pkg name for future*/
@@ -1843,17 +1845,21 @@ pop:
 				DBG("Failed to get handle\n");
 				exit(1);
 			}
-			ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __app_list_cb, NULL);
-			if (ret < 0) {
-				DBG("pkgmgrinfo_appinfo_get_list() failed\n");
-				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-				exit(1);
-			}
-			ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_SVC_APP, __app_list_cb, NULL);
-			if (ret < 0) {
-				DBG("pkgmgrinfo_appinfo_get_list() failed\n");
-				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-				exit(1);
+
+			if (item->req_type == COMM_REQ_KILL_APP) {
+				ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "kill");
+				if (ret < 0) {
+					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
+					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+					exit(1);
+				}
+			} else if (item->req_type == COMM_REQ_CHECK_APP) {
+				ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "check");
+				if (ret < 0) {
+					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
+					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+					exit(1);
+				}
 			}
 
 			pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
@@ -1873,7 +1879,6 @@ pop:
 			break;
 		}
 		break;
-
 
 	default:
 		break;
