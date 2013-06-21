@@ -1,7 +1,7 @@
 #sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.2.98
+Version:    0.2.99
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -105,7 +105,7 @@ mkdir -p /usr/etc/package-manager/backend
 mkdir -p /usr/etc/package-manager/backendlib
 mkdir -p /etc/opt/upgrade
 
-vconftool set -t int memory/pkgmgr/status "0" -f -s system::vconf_inhouse
+vconftool set -t int memory/pkgmgr/status "0" -f -i -s system::vconf -g 5000
 
 # For pkgmgr-install:
 # Update mime database to support package mime types
