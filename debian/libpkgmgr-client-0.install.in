@@ -1,6 +1,0 @@
-@PREFIX@/lib/libpkgmgr-client.so*
-@PREFIX@/etc/package-manager/pkg_path.conf
-@PREFIX@/bin/pkgcmd
-@PREFIX@/bin/pkgmgr-install
-@PREFIX@/share/applications/*.desktop
-@PREFIX@/share/mime/packages/*.xml

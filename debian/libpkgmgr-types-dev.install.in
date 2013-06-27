@@ -1,3 +1,0 @@
-@PREFIX@/include/package-manager-types.h
-@PREFIX@/include/package-manager-plugin.h
-@PREFIX@/lib/pkgconfig/pkgmgr-types.pc
