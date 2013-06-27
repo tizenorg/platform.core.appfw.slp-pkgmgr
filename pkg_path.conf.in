@@ -2,5 +2,5 @@
 # backend:directory_path
 # backendlib:directory_path
 
-backend:/usr/etc/package-manager/backend/
-backendlib:/usr/etc/package-manager/backendlib/
+backend:/etc/package-manager/backend/
+backendlib:/etc/package-manager/backendlib/
