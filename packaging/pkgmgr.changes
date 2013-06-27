@@ -1,3 +1,6 @@
+* Thu Jun 27 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130603.181624@3e413f3
+- Spec file clean up, install configs in /etc
+
 * Mon Jun 03 2013 Anas Nashif <anas.nashif@intel.com> submit/tizen/20130601.183631@fff80e8
 - Fixed build on 64 bit systems
 
