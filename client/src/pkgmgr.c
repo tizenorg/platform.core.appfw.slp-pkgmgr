@@ -1262,6 +1262,7 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	char *temp = NULL;
 	int ret = -1;
 	char *cookie = NULL;
+	bool removable = false;
 
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
@@ -1293,6 +1294,12 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	ret = pkgmgr_pkginfo_get_type(handle, &pkgtype);
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_type fail");
 	tryvm_if(pkgtype == NULL, ret = PKGMGR_R_ERROR, "pkgtype is NULL");
+
+	/*check removable, execpt "rpm" type	*/
+	if (strcmp(pkgtype, "rpm")) {
+		pkgmgr_pkginfo_is_removable(handle, &removable);
+		tryvm_if(removable == false, ret = PKGMGR_R_ERROR, "Pkgid(%s) can not be removed, This is non-removalbe package...\n", pkgid);
+	}
 
 	/*check pkgid length	*/
 	tryvm_if(strlen(pkgid) >= PKG_STRING_LEN_MAX, ret = PKGMGR_R_EINVAL, "pkgid is too long");

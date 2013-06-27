@@ -38,6 +38,7 @@
 #include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
+#include <pkgmgr_parser.h>
 
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -1607,17 +1608,24 @@ pop:
 					exit(1);
 				}
 			} else { /* in case of package */
-				DBG("(De)activate PKG");
-				pkgmgrinfo_pkginfo_h handle;
-				ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
-				if (ret != PMINFO_R_OK)
-					exit(1);
-				ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_ALL_APP, __app_func, &val);
-				if (ret != PMINFO_R_OK) {
-					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+				DBGE("(De)activate PKG[pkgid=%s, val=%d]", item->pkgid, val);
+				char *manifest = NULL;
+				manifest = pkgmgr_parser_get_manifest_file(item->pkgid);
+				if (manifest == NULL) {
+					DBGE("Failed to fetch package manifest file\n");
 					exit(1);
 				}
-				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+				DBGE("manifest : %s\n", manifest);
+
+				if (val)
+					ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+				else
+					ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
+
+				if (ret < 0) {
+					DBGE("insert in db failed\n");
+					exit(1);
+				}
 			}
 
 			_save_queue_status(item, "done");

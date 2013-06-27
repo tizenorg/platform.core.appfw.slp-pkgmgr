@@ -214,7 +214,14 @@ static int initdb_change_perm(const char *db_file)
 	return 0;
 }
 
-
+static int initdb_update_preload_info()
+{
+	if (pkgmgr_parser_parse_manifest_for_preload() == -1) {
+		_E("pkgmgr_parser_parse_manifest_for_preload fail.");
+		return -1;
+	}
+	return 0;
+}
 static int __is_authorized()
 {
 	/* pkg_init db should be called by as root privilege. */
@@ -259,6 +266,12 @@ int main(int argc, char *argv[])
 	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
 	if (ret == -1) {
 		_E("cannot chown.");
+		return -1;
+	}
+
+	ret = initdb_update_preload_info();
+	if (ret == -1) {
+		_E("cannot update preload info.");
 		return -1;
 	}
 
