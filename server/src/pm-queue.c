@@ -35,7 +35,7 @@
 #include "pkgmgr-server.h"
 #include "pm-queue.h"
 
-#define BACKEND_INFO_DIR	"/usr/etc/package-manager/backend"
+#define BACKEND_INFO_DIR	"/etc/package-manager/backend"
 
 static pm_queue_data *__get_head_from_pkgtype(pm_dbus_msg *item);
 static void __update_head_from_pkgtype(pm_queue_data *data);
@@ -160,7 +160,7 @@ int _pm_queue_init()
 	}
 	i = n;
 	/*Find number of backends (symlinks + executables)
-	The /usr/etc/package-manager/backend dir should not conatin
+	The /etc/package-manager/backend dir should not conatin
 	any other file except the backends.*/
 	while(n--)
 	{

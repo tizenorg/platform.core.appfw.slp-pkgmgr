@@ -29,7 +29,7 @@
 
 #include "pkgmgr-server.h"
 
-#define STATUS_FILE	"/usr/etc/package-manager/server/queue_status"
+#define STATUS_FILE	"/etc/package-manager/server/queue_status"
 /* #define STATUS_FILE   "./queue_status" */
 
 typedef struct _pm_queue_data {
