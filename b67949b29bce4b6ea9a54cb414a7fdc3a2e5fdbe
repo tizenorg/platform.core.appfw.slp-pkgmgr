@@ -1,0 +1,9 @@
+Code-Review+1: Junfeng Dong <junfeng.dong@intel.com>
+Code-Review+1: Patrick McCarty <patrick.mccarty@linux.intel.com>
+Code-Review+2: Anas Nashif <anas.nashif@intel.com>
+Verified+1: Anas Nashif <anas.nashif@intel.com>
+Submitted-by: Anas Nashif <anas.nashif@intel.com>
+Submitted-at: Thu, 27 Jun 2013 17:12:49 -0700
+Reviewed-on: https://review.tizen.org/gerrit/4357
+Project: platform/core/appfw/slp-pkgmgr
+Branch: refs/heads/tizen
