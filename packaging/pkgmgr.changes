@@ -1,3 +1,6 @@
+* Tue Jul 02 2013 Junfeng Dong <junfeng.dong@intel.com> accepted/tizen/20130603.181624@c6b4eaa
+- Link pkgmgr-info after pkgmgr-parse to fix the build error in mobile.
+
 * Thu Jun 27 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130603.181624@3e413f3
 - Spec file clean up, install configs in /etc
 
