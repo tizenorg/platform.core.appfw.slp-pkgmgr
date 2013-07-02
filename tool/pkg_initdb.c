@@ -262,6 +262,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+/*
 	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
 	initdb_xsystem(argv_parser);
 	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
@@ -270,7 +271,7 @@ int main(int argc, char *argv[])
 	initdb_xsystem(argv_cert);
 	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
 	initdb_xsystem(argv_certjn);
-
+*/
 	return 0;
 }
 
