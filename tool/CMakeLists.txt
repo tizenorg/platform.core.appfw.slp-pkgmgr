@@ -5,7 +5,7 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${TEST_CFLAGS}")
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs_test REQUIRED ecore dbus-1 ail libxml-2.0 bundle pkgmgr-info pkgmgr-parser)
+pkg_check_modules(pkgs_test REQUIRED ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser pkgmgr-info)
 FOREACH(flag ${pkgs_test_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
