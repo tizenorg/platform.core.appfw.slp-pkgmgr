@@ -20,6 +20,8 @@
 		<domain name="pkgmgr"/>
 	</request>
 	<assign>
+		<filesystem path="/usr/bin/pkg_smack" exec_label="pkgmgr"/>
+		<filesystem path="/usr/bin/pkg_fota" exec_label="pkgmgr"/>
 		<filesystem path="/usr/bin/pkg_initdb" exec_label="pkgmgr"/>
 		<filesystem path="/usr/bin/pkgcmd" exec_label="pkgmgr"/>
 		<filesystem path="/usr/bin/pkginfo" exec_label="pkgmgr"/>

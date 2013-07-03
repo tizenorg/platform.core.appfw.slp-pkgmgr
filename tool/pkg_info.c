@@ -182,6 +182,7 @@ static void __print_arg_filter_usage()
 	printf("14 --> filter by app autorestart [0|1]\n");
 	printf("15 --> filter by app taskmanage [0|1]\n");
 	printf("16 --> filter by app hwacceleration\n");
+	printf("17 --> filter by app screenreader\n");
 	printf("=========================================\n");
 }
 
@@ -271,6 +272,7 @@ static int __add_app_filter()
 		printf("14 --> filter by app autorestart [0|1]\n");
 		printf("15 --> filter by app taskmanage [0|1]\n");
 		printf("16 --> filter by app hwacceleration\n");
+		printf("17 --> filter by app screenreader\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -452,6 +454,18 @@ static int __add_app_filter()
 			value = __get_string_input_data();
 			ret = pkgmgrinfo_appinfo_filter_add_string(handle,
 				PMINFO_APPINFO_PROP_APP_HWACCELERATION, value);
+			if (ret < 0) {
+				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
+				ret = -1;
+				goto err;
+			}
+			free(value);
+			value = NULL;
+			break;
+		case 17:
+			value = __get_string_input_data();
+			ret = pkgmgrinfo_appinfo_filter_add_string(handle,
+				PMINFO_APPINFO_PROP_APP_SCREENREADER, value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
 				ret = -1;
@@ -843,6 +857,15 @@ static int __add_arg_filter(char *key, char *value)
 			goto err;
 		}
 		break;
+	case 17:
+		ret = pkgmgrinfo_appinfo_filter_add_string(handle, PMINFO_APPINFO_PROP_APP_SCREENREADER, value);
+		if (ret < 0) {
+			printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
+			ret = -1;
+			goto err;
+		}
+		break;
+
 	default:
 		__print_arg_filter_usage();
 		goto err;
@@ -1425,6 +1448,7 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 	bool multiple = 0;
 	bool taskmanage = 0;
 	pkgmgr_hwacceleration_type hwacceleration;
+	pkgmgrinfo_app_screenreader screenreader;
 	bool onboot = 0;
 	bool autorestart = 0;
 	char *package = NULL;
@@ -1504,6 +1528,13 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 			printf("Failed to get hwacceleration\n");
 		} else {
 			printf("hw-acceleration: %d\n", hwacceleration);
+		}
+
+		ret = pkgmgrinfo_appinfo_get_screenreader(handle, &screenreader);
+		if (ret < 0) {
+			printf("Failed to get screenreader\n");
+		} else {
+			printf("screenreader: %d\n", screenreader);
 		}
 
 	}
@@ -1950,6 +1981,7 @@ static int __get_app_info(char *appid)
 	bool multiple = 0;
 	bool taskmanage = 0;
 	pkgmgr_hwacceleration_type hwacceleration;
+	pkgmgrinfo_app_screenreader screenreader;
 	bool onboot = 0;
 	bool autorestart = 0;
 	bool enabled = 0;
@@ -2010,6 +2042,10 @@ static int __get_app_info(char *appid)
 	if (ret < 0) {
 		printf("Failed to get hwacceleration\n");
 	}
+	ret = pkgmgrinfo_appinfo_get_screenreader(handle, &screenreader);
+	if (ret < 0) {
+		printf("Failed to get screenreader\n");
+	}
 	ret = pkgmgr_appinfo_is_onboot(handle, &onboot);
 	if (ret < 0) {
 		printf("Failed to get onboot\n");
@@ -2050,6 +2086,7 @@ static int __get_app_info(char *appid)
 		printf("Multiple: %d\n", multiple);
 		printf("Taskmanage: %d\n", taskmanage);
 		printf("Hw-Acceleration: %d\n", hwacceleration);
+		printf("Screenreader: %d\n", screenreader);
 	} else if (component == PM_SVC_APP) {
 		printf("component: svcapp\n");
 

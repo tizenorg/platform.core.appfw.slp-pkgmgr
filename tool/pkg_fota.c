@@ -55,14 +55,14 @@
 #endif
 #define _D(fmt, arg...) fprintf(stderr, "[PKG_INITDB][D][%s,%d] "fmt"\n", __FUNCTION__, __LINE__, ##arg);
 
-static int initdb_count_package(void)
+static int pkg_fota_count_package(void)
 {
 	int total = 0;
 
 	return total;
 }
 
-static int initdb_xsystem(const char *argv[])
+static int pkg_fota_xsystem(const char *argv[])
 {
 	int status = 0;
 	pid_t pid;
@@ -117,7 +117,9 @@ char* _manifest_to_package(const char* manifest)
 	return package;
 }
 
-int initdb_load_directory(const char *directory)
+
+
+int pkg_fota_load_directory(const char *directory)
 {
 	DIR *dir;
 	struct dirent entry, *result;
@@ -177,7 +179,7 @@ int initdb_load_directory(const char *directory)
 
 
 
-static int initdb_change_perm(const char *db_file)
+static int pkg_fota_change_perm(const char *db_file)
 {
 	char buf[BUFSZE];
 	char journal_file[BUFSZE];
@@ -212,13 +214,17 @@ static int initdb_change_perm(const char *db_file)
 	return 0;
 }
 
-static int initdb_update_preload_info()
+static int pkg_fota_give_smack()
 {
-	if (pkgmgr_parser_parse_manifest_for_preload() == -1) {
-		_E("pkgmgr_parser_parse_manifest_for_preload fail.");
-		return -1;
-	}
-	return 0;
+	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
+	pkg_fota_xsystem(argv_parser);
+	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
+	pkg_fota_xsystem(argv_parserjn);
+	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE, NULL };
+	pkg_fota_xsystem(argv_cert);
+	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
+	pkg_fota_xsystem(argv_certjn);
+
 }
 static int __is_authorized()
 {
@@ -245,42 +251,29 @@ int main(int argc, char *argv[])
 	ret = setenv("INITDB", "1", 1);
 	_D("INITDB : %d", ret);
 
-	ret = initdb_count_package();
+	ret = pkg_fota_count_package();
 	if (ret > 0) {
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
 
-	ret = initdb_load_directory(OPT_MANIFEST_DIRECTORY);
+	ret = pkg_fota_load_directory(OPT_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load opt manifest directory.");
 	}
 
-	ret = initdb_load_directory(USR_MANIFEST_DIRECTORY);
+	ret = pkg_fota_load_directory(USR_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load usr manifest directory.");
 	}
 
-	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
+	ret = pkg_fota_change_perm(PACKAGE_INFO_DB_FILE);
 	if (ret == -1) {
 		_E("cannot chown.");
 		return -1;
 	}
 
-	ret = initdb_update_preload_info();
-	if (ret == -1) {
-		_E("cannot update preload info.");
-		return -1;
-	}
-
-	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
-	initdb_xsystem(argv_parser);
-	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
-	initdb_xsystem(argv_parserjn);
-	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE, NULL };
-	initdb_xsystem(argv_cert);
-	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
-	initdb_xsystem(argv_certjn);
+	pkg_fota_give_smack();
 
 	return 0;
 }

@@ -8,5 +8,5 @@ echo "Update package database..............."
 echo "--------------------------------------"
 /bin/rm /opt/dbspace/.pkgmgr_parser.db
 /bin/rm /opt/dbspace/.pkgmgr_parser.db-journal
-/usr/bin/pkg_initdb
+/usr/bin/pkg_fota
 /usr/bin/ail_initdb

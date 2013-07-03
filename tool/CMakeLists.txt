@@ -22,6 +22,12 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 SET(CMAKE_C_FLAGS_RELEASE "-O2")
 
+add_executable(pkg_smack
+                pkg_smack.c)
+target_link_libraries(pkg_smack ${pkgs_test_LDFLAGS})
+target_link_libraries(pkg_smack "-ldl")
+INSTALL(TARGETS pkg_smack DESTINATION bin)
+
 add_executable(pkgcmd
 		pkg_cmd.c)
 target_link_libraries(pkgcmd pkgmgr-client ${pkgs_test_LDFLAGS})
@@ -42,6 +48,10 @@ add_executable(pkg_initdb
 target_link_libraries(pkg_initdb ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
 
+add_executable(pkg_fota
+                pkg_fota.c)
+target_link_libraries(pkg_fota ${pkgs_test_LDFLAGS})
+INSTALL(TARGETS pkg_fota DESTINATION bin)
 
 add_executable(pkgmgr-install pkgmgr-install.c)
 target_link_libraries(pkgmgr-install pkgmgr-client pkgmgr-info ${toolpkgs_LDFLAGS})
