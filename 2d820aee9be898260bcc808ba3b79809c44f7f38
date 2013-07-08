@@ -1,0 +1,8 @@
+Change-Id: I2d820aee9be898260bcc808ba3b79809c44f7f38
+Code-Review+2: Ryan Ware <ware@linux.intel.com>
+Verified+1: Ryan Ware <ware@linux.intel.com>
+Submitted-by: Ryan Ware <ware@linux.intel.com>
+Submitted-at: Mon, 08 Jul 2013 10:07:21 -0700
+Reviewed-on: https://review.tizen.org/gerrit/4481
+Project: platform/core/appfw/slp-pkgmgr
+Branch: refs/heads/tizen
