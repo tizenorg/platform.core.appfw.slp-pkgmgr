@@ -5,6 +5,7 @@ Release:    1
 Group:      Application Framework/Package Management
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
+Source1001: 	pkgmgr.manifest
 BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
@@ -73,6 +74,7 @@ Package Manager client types develpoment package for packaging
 
 %prep
 %setup -q
+cp %{SOURCE1001} .
 
 %build
 %cmake . 
@@ -110,7 +112,7 @@ update-mime-database /usr/share/mime
 %postun installer -p /sbin/ldconfig
 
 %files
-%manifest pkgmgr.manifest
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %dir %{_sysconfdir}/package-manager/backend
 %dir %{_sysconfdir}/package-manager/backendlib
@@ -131,13 +133,14 @@ update-mime-database /usr/share/mime
 %exclude %{_sysconfdir}/package-manager/server/queue_status
 
 %files client
-%manifest pkgmgr-client.manifest
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %dir /etc/package-manager
 /etc/package-manager/pkg_path.conf
 %{_libdir}/libpkgmgr-client.so.*
 
 %files client-devel
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager.h
 %{_includedir}/pkgmgr-dbinfo.h
@@ -145,20 +148,21 @@ update-mime-database /usr/share/mime
 %{_libdir}/libpkgmgr-client.so
 
 %files server -f package-manager.lang
-%manifest pkgmgr-server.manifest
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_datadir}/dbus-1/services/org.tizen.slp.pkgmgr.service
 %{_bindir}/pkgmgr-server
 %{_sysconfdir}/package-manager/server
 
 %files installer
-%manifest pkgmgr-installer.manifest
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libpkgmgr_installer.so.*
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so.*
 %{_libdir}/libpkgmgr_installer_client.so.*
 
 %files installer-devel
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %dir %{_includedir}/pkgmgr
 %{_includedir}/pkgmgr/pkgmgr_installer.h
@@ -171,6 +175,7 @@ update-mime-database /usr/share/mime
 
 
 %files types-devel
+%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager-types.h
 %{_includedir}/package-manager-plugin.h
