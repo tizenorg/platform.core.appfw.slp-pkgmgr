@@ -309,7 +309,7 @@ static void __apply_shared_privileges(char *pkgname, int flag)
 	/*execute privilege APIs. The APIs should not fail*/
 	__pkg_smack_register_package(pkgname);
 
-#if 0
+#if 1
 	/*home dir. Dont setup path but change smack access to "_" */
 	snprintf(dirpath, BUFF_SIZE, "/usr/apps/%s", pkgname);
 	if (__is_dir(dirpath))
@@ -389,8 +389,11 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 static int __additional_rpm_for_smack()
 {
 	char *pkgid = "ui-gadget::client";
-
+	char *perm[] = {"http://tizen.org/privilege/appsetting", NULL};
+	
 	__apply_shared_privileges(pkgid, 0);
+
+	__pkg_smack_enable_permissions(pkgid, 1, perm, 1);
 	return 0;
 }
 
