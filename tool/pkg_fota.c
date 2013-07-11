@@ -216,16 +216,36 @@ static int pkg_fota_change_perm(const char *db_file)
 
 static int pkg_fota_give_smack()
 {
-	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
-	pkg_fota_xsystem(argv_parser);
-	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
-	pkg_fota_xsystem(argv_parserjn);
-	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE, NULL };
-	pkg_fota_xsystem(argv_cert);
-	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
-	pkg_fota_xsystem(argv_certjn);
+	int ret = 0;
 
+	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
+	ret = pkg_fota_xsystem(argv_parser);
+	if (ret == -1) {
+		_E("exec : argv_parser fail");
+		return -1;
+	}
+	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
+	ret = pkg_fota_xsystem(argv_parserjn);
+	if (ret == -1) {
+		_E("exec : argv_parserjn fail");
+		return -1;
+	}
+	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE, NULL };
+	ret = pkg_fota_xsystem(argv_cert);
+	if (ret == -1) {
+		_E("exec : argv_cert fail");
+		return -1;
+	}
+	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
+	ret = pkg_fota_xsystem(argv_certjn);
+	if (ret == -1) {
+		_E("exec : argv_certjn fail");
+		return -1;
+	}
+
+	return 0;
 }
+
 static int __is_authorized()
 {
 	/* pkg_init db should be called by as root privilege. */
@@ -273,7 +293,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	pkg_fota_give_smack();
+	ret = pkg_fota_give_smack();
+	if (ret == -1) {
+		_E("cannot pkg_fota_give_smack.");
+		return -1;
+	}
 
 	return 0;
 }

@@ -390,9 +390,8 @@ static int __additional_rpm_for_smack()
 {
 	char *pkgid = "ui-gadget::client";
 	char *perm[] = {"http://tizen.org/privilege/appsetting", NULL};
-	
-	__apply_shared_privileges(pkgid, 0);
 
+	__apply_shared_privileges(pkgid, 0);
 	__pkg_smack_enable_permissions(pkgid, 1, perm, 1);
 	return 0;
 }

@@ -53,6 +53,9 @@
 
 #define PKG_TMP_PATH "/opt/usr/apps/tmp"
 
+#define BINSH_NAME	"/bin/sh"
+#define BINSH_SIZE	7
+
 static int _get_request_id()
 {
 	static int internal_req_id = 1;
@@ -438,6 +441,161 @@ static char *__get_type_from_path(const char *pkg_path)
 	}
 	pkg_type = strchr(extlist, '.') + 1;
 	return strdup(pkg_type);
+}
+
+static int __get_pkgid_by_appid(const char *appid, char **pkgid)
+{
+	pkgmgrinfo_appinfo_h pkgmgrinfo_appinfo = NULL;
+	int ret = -1;
+	char *pkg_id = NULL;
+	char *pkg_id_dup = NULL;
+
+	if (pkgmgrinfo_appinfo_get_appinfo(appid, &pkgmgrinfo_appinfo) != PMINFO_R_OK)
+		return -1;
+
+	if (pkgmgrinfo_appinfo_get_pkgname(pkgmgrinfo_appinfo, &pkg_id) != PMINFO_R_OK)
+		goto err;
+
+	pkg_id_dup = strdup(pkg_id);
+	if (pkg_id_dup == NULL)
+		goto err;
+
+	*pkgid = pkg_id_dup;
+	ret = PMINFO_R_OK;
+
+err:
+	pkgmgrinfo_appinfo_destroy_appinfo(pkgmgrinfo_appinfo);
+
+	return ret;
+}
+
+static inline ail_cb_ret_e __appinfo_cb(const ail_appinfo_h appinfo, void *user_data)
+{
+	char *package;
+	ail_cb_ret_e ret = AIL_CB_RET_CONTINUE;
+
+	ail_appinfo_get_str(appinfo, AIL_PROP_PACKAGE_STR, &package);
+
+	if (package) {
+		(* (char **) user_data) = strdup(package);
+		ret = AIL_CB_RET_CANCEL;
+	}
+
+	return ret;
+}
+
+static char *__get_app_info_from_db_by_apppath(const char *apppath)
+{
+	char *caller_appid = NULL;
+	ail_filter_h filter;
+	ail_error_e ret;
+	int count;
+
+	if (apppath == NULL)
+		return NULL;
+
+	ret = ail_filter_new(&filter);
+	if (ret != AIL_ERROR_OK) {
+		return NULL;
+	}
+
+	ret = ail_filter_add_str(filter, AIL_PROP_X_SLP_EXE_PATH, apppath);
+	if (ret != AIL_ERROR_OK) {
+		ail_filter_destroy(filter);
+		return NULL;
+	}
+
+	ret = ail_filter_count_appinfo(filter, &count);
+	if (ret != AIL_ERROR_OK) {
+		ail_filter_destroy(filter);
+		return NULL;
+	}
+	if (count < 1) {
+		ail_filter_destroy(filter);
+		return NULL;
+	}
+
+	ail_filter_list_appinfo_foreach(filter, __appinfo_cb, &caller_appid);
+
+	ail_filter_destroy(filter);
+
+	return caller_appid;
+}
+
+static inline int __read_proc(const char *path, char *buf, int size)
+{
+	int fd = 0;
+	int ret = 0;
+
+	if (buf == NULL || path == NULL)
+		return -1;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return -1;
+
+	ret = read(fd, buf, size - 1);
+	if (ret <= 0) {
+		close(fd);
+		return -1;
+	} else
+		buf[ret] = 0;
+
+	close(fd);
+
+	return ret;
+}
+
+char *__proc_get_cmdline_bypid(int pid)
+{
+	char buf[PKG_STRING_LEN_MAX] = {'\0', };
+	int ret = 0;
+
+	snprintf(buf, sizeof(buf), "/proc/%d/cmdline", pid);
+	ret = __read_proc(buf, buf, sizeof(buf));
+	if (ret <= 0)
+		return NULL;
+
+	/* support app launched by shell script*/
+	if (strncmp(buf, BINSH_NAME, BINSH_SIZE) == 0)
+		return strdup(&buf[BINSH_SIZE + 1]);
+	else
+		return strdup(buf);
+}
+
+static int __get_appid_bypid(int pid, char *pkgname, int len)
+{
+	char *cmdline = NULL;
+	char *caller_appid = NULL;
+
+	cmdline = __proc_get_cmdline_bypid(pid);
+	if (cmdline == NULL)
+		return -1;
+
+	caller_appid = __get_app_info_from_db_by_apppath(cmdline);
+	snprintf(pkgname, len, "%s", caller_appid);
+
+	free(cmdline);
+	free(caller_appid);
+
+	return 0;
+}
+
+static char *__get_caller_pkgid()
+{
+	char *caller_appid[PKG_STRING_LEN_MAX] = {0, };
+	char *caller_pkgid = NULL;
+
+	if (__get_appid_bypid(getpid(), caller_appid, sizeof(caller_appid)) < 0) {
+		_LOGE("get appid fail!!!\n");
+		return NULL;
+	}
+	if (__get_pkgid_by_appid(caller_appid, &caller_pkgid) < 0){
+		_LOGE("get pkgid fail!!!\n");
+		return NULL;
+	}
+
+	return caller_pkgid;
 }
 
 static inline int __pkgmgr_read_proc(const char *path, char *buf, int size)
@@ -1022,6 +1180,11 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	char *temp = NULL;
 	int ret = 0;
 	char *cookie = NULL;
+	char *caller_pkgid = NULL;
+
+	caller_pkgid = __get_caller_pkgid();
+	if (caller_pkgid == NULL)
+		_LOGE("caller dont have pkgid..\n");
 
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL");
@@ -1084,7 +1247,13 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 		argv[argcnt++] = strdup("-o");
 		argv[argcnt++] = strdup(optional_file);
 	}
-	/* argv[6] -q option should be located at the end of command !! */
+	if (caller_pkgid) {
+		argv[argcnt++] = strdup("-p");
+		argv[argcnt++] = strdup(caller_pkgid);
+	}
+
+
+/* argv[6] -q option should be located at the end of command !! */
 	if (mode == PM_QUIET)
 		argv[argcnt++] = strdup("-q");
 
@@ -1263,6 +1432,11 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	int ret = -1;
 	char *cookie = NULL;
 	bool removable = false;
+	char *caller_pkgid = NULL;
+
+	caller_pkgid = __get_caller_pkgid();
+	if (caller_pkgid == NULL)
+		_LOGE("caller dont have pkgid..\n");
 
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
@@ -1327,6 +1501,10 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	argv[argcnt++] = strdup("-d");
 	/* argv[4] */
 	argv[argcnt++] = strdup(pkgid);
+	if (caller_pkgid) {
+		argv[argcnt++] = strdup("-p");
+		argv[argcnt++] = caller_pkgid;
+	}
 	/* argv[5] -q option should be located at the end of command !! */
 	if (mode == PM_QUIET)
 		argv[argcnt++] = strdup("-q");

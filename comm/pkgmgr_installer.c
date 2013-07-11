@@ -60,6 +60,7 @@ struct pkgmgr_installer {
 	char *license_path;
 	char *quiet_socket_path;
 	char *optional_data;
+	char *caller_pkgid;
 
 	DBusConnection *conn;
 };
@@ -99,6 +100,8 @@ API int pkgmgr_installer_free(pkgmgr_installer *pi)
 		free(pi->session_id);
 	if (pi->optional_data)
 		free(pi->optional_data);
+	if (pi->caller_pkgid)
+		free(pi->caller_pkgid);
 
 	if (pi->conn)
 		comm_status_broadcast_server_disconnect(pi->conn);
@@ -215,6 +218,13 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 
 			break;
 
+		case 'p': /* caller pkgid*/
+			if (pi->caller_pkgid)
+				free(pi->caller_pkgid);
+			pi->caller_pkgid = strndup(optarg, MAX_STRLEN);
+
+			break;
+
 		case 'o': /* optional data*/
 			pi->optional_data = strndup(optarg, MAX_STRLEN);
 			break;
@@ -277,6 +287,12 @@ API int pkgmgr_installer_get_move_type(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->move_type;
+}
+
+API const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->caller_pkgid;
 }
 
 API int

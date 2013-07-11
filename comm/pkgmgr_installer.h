@@ -409,6 +409,40 @@ int main(int argc, char **argv)
 int pkgmgr_installer_get_move_type(pkgmgr_installer *pi);
 
 /**
+	@brief		Get caller package id
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		Operation result
+	@retval		enum value of move type
+	@remark		None
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	char *pkgid = NULL;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	pkgid = (char *) pkgmgr_installer_get_caller_pkgid(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+	@endcode
+ */
+const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi);
+
+/**
 	@brief		Send a process status signal 
 	@pre		None
 	@post		None
