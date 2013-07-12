@@ -5,7 +5,7 @@ Release:    1
 Group:      Application Framework/Package Management
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
-Source1001: 	pkgmgr.manifest
+Source1001: %{name}.manifest
 BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
@@ -155,7 +155,6 @@ update-mime-database /usr/share/mime
 %{_sysconfdir}/package-manager/server
 
 %files installer
-%manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libpkgmgr_installer.so.*
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so.*
