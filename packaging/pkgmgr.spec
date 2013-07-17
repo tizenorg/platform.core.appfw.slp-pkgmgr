@@ -5,7 +5,13 @@ Release:    1
 Group:      Application Framework/Package Management
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
-Source1001: 	pkgmgr.manifest
+Source1001:	%{name}.manifest
+Source1002:	%{name}-client.manifest
+Source1003:	%{name}-client-devel.manifest
+Source1004:	%{name}-server.manifest
+Source1005:	%{name}-installer.manifest
+Source1006:	%{name}-installer-devel.manifest
+Source1007:	%{name}-types-devel.manifest
 BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
@@ -74,10 +80,10 @@ Package Manager client types develpoment package for packaging
 
 %prep
 %setup -q
-cp %{SOURCE1001} .
+cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURCE1006} %{SOURCE1007} .
 
 %build
-%cmake . 
+%cmake .
 make %{?jobs:-j%jobs}
 
 %install
@@ -133,14 +139,14 @@ update-mime-database /usr/share/mime
 %exclude %{_sysconfdir}/package-manager/server/queue_status
 
 %files client
-%manifest %{name}.manifest
+%manifest %{name}-client.manifest
 %defattr(-,root,root,-)
 %dir /etc/package-manager
 /etc/package-manager/pkg_path.conf
 %{_libdir}/libpkgmgr-client.so.*
 
 %files client-devel
-%manifest %{name}.manifest
+%manifest %{name}-client-devel.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager.h
 %{_includedir}/pkgmgr-dbinfo.h
@@ -148,21 +154,21 @@ update-mime-database /usr/share/mime
 %{_libdir}/libpkgmgr-client.so
 
 %files server -f package-manager.lang
-%manifest %{name}.manifest
+%manifest %{name}-server.manifest
 %defattr(-,root,root,-)
 %{_datadir}/dbus-1/services/org.tizen.slp.pkgmgr.service
 %{_bindir}/pkgmgr-server
 %{_sysconfdir}/package-manager/server
 
 %files installer
-%manifest %{name}.manifest
+%manifest %{name}-installer.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libpkgmgr_installer.so.*
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so.*
 %{_libdir}/libpkgmgr_installer_client.so.*
 
 %files installer-devel
-%manifest %{name}.manifest
+%manifest %{name}-installer-devel.manifest
 %defattr(-,root,root,-)
 %dir %{_includedir}/pkgmgr
 %{_includedir}/pkgmgr/pkgmgr_installer.h
@@ -175,7 +181,7 @@ update-mime-database /usr/share/mime
 
 
 %files types-devel
-%manifest %{name}.manifest
+%manifest %{name}-types-devel.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager-types.h
 %{_includedir}/package-manager-plugin.h
