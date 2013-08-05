@@ -260,27 +260,27 @@ comm_client_request(
 				      DBUS_TYPE_STRING, &args,
 				      DBUS_TYPE_STRING, &cookie,
 				      DBUS_TYPE_INVALID)) {
-		r = COMM_RET_ERROR;
+		r = -3;
 		ERR("dbus_message_append_args fail");
 		goto ERROR_CLEANUP;
 	}
 
-	/* Send message */
+	/* Send message , timeout -1 = _DBUS_DEFAULT_TIMEOUT_VALUE (25 * 1000) 25 seconds*/
 	if (is_block == 1){
 		if(!dbus_connection_send_with_reply_and_block(cc->conn, msg,
-							      10000, NULL)) {
+							      -1, NULL)) {
 			ERR("try send msg to dbus by timeout");
 			sleep(1);
 			if(!dbus_connection_send_with_reply_and_block(cc->conn, msg,
-									  10000, NULL)) {
-				r = COMM_RET_ERROR;
+									  -1, NULL)) {
+				r = -4;
 				ERR("dbus_connection_send_with_reply_and_block fail");
 				goto ERROR_CLEANUP;
 			}
 		}
 	} else {
 		if (!dbus_connection_send(cc->conn, msg, NULL)) {
-			r = COMM_RET_ERROR;
+			r = -5;
 			ERR("dbus_connection_send fail");
 			goto ERROR_CLEANUP;
 		}

@@ -196,10 +196,10 @@ static int pkg_fota_change_perm(const char *db_file)
 	snprintf(journal_file, sizeof(journal_file), "%s%s", db_file, "-journal");
 
 	for (i = 0; files[i]; i++) {
-		ret = chown(files[i], OWNER_ROOT, GROUP_MENU);
+		ret = chown(files[i], OWNER_ROOT, OWNER_ROOT);
 		if (ret == -1) {
 			strerror_r(errno, buf, sizeof(buf));
-			_E("FAIL : chown %s %d.%d, because %s", db_file, OWNER_ROOT, GROUP_MENU, buf);
+			_E("FAIL : chown %s %d.%d, because %s", db_file, OWNER_ROOT, OWNER_ROOT, buf);
 			return -1;
 		}
 

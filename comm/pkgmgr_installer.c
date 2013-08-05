@@ -65,15 +65,6 @@ struct pkgmgr_installer {
 	DBusConnection *conn;
 };
 
-static int __validate_cb(void *data, int ncols, char **coltxt, char **colname);
-
-static int __validate_cb(void *data, int ncols, char **coltxt, char **colname)
-{
-	int *p = (int*)data;
-	*p = atoi(coltxt[0]);
-	_LOGE("exist value is %d\n", *p);
-	return 0;
-}
 /* API */
 
 API pkgmgr_installer *pkgmgr_installer_new(void)

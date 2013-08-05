@@ -63,6 +63,153 @@ static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data
 static int __app_metadata_list_cb(const char *metadata_name, const char *metadata_value, void *user_data);
 int app_func(const pkgmgr_appinfo_h handle, void *user_data);
 
+static void __get_pkgmgrinfo_pkginfo(const pkgmgrinfo_pkginfo_h handle, void *user_data)
+{
+	int ret = -1;
+	char *type = NULL;
+	char *version = NULL;
+	char *author_name = NULL;
+	char *author_email = NULL;
+	char *author_href = NULL;
+	char *root_path = NULL;
+	char *mainappid = NULL;
+	pkgmgr_install_location location = 0;
+	char *icon = NULL;
+	char *label = NULL;
+	char *desc = NULL;
+	bool removable = 0;
+	bool preload = 0;
+	bool readonly = 0;
+	bool update = 0;
+	bool system = 0;
+	int size = -1;
+	int installed_time = -1;
+
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &type);
+	if (ret < 0) {
+		printf("Failed to get pkg type\n");
+	}
+	if (type)
+		printf("Type: %s\n", type);
+
+	ret = pkgmgrinfo_pkginfo_get_version(handle, &version);
+	if (ret < 0) {
+		printf("Failed to get version\n");
+	}
+	if (version)
+		printf("Version: %s\n", version);
+
+	ret = pkgmgrinfo_pkginfo_get_install_location(handle, &location);
+	if (ret < 0) {
+		printf("Failed to get install location\n");
+	}
+	printf("Install Location: %d\n", location);
+
+	ret = pkgmgrinfo_pkginfo_get_package_size(handle, &size);
+	if (ret < 0) {
+		printf("Failed to get package size \n");
+	}
+	printf("Package Size: %d\n", size);
+
+	ret = pkgmgrinfo_pkginfo_get_icon(handle, &icon);
+	if (ret < 0) {
+		printf("Failed to get icon\n");
+	}
+	if (icon)
+		printf("Icon: %s\n", icon);
+
+	ret = pkgmgrinfo_pkginfo_get_label(handle, &label);
+	if (ret < 0) {
+		printf("Failed to get label\n");
+	}
+	if (label)
+		printf("Label: %s\n", label);
+
+	ret = pkgmgrinfo_pkginfo_get_description(handle, &desc);
+	if (ret < 0) {
+		printf("Failed to get description\n");
+	}
+	if (desc)
+		printf("Description: %s\n", desc);
+
+	ret = pkgmgrinfo_pkginfo_get_author_name(handle, &author_name);
+	if (ret < 0) {
+		printf("Failed to get author name\n");
+	}
+	if (author_name)
+		printf("Author Name: %s\n", author_name);
+
+	ret = pkgmgrinfo_pkginfo_get_author_email(handle, &author_email);
+	if (ret < 0) {
+		printf("Failed to get author email\n");
+	}
+	if (author_email)
+		printf("Author Email: %s\n", author_email);
+
+	ret = pkgmgrinfo_pkginfo_get_author_href(handle, &author_href);
+	if (ret < 0) {
+		printf("Failed to get author href\n");
+	}
+	if (author_href)
+		printf("Author Href: %s\n", author_href);
+
+	ret = pkgmgrinfo_pkginfo_get_root_path(handle, &root_path);
+	if (ret < 0) {
+		printf("Failed to get root_path\n");
+	}
+	if (author_href)
+		printf("root_path : %s\n", root_path);
+
+	ret = pkgmgrinfo_pkginfo_get_mainappid(handle, &mainappid);
+	if (ret < 0) {
+		printf("Failed to get mainappid\n");
+	}
+	if (author_href)
+		printf("mainappid : %s\n", mainappid);
+
+	ret = pkgmgrinfo_pkginfo_get_installed_time(handle, &installed_time);
+	if (ret < 0) {
+		printf("Failed to get install time\n");
+	}
+	printf("Install time: %d\n", installed_time);
+
+	ret = pkgmgrinfo_pkginfo_is_removable(handle, &removable);
+	if (ret < 0) {
+		printf("Failed to get removable\n");
+	}
+	else
+		printf("Removable: %d\n", removable);
+
+	ret = pkgmgrinfo_pkginfo_is_preload(handle, &preload);
+	if (ret < 0) {
+		printf("Failed to get preload\n");
+	}
+	else
+		printf("Preload: %d\n", preload);
+
+	ret = pkgmgrinfo_pkginfo_is_readonly(handle, &readonly);
+	if (ret < 0) {
+		printf("Failed to get readonly\n");
+	}
+	else
+		printf("Readonly: %d\n", readonly);
+
+	ret = pkgmgrinfo_pkginfo_is_update(handle, &update);
+	if (ret < 0) {
+		printf("Failed to get update\n");
+	}
+	else
+		printf("update: %d\n", update);
+
+	ret = pkgmgrinfo_pkginfo_is_system(handle, &system);
+	if (ret < 0) {
+		printf("Failed to get system\n");
+	}
+	else
+		printf("system: %d\n", system);
+
+	return 0;
+}
 int __get_app_id(const pkgmgrinfo_appinfo_h handle, void *user_data)
 {
 	char *appid = NULL;
@@ -720,7 +867,6 @@ static int __add_arg_filter(char *key, char *value)
 	int ret = 0;
 	int choice = -1;
 	int val = -1;
-	int count = 0;
 	pkgmgrinfo_appinfo_filter_h handle;
 	ret = pkgmgrinfo_appinfo_filter_create(&handle);
 	if (ret > 0) {
@@ -972,6 +1118,8 @@ static int __get_certinfo_from_db(char *pkgid)
 			return -1;
 		}
 	}
+
+	return -1;
 }
 
 static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid)
@@ -1844,126 +1992,19 @@ static int __get_app_list(char *pkgid)
 
 static int __get_pkg_info(char *pkgid)
 {
-	pkgmgr_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle;
 	int ret = -1;
-	char *type = NULL;
-	char *version = NULL;
-	char *author_name = NULL;
-	char *author_email = NULL;
-	char *author_href = NULL;
-	pkgmgr_install_location location = 0;
-	char *icon = NULL;
-	char *label = NULL;
-	char *desc = NULL;
-	bool removable = 0;
-	bool preload = 0;
-	bool readonly = 0;
-	int size = -1;
-	int installed_time = -1;
 
 	printf("Get Pkg Info Called [%s]\n", pkgid);
-	ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
 	}
 
-	ret = pkgmgr_pkginfo_get_type(handle, &type);
-	if (ret < 0) {
-		printf("Failed to get pkg type\n");
-	}
-	if (type)
-		printf("Type: %s\n", type);
+	__get_pkgmgrinfo_pkginfo(handle, NULL);
 
-	ret = pkgmgr_pkginfo_get_version(handle, &version);
-	if (ret < 0) {
-		printf("Failed to get version\n");
-	}
-	if (version)
-		printf("Version: %s\n", version);
-
-	ret = pkgmgr_pkginfo_get_install_location(handle, &location);
-	if (ret < 0) {
-		printf("Failed to get install location\n");
-	}
-	printf("Install Location: %d\n", location);
-
-	ret = pkgmgr_pkginfo_get_package_size(handle, &size);
-	if (ret < 0) {
-		printf("Failed to get package size \n");
-	}
-	printf("Package Size: %d\n", size);
-
-	ret = pkgmgr_pkginfo_get_icon(handle, &icon);
-	if (ret < 0) {
-		printf("Failed to get icon\n");
-	}
-	if (icon)
-		printf("Icon: %s\n", icon);
-
-	ret = pkgmgr_pkginfo_get_label(handle, &label);
-	if (ret < 0) {
-		printf("Failed to get label\n");
-	}
-	if (label)
-		printf("Label: %s\n", label);
-
-	ret = pkgmgr_pkginfo_get_description(handle, &desc);
-	if (ret < 0) {
-		printf("Failed to get description\n");
-	}
-	if (desc)
-		printf("Description: %s\n", desc);
-
-	ret = pkgmgr_pkginfo_get_author_name(handle, &author_name);
-	if (ret < 0) {
-		printf("Failed to get author name\n");
-	}
-	if (author_name)
-		printf("Author Name: %s\n", author_name);
-
-	ret = pkgmgr_pkginfo_get_author_email(handle, &author_email);
-	if (ret < 0) {
-		printf("Failed to get author email\n");
-	}
-	if (author_email)
-		printf("Author Email: %s\n", author_email);
-
-	ret = pkgmgr_pkginfo_get_author_href(handle, &author_href);
-	if (ret < 0) {
-		printf("Failed to get author href\n");
-	}
-	if (author_href)
-		printf("Author Href: %s\n", author_href);
-
-	ret = pkgmgr_pkginfo_is_removable(handle, &removable);
-	if (ret < 0) {
-		printf("Failed to get removable\n");
-	}
-	else
-		printf("Removable: %d\n", removable);
-
-	ret = pkgmgr_pkginfo_is_preload(handle, &preload);
-	if (ret < 0) {
-		printf("Failed to get preload\n");
-	}
-	else
-		printf("Preload: %d\n", preload);
-
-	ret = pkgmgr_pkginfo_is_readonly(handle, &readonly);
-	if (ret < 0) {
-		printf("Failed to get readonly\n");
-	}
-	else
-		printf("Readonly: %d\n", readonly);
-
-	ret = pkgmgr_pkginfo_get_installed_time(handle, &installed_time);
-	if (ret < 0) {
-		printf("Failed to get install time\n");
-	}
-	printf("Install time: %d\n", installed_time);
-
-	pkgmgr_pkginfo_destroy_pkginfo(handle);
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return 0;
 }
 

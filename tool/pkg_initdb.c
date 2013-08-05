@@ -123,16 +123,18 @@ int initdb_load_directory(const char *directory)
 	struct dirent entry, *result;
 	int ret;
 	char buf[BUFSZE];
+	int total_cnt = 0;
+//	int ok_cnt = 0;
 
 	// desktop file
 	dir = opendir(directory);
 	if (!dir) {
 		if (strerror_r(errno, buf, sizeof(buf)) == 0)
-			_E("Failed to access the [%s] because %s\n", directory, buf);
+			_E("Failed to access the [%s] because %s", directory, buf);
 		return -1;
 	}
 
-	_D("Loading manifest files from %s\n", directory);
+	_D("Loading manifest files from %s", directory);
 
 	for (ret = readdir_r(dir, &entry, &result);
 			ret == 0 && result != NULL;
@@ -140,36 +142,39 @@ int initdb_load_directory(const char *directory)
 		char *manifest;
 
 		if (entry.d_name[0] == '.') continue;
+		total_cnt++;
 
 		manifest = _manifest_to_package(entry.d_name);
 		if (!manifest) {
-			_E("Failed to convert file to package[%s]\n", entry.d_name);
+			_E("Failed to convert file to xml[%s]", entry.d_name);
 			continue;
 		}
 
 		snprintf(buf, sizeof(buf), "%s/%s", directory, manifest);
 
-		fprintf(stderr, "pkg_initdb : manifest file %s\n", buf);
-
 		ret = pkgmgr_parser_check_manifest_validation(buf);
 		if (ret < 0) {
-			_E("check manifest validation failed code[%d] %s\n", ret, buf);
-			fprintf(stderr, "check manifest validation failed code[%d] %s\n", ret, buf);
+			_E("manifest validation failed : %s", buf);
 			free(manifest);
 			continue;
 		}
 
-
 		/*temporarily fixed due to glib abort */
-		// pkgmgr_parser_parse_manifest_for_installation(buf, NULL);
-
 		char buf2[BUFSZE];
 		snprintf(buf2, sizeof(buf2), "/usr/bin/pkginfo --imd %s", buf);
 		system(buf2);
-
+#if 0
+		ret = pkgmgr_parser_parse_manifest_for_installation(buf, NULL);
+		if (ret < 0) {
+			_E("Failed to add a xml[%s]", buf);
+		} else {
+			ok_cnt++;
+		}
+#endif
 		free(manifest);
 	}
 
+//	_D("Package-XML process : Success [%d], fail[%d], total[%d] \n", ok_cnt, total_cnt-ok_cnt, total_cnt);
 	closedir(dir);
 
 	return 0;
@@ -194,10 +199,10 @@ static int initdb_change_perm(const char *db_file)
 	snprintf(journal_file, sizeof(journal_file), "%s%s", db_file, "-journal");
 
 	for (i = 0; files[i]; i++) {
-		ret = chown(files[i], OWNER_ROOT, GROUP_MENU);
+		ret = chown(files[i], OWNER_ROOT, OWNER_ROOT);
 		if (ret == -1) {
 			strerror_r(errno, buf, sizeof(buf));
-			_E("FAIL : chown %s %d.%d, because %s", db_file, OWNER_ROOT, GROUP_MENU, buf);
+			_E("FAIL : chown %s %d.%d, because %s", db_file, OWNER_ROOT, OWNER_ROOT, buf);
 			return -1;
 		}
 
@@ -251,26 +256,24 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	ret = initdb_load_directory(OPT_MANIFEST_DIRECTORY);
-	if (ret == -1) {
-		_E("cannot load opt manifest directory.");
-	}
-
 	ret = initdb_load_directory(USR_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load usr manifest directory.");
 	}
 
+	ret = initdb_load_directory(OPT_MANIFEST_DIRECTORY);
+	if (ret == -1) {
+		_E("cannot load opt manifest directory.");
+	}
+
 	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
 	if (ret == -1) {
 		_E("cannot chown.");
-		return -1;
 	}
 
 	ret = initdb_update_preload_info();
 	if (ret == -1) {
 		_E("cannot update preload info.");
-		return -1;
 	}
 
 	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };

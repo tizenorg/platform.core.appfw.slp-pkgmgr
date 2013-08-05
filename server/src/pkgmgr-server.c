@@ -82,6 +82,8 @@ FILE *___log = NULL;
 #define LOCALEDIR "/usr/share/locale"
 #endif
 
+#define PACKAGE_RECOVERY_DIR "/opt/share/packages/.recovery"
+
 #define DESKTOP_W   720.0
 
 #define NO_MATCHING_FILE 11
@@ -205,11 +207,74 @@ static void __unset_backend_mode(int position)
 	backend_mode = backend_mode & ~(1<<position);
 }
 
+static void __set_recovery_mode(char *pkgid, char *pkg_type)
+{
+	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
+	char buffer[MAX_PKG_NAME_LEN] = { 0 };
+	char *pkgid_tmp = NULL;
+	FILE *rev_file = NULL;
+
+	if (pkgid == NULL) {
+		DBG("pkgid is null\n");
+		return;
+	}
+
+	/*if pkgid has a "/"charactor, that is a path name for installation, then extract pkgid from absolute path*/
+	if (strstr(pkgid, "/")) {
+		pkgid_tmp = strrchr(pkgid, '/') + 1;
+		if (pkgid_tmp == NULL) {
+			DBG("pkgid_tmp[%s] is null\n", pkgid);
+			return;
+		}
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
+	} else {
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
+	}
+
+	rev_file = fopen(recovery_file, "w");
+	if (rev_file== NULL) {
+		DBG("rev_file[%s] is null\n", recovery_file);
+		return;
+	}
+
+	snprintf(buffer, MAX_PKG_NAME_LEN, "pkgid : %s\n", pkgid);
+	fwrite(buffer, sizeof(char), strlen(buffer), rev_file);
+
+	fclose(rev_file);
+}
+
+static void __unset_recovery_mode(char *pkgid, char *pkg_type)
+{
+	int ret = -1;
+	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
+	char *pkgid_tmp = NULL;
+
+	if (pkgid == NULL) {
+		DBG("pkgid is null\n");
+		return;
+	}
+
+	/*if pkgid has a "/"charactor, that is a path name for installation, then extract pkgid from absolute path*/
+	if (strstr(pkgid, "/")) {
+		pkgid_tmp = strrchr(pkgid, '/') + 1;
+		if (pkgid_tmp == NULL) {
+			DBG("pkgid_tmp[%s] is null\n", pkgid);
+			return;
+		}
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
+	} else {
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
+	}
+
+	ret = remove(recovery_file);
+	if (ret < 0)
+		DBG("remove recovery_file[%s] fail\n", recovery_file);
+}
+
 static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
 {
 	guchar *cookie = NULL;
 	gsize size;
-	char *smack_label = NULL;
 	int ret = PMINFO_R_OK;	//temp to success , it should be PMINFO_R_ERROR
 
 	if (e_cookie == NULL)	{
@@ -916,6 +981,7 @@ static void sighandler(int signo)
 				if (cpid == (ptr + i)->pid) {
 					__set_backend_free(i);
 					__set_backend_mode(i);
+					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
 					break;
 				}
 			}
@@ -928,6 +994,7 @@ static void sighandler(int signo)
 				if (cpid == (ptr + i)->pid) {
 					__set_backend_free(i);
 					__set_backend_mode(i);
+					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
 					strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
 					strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
 					strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
@@ -1417,6 +1484,7 @@ pop:
 		goto pop;
 	}
 	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
+	__set_recovery_mode(item->pkgid, item->pkg_type);
 
 	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:

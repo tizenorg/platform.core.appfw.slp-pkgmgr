@@ -43,7 +43,6 @@ extern "C" {
 #include <dlog.h>
 
 
-#define _LOGE(fmt, arg...) LOGE(fmt,##arg)
 
 /**
  * pkgmgr_installer is an opaque type for an object

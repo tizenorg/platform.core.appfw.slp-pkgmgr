@@ -60,6 +60,9 @@ install(TARGETS pkgmgr-install DESTINATION bin)
 configure_file(org.tizen.pkgmgr-install.xml.in ${CMAKE_BINARY_DIR}/org.tizen.pkgmgr-install.xml @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/org.tizen.pkgmgr-install.xml DESTINATION /usr/share/packages/)
 
+configure_file(pkg_recovery.sh.in pkg_recovery.sh @ONLY)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pkg_recovery.sh DESTINATION /usr/etc/package-manager/)
+
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.wac.xml DESTINATION /usr/share/mime/packages/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.tpk.xml DESTINATION /usr/share/mime/packages/)
 

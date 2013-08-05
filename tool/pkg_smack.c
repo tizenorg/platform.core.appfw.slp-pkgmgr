@@ -330,13 +330,13 @@ static void __apply_shared_privileges(char *pkgname, int flag)
 		__pkg_smack_change_smack_label(dirpath, "_", 0);/*0 is SMACK_LABEL_ACCESS*/
 	memset(dirpath, '\0', BUFF_SIZE);
 
-	/*/shared/res dir. setup path */
+	/*/shared/res dir. Dont setup path but change smack access to "_" */
 	if (flag == 0)
 		snprintf(dirpath, BUFF_SIZE, "/usr/apps/%s/shared/res", pkgname);
 	else
 		snprintf(dirpath, BUFF_SIZE, "/opt/usr/apps/%s/shared/res", pkgname);
 	if (__is_dir(dirpath))
-		__pkg_smack_setup_path(pkgname, dirpath, RPM_PATH_PUBLIC_RO, NULL);
+		__pkg_smack_change_smack_label(dirpath, "_", 0);/*0 is SMACK_LABEL_ACCESS*/
 	memset(dirpath, '\0', BUFF_SIZE);
 
 	/*/shared/data dir. setup path and change group to 'app'*/

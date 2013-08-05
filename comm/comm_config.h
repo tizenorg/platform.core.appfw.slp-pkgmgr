@@ -40,7 +40,10 @@
 
 #ifndef NDEBUG
 #ifdef USE_DLOG
+#undef LOG_TAG
+#ifndef LOG_TAG
 #define LOG_TAG "PKGMGR"
+#endif				/* LOG_TAG */
 #include <dlog.h>
 #define dbg(fmtstr, args...) \
 	do { SLOGI("[comm]%s:%d:%s(): " \

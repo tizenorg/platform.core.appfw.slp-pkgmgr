@@ -695,12 +695,9 @@ static int __app_list_cb (const pkgmgr_appinfo_h handle,
 
 static int __sync_process(char *req_key)
 {
-	int ret =0;
 	char info_file[PKG_STRING_LEN_MAX] = {'\0', };
 	int result = 0;
 	int check_cnt = 0;
-	FILE *fp;
-	char buffer[PKG_ARGC_MAX] = {'\0', };
 
 	snprintf(info_file, PKG_STRING_LEN_MAX, "%s/%s", PKG_TMP_PATH, req_key);
 	while(1)

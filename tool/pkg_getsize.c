@@ -49,7 +49,6 @@ static int _pkg_getsize(int argc, char **argv)
 	pkgmgrinfo_pkginfo_h handle = NULL;
 	int size = -1;
 	int get_type = -1;
-	char buf[MAX_PKG_BUF_LEN] = {'\0'};
 	char *pkeyid = NULL;
 
 	/*make new pkgmgr_installer handle*/
