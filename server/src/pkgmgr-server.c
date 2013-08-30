@@ -34,7 +34,9 @@
 #include <signal.h>
 #include <Elementary.h>
 #include <appcore-efl.h>
+#ifdef HAVE_X11
 #include <Ecore_X.h>
+#endif
 #include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
@@ -560,6 +562,7 @@ static char *__get_exe_path(const char *pkgid)
 }
 #endif
 
+#ifdef HAVE_X11
 static int __X_rotate_disable_focus(Display *dpy, Window win)
 {
 	XWMHints *hints;
@@ -680,6 +683,7 @@ static Eina_Bool __X_rotate_cb(void *data, int type, void *event)
 
 	return ECORE_CALLBACK_RENEW;
 }
+#endif // HAVE_X11
 
 static
 int create_popup(struct appdata *ad)
@@ -711,10 +715,13 @@ int create_popup(struct appdata *ad)
 	int y;
 	unsigned char *prop_data = NULL;
 	int count;
+    int ret;
+
+#ifdef HAVE_X11
 	ecore_x_window_geometry_get(ecore_x_window_root_get(
 					    ecore_x_window_focus_get()),
 				    &x, &y, &w, &h);
-	int ret =
+	ret =
 	    ecore_x_window_prop_property_get(ecore_x_window_root_get
 				     (ecore_x_window_focus_get()),
 				     ECORE_X_ATOM_E_ILLUME_ROTATE_ROOT_ANGLE,
@@ -733,6 +740,7 @@ int create_popup(struct appdata *ad)
 
 	ecore_event_handler_add(ECORE_X_EVENT_CLIENT_MESSAGE,
 				__X_rotate_cb, ad->win);
+#endif // HAVE_X11
 
 	double s;
 	s = w / DESKTOP_W;
@@ -2078,6 +2086,16 @@ int main(int argc, char *argv[])
 	char *backend_name = NULL;
 	backend_info *ptr = NULL;
 	int r;
+
+#ifdef HAVE_X11
+    // If DISPLAY is not set then let it default to :0
+    // so we can remove hacks in the service file
+    // to set the env variable (which will blow up wayland)
+    //
+    // Passing overwrite as zero so it will not clobber an
+    // existing value
+    setenv("DISPLAY", ":0", 0);
+#endif
 
 	ecore_init();
 

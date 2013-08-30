@@ -1,3 +1,5 @@
+%bcond_with wayland
+
 Name:       pkgmgr
 Summary:    Packager Manager client library package
 Version:    0.2.89
@@ -83,7 +85,13 @@ Package Manager client types develpoment package for packaging
 cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURCE1006} %{SOURCE1007} .
 
 %build
-%cmake .
+%cmake . \
+%if %{with wayland}
+    -DX11_SUPPORT=Off
+%else
+    -DX11_SUPPORT=On
+%endif
+
 make %{?jobs:-j%jobs}
 
 %install
@@ -156,7 +164,8 @@ update-mime-database /usr/share/mime
 %files server -f package-manager.lang
 %manifest %{name}-server.manifest
 %defattr(-,root,root,-)
-%{_datadir}/dbus-1/services/org.tizen.slp.pkgmgr.service
+%{_datadir}/dbus-1/system-services/org.tizen.slp.pkgmgr.service
+%{_sysconfdir}/dbus-1/system.d/org.tizen.slp.pkgmgr.conf
 %{_bindir}/pkgmgr-server
 %{_sysconfdir}/package-manager/server
 

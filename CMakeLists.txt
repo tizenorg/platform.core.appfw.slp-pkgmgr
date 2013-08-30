@@ -24,7 +24,14 @@ set(CMAKE_SKIP_BUILD_RPATH true)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/comm )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-info iniparser)
+
+OPTION(X11_SUPPORT "Enable X support" ON)
+IF(X11_SUPPORT)
+    ADD_DEFINITIONS("-DHAVE_X11")
+    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-info iniparser)
+ELSE()
+    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-wayland ail ecore-file pkgmgr-info iniparser)
+ENDIF(X11_SUPPORT)
 
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -86,6 +93,7 @@ SET_TARGET_PROPERTIES(pkgmgr-server PROPERTIES COMPILE_FLAGS "${pkgmgr-server_CF
 
 CONFIGURE_FILE(pkgmgr.pc.in pkgmgr.pc @ONLY)
 configure_file(org.tizen.slp.pkgmgr.service.in org.tizen.slp.pkgmgr.service @ONLY)
+configure_file(org.tizen.slp.pkgmgr.conf.in org.tizen.slp.pkgmgr.conf @ONLY)
 configure_file(pkg_path.conf.in pkg_path.conf @ONLY)
 configure_file(pkgmgr.patch.sh.in pkgmgr.patch.sh @ONLY)
 
@@ -95,7 +103,8 @@ INSTALL(FILES ${CMAKE_BINARY_DIR}/pkgmgr-server DESTINATION bin PERMISSIONS OWNE
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/client/include/package-manager.h DESTINATION include)
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/client/include/pkgmgr-dbinfo.h DESTINATION include)
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.service DESTINATION ${PREFIX}/share/dbus-1/services/)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.service DESTINATION ${PREFIX}/share/dbus-1/system-services/)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.conf DESTINATION ${SYSCONFDIR}/dbus-1/system.d/)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkg_path.conf DESTINATION ${SYSCONFDIR}/package-manager/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/queue_status DESTINATION ${SYSCONFDIR}/package-manager/server/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pkgmgr.patch.sh DESTINATION ${SYSCONFDIR}/opt/upgrade/)
