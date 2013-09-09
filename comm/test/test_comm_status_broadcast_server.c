@@ -28,10 +28,10 @@
 static int _main_dbus(int argc, char **argv);
 static int _main_dbus(int argc, char **argv)
 {
-	DBusConnection *conn = comm_status_broadcast_server_connect();
+	DBusConnection *conn = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
 	int i;
 	for (i = 0; i < 100; i++) {
-		comm_status_broadcast_server_send_signal(conn, "test_id",
+		comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, conn, "test_id",
 							 "test", "test_pkgid",
 							 "test_key",
 							 "test_val");

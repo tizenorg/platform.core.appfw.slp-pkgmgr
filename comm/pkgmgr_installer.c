@@ -67,6 +67,57 @@ struct pkgmgr_installer {
 
 /* API */
 
+static int __send_signal_for_event(int comm_status_type, pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *key, const char *val)
+{
+	if (!pi)
+		return -1;
+
+	if (!pi->conn)
+		pi->conn = comm_status_broadcast_server_connect(comm_status_type);
+
+	char *sid = pi->session_id;
+	if (!sid)
+		sid = "";
+	comm_status_broadcast_server_send_signal(comm_status_type, pi->conn, sid, pkg_type, pkgid, key, val);
+
+	return 0;
+}
+
+API int __send_event(pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *key, const char *val)
+{
+	int r = -1;
+
+	if (strcmp(key,PKGMGR_INSTALLER_START_KEY_STR) == 0) {
+		if(strcmp(key,PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0) {
+			pi->request_type = PKGMGR_REQ_UPGRADE;
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UPGRADE, pi, pkg_type, pkgid, key, val);
+		}
+		if(pi->request_type == PKGMGR_REQ_INSTALL) {
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL, pi, pkg_type, pkgid, key, val);
+		} else if (pi->request_type == PKGMGR_REQ_UNINSTALL){
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, key, val);
+		}
+	} else if (strcmp(key,PKGMGR_INSTALLER_END_KEY_STR) == 0) {
+		if(pi->request_type == PKGMGR_REQ_INSTALL) {
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL, pi, pkg_type, pkgid, key, val);
+		} else if (pi->request_type == PKGMGR_REQ_UNINSTALL){
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, key, val);
+		} else if (pi->request_type == PKGMGR_REQ_UPGRADE){
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UPGRADE, pi, pkg_type, pkgid, key, val);
+		}
+	} else if (strcmp(key,PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR) == 0) {
+		r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL_PROGRESS, pi, pkg_type, pkgid, key, val);
+	}
+
+	return r;
+}
+
 API pkgmgr_installer *pkgmgr_installer_new(void)
 {
 	pkgmgr_installer *pi = NULL;
@@ -295,13 +346,15 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 	int r = 0;
 
 	if (!pi->conn)
-		pi->conn = comm_status_broadcast_server_connect();
+		pi->conn = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
 
 	char *sid = pi->session_id;
 	if (!sid)
 		sid = "";
-	comm_status_broadcast_server_send_signal(pi->conn, sid, pkg_type,
+	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, pi->conn, sid, pkg_type,
 						 pkgid, key, val);
+
+	__send_event(pi, pkg_type, pkgid, key, val);
 
 	return r;
 }

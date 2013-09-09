@@ -166,7 +166,7 @@ int pkg_fota_load_directory(const char *directory)
 		// pkgmgr_parser_parse_manifest_for_installation(buf, NULL);
 
 		char buf2[BUFSZE];
-		snprintf(buf2, sizeof(buf2), "/usr/bin/pkginfo --imd %s", buf);
+		snprintf(buf2, sizeof(buf2), "/usr/bin/pkginfo --fota %s", buf);
 		system(buf2);
 
 		free(manifest);

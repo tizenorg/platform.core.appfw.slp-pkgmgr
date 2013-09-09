@@ -336,7 +336,7 @@ static void __apply_shared_privileges(char *pkgname, int flag)
 	else
 		snprintf(dirpath, BUFF_SIZE, "/opt/usr/apps/%s/shared/res", pkgname);
 	if (__is_dir(dirpath))
-		__pkg_smack_change_smack_label(dirpath, "_", 0);/*0 is SMACK_LABEL_ACCESS*/
+		__pkg_smack_setup_path(pkgname, dirpath, RPM_PATH_ANY_LABEL, "_");
 	memset(dirpath, '\0', BUFF_SIZE);
 
 	/*/shared/data dir. setup path and change group to 'app'*/

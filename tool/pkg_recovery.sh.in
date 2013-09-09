@@ -1,14 +1,14 @@
 #!/bin/sh
 #
 
-_pkg_recovery_path="/opt/share/packages/.recovery"
-_pkg_recovery_file="/opt/share/packages/.recovery/*"
+_pkg_recovery_path="/opt/share/packages/.recovery/pkgmgr"
+_pkg_recovery_file="/opt/share/packages/.recovery/pkgmgr/*"
 
 FILE_LIST=`ls $_pkg_recovery_path`
 if [ -n "$FILE_LIST" ]; then
 	echo "There are packages to recovery"
-	/usr/bin/wrt-installer -v
-	/usr/bin/osp-installer -v
+	/usr/bin/wrt-installer -b
+	/usr/bin/osp-installer -b
 
 	echo "delete recovery files"
 	rm $_pkg_recovery_file

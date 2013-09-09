@@ -56,6 +56,40 @@ struct comm_client {
 /*********************************
  * Internal function description
  */
+static char *__get_interface(int status_type)
+{
+	char *interface = NULL;
+
+	switch (status_type) {
+		case COMM_STATUS_BROADCAST_ALL:
+			interface = COMM_STATUS_BROADCAST_DBUS_INTERFACE;
+			break;
+
+		case COMM_STATUS_BROADCAST_INSTALL:
+			interface = COMM_STATUS_BROADCAST_DBUS_INSTALL_INTERFACE;
+			break;
+
+		case COMM_STATUS_BROADCAST_UNINSTALL:
+			interface = COMM_STATUS_BROADCAST_DBUS_UNINSTALL_INTERFACE;
+			break;
+
+		case COMM_STATUS_BROADCAST_MOVE:
+			interface = COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE;
+			break;
+
+		case COMM_STATUS_BROADCAST_INSTALL_PROGRESS:
+			interface = COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE;
+			break;
+
+		case COMM_STATUS_BROADCAST_UPGRADE:
+			interface = COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE;
+			break;
+
+		default:
+			interface = NULL;
+	}
+	return interface;
+}
 
 /**
  * signal handler filter
@@ -83,9 +117,12 @@ _on_signal_handle_filter(DBusConnection *conn,
 	sig_cb_data = (struct signal_callback_data *)user_data;
 
 	/* Signal check */
-	if (dbus_message_is_signal(msg,
-				   COMM_STATUS_BROADCAST_DBUS_INTERFACE,
-				   COMM_STATUS_BROADCAST_SIGNAL_STATUS)) {
+	if ((dbus_message_is_signal(msg, COMM_STATUS_BROADCAST_DBUS_INTERFACE, COMM_STATUS_BROADCAST_SIGNAL_STATUS)) ||
+		(dbus_message_is_signal(msg, COMM_STATUS_BROADCAST_DBUS_INSTALL_INTERFACE, COMM_STATUS_BROADCAST_EVENT_INSTALL)) ||
+		(dbus_message_is_signal(msg, COMM_STATUS_BROADCAST_DBUS_UNINSTALL_INTERFACE, COMM_STATUS_BROADCAST_EVENT_UNINSTALL)) ||
+		(dbus_message_is_signal(msg, COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE, COMM_STATUS_BROADCAST_EVENT_MOVE)) ||
+		(dbus_message_is_signal(msg, COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE, COMM_STATUS_BROADCAST_EVENT_UPGRADE)) ||
+		(dbus_message_is_signal(msg, COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE, COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS))) {
 
 		/* Signal type check */
 		if (dbus_message_get_args(msg, &err,
@@ -309,7 +346,7 @@ comm_client_request(
  * Set a callback for status signal
  */
 int
-comm_client_set_status_callback(comm_client *cc, status_cb cb, void *cb_data)
+comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb cb, void *cb_data)
 {
 	DBusError err;
 	char buf[256] = { 0, };
@@ -321,8 +358,7 @@ comm_client_set_status_callback(comm_client *cc, status_cb cb, void *cb_data)
 		goto ERROR_CLEANUP;
 
 	/* Add a rule for signal */
-	snprintf(buf, 255, "type='signal',interface='%s'",
-		 COMM_STATUS_BROADCAST_DBUS_INTERFACE);
+	snprintf(buf, 255, "type='signal',interface='%s'",	__get_interface(comm_status_type));
 	dbus_bus_add_match(cc->conn, buf, &err);
 	if (dbus_error_is_set(&err)) {
 		ERR("dbus error:%s", err.message);

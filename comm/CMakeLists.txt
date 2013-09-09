@@ -25,7 +25,7 @@ message(STATUS "version/major : ${VERSION} / ${VERSION_MAJOR}")
 ### Get required CFLAGS, LDFLAGS from pkg-config
 
 include(FindPkgConfig)
-pkg_check_modules(comm_pkgs REQUIRED dbus-1 dbus-glib-1 dlog pkgmgr-info)
+pkg_check_modules(comm_pkgs REQUIRED dbus-1 glib-2.0 dbus-glib-1 gio-2.0 gio-unix-2.0 dlog pkgmgr-info)
 
 foreach(flag ${comm_pkgs_CFLAGS})
 	set(comm_pkgs_CFLAGS_str "${comm_pkgs_CFLAGS_str} ${flag}")
@@ -87,6 +87,7 @@ set_target_properties(pkgmgr_installer_client PROPERTIES VERSION ${VERSION})
 set_target_properties(pkgmgr_installer_client PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
 target_link_libraries(pkgmgr_installer_client ${comm_pkgs_LDFLAGS})
 add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_dbus_bindings.h comm_status_broadcast_client_dbus_bindings.h comm_status_broadcast_signal_marshaller.h comm_status_broadcast_signal_marshaller.c)
+#add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_gdbus_generated.h comm_pkg_mgr_client_gdbus_generated.c)
 
 ## pkg-mgr server for PMS
 # Get request

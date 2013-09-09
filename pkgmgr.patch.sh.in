@@ -9,4 +9,4 @@ echo "--------------------------------------"
 /bin/rm /opt/dbspace/.pkgmgr_parser.db
 /bin/rm /opt/dbspace/.pkgmgr_parser.db-journal
 /usr/bin/pkg_fota
-/usr/bin/ail_initdb
+/usr/bin/ail_fota

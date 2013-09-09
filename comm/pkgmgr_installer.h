@@ -51,6 +51,21 @@ typedef struct pkgmgr_installer pkgmgr_installer;
 typedef void* pkgmgr_instcertinfo_h;
 
 /**
+ * @brief listening event type in pkgmgr.
+ */
+#define PKGMGR_INSTALLER_START_KEY_STR								"start"
+#define PKGMGR_INSTALLER_END_KEY_STR								"end"
+#define PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR					"install_percent"
+
+#define PKGMGR_INSTALLER_INSTALL_EVENT_STR							"install"
+#define PKGMGR_INSTALLER_UNINSTALL_EVENT_STR						"uninstall"
+#define PKGMGR_INSTALLER_MOVE_EVENT_STR								"move"
+#define PKGMGR_INSTALLER_UPGRADE_EVENT_STR							"upgrade"
+
+
+
+
+/**
  * Request type.
  */
 enum {
@@ -62,7 +77,8 @@ enum {
 	PKGMGR_REQ_MOVE = 4,
 	PKGMGR_REQ_RECOVER = 5,
 	PKGMGR_REQ_REINSTALL = 6,
-	PKGMGR_REQ_GETSIZE = 7
+	PKGMGR_REQ_GETSIZE = 7,
+	PKGMGR_REQ_UPGRADE = 8
 };
 
 enum {

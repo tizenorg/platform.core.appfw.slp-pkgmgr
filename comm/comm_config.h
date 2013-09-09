@@ -45,14 +45,10 @@
 #define LOG_TAG "PKGMGR"
 #endif				/* LOG_TAG */
 #include <dlog.h>
-#define dbg(fmtstr, args...) \
-	do { SLOGI("[comm]%s:%d:%s(): " \
-	fmtstr "\n", basename(__FILE__), __LINE__, __func__, ##args); } \
-	while (0)
-#define ERR(fmtstr, args...) \
-	do { SLOGE("[comm]%s:%d:%s(): " \
-	fmtstr "\n", basename(__FILE__), __LINE__, __func__, ##args); } \
-	while (0)
+
+#define dbg(fmt, arg...) LOGD(fmt, ##arg)
+#define ERR(fmt, arg...) LOGE(fmt, ##arg)
+
 #else
 #include <stdio.h>
 #include <sys/types.h>
@@ -92,6 +88,31 @@
 #define COMM_STATUS_BROADCAST_DBUS_INTERFACE \
 	"org.tizen.slp.pkgmgr_status"
 #define COMM_STATUS_BROADCAST_SIGNAL_STATUS "status"
+
+#define COMM_STATUS_BROADCAST_DBUS_INSTALL_SERVICE_PREFIX "org.tizen.slp.pkgmgr.install"
+#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PATH	"/org/tizen/slp/pkgmgr/install"
+#define COMM_STATUS_BROADCAST_DBUS_INSTALL_INTERFACE "org.tizen.slp.pkgmgr.install"
+#define COMM_STATUS_BROADCAST_EVENT_INSTALL "install"
+
+#define COMM_STATUS_BROADCAST_DBUS_UNINSTALL_SERVICE_PREFIX "org.tizen.slp.pkgmgr.uninstall"
+#define COMM_STATUS_BROADCAST_DBUS_UNINSTALL_PATH	"/org/tizen/slp/pkgmgr/uninstall"
+#define COMM_STATUS_BROADCAST_DBUS_UNINSTALL_INTERFACE "org.tizen.slp.pkgmgr.uninstall"
+#define COMM_STATUS_BROADCAST_EVENT_UNINSTALL "uninstall"
+
+#define COMM_STATUS_BROADCAST_DBUS_MOVE_SERVICE_PREFIX "org.tizen.slp.pkgmgr.move"
+#define COMM_STATUS_BROADCAST_DBUS_MOVE_PATH	"/org/tizen/slp/pkgmgr/move"
+#define COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE "org.tizen.slp.pkgmgr.move"
+#define COMM_STATUS_BROADCAST_EVENT_MOVE "move"
+
+#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_SERVICE_PREFIX "org.tizen.slp.pkgmgr.install.progress"
+#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_PATH	"/org/tizen/slp/pkgmgr/install/progress"
+#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE "org.tizen.slp.pkgmgr.install.progress"
+#define COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS "install_progress"
+
+#define COMM_STATUS_BROADCAST_DBUS_UPGRADE_SERVICE_PREFIX "org.tizen.slp.pkgmgr.upgrade"
+#define COMM_STATUS_BROADCAST_DBUS_UPGRADE_PATH	"/org/tizen/slp/pkgmgr/upgrade"
+#define COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE "org.tizen.slp.pkgmgr.upgrade"
+#define COMM_STATUS_BROADCAST_EVENT_UPGRADE "upgrade"
 
 /********
  * enums
@@ -134,6 +155,17 @@ enum {
 	COMM_RET_QUEUED,
 
 	COMM_RET_MAX_SENTINEL
+};
+
+/* broadcast type */
+enum {
+	COMM_STATUS_BROADCAST_ALL = 1,
+	COMM_STATUS_BROADCAST_INSTALL,
+	COMM_STATUS_BROADCAST_UNINSTALL,
+	COMM_STATUS_BROADCAST_MOVE,
+	COMM_STATUS_BROADCAST_INSTALL_PROGRESS,
+	COMM_STATUS_BROADCAST_UPGRADE,
+	COMM_STATUS_BROADCAST_MAX
 };
 
 #endif				/* __COMM_CONFIG_H__ */

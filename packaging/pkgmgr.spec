@@ -1,7 +1,7 @@
 #sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.2.112
+Version:    0.2.119
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -12,6 +12,9 @@ BuildRequires:  unzip
 BuildRequires:  gettext-tools
 BuildRequires:  pkgconfig(ecore)
 BuildRequires:  pkgconfig(security-server)
+BuildRequires:  pkgconfig(glib-2.0)
+BuildRequires:  pkgconfig(gio-unix-2.0)
+BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(dlog)
@@ -22,6 +25,7 @@ BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(iniparser)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
+BuildRequires:  python-xml
 
 
 %description
@@ -89,11 +93,18 @@ Package Manager client types develpoment package for packaging
 %prep
 %setup -q
 
+%if 0%{?tizen_build_binary_release_type_eng}
+export CFLAGS="$CFLAGS -DTIZEN_ENGINEER_MODE"
+export CXXFLAGS="$CXXFLAGS ?DTIZEN_ENGINEER_MODE"
+export FFLAGS="$FFLAGS -DTIZEN_ENGINEER_MODE"
+%endif
+
 cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
 
 %build
 
 make %{?jobs:-j%jobs}
+
 %install
 rm -rf %{buildroot}
 %make_install
@@ -119,7 +130,9 @@ update-mime-database /usr/share/mime
 #init DB
 mkdir -p /usr/share/packages
 mkdir -p /opt/share/packages
-mkdir -p /opt/share/packages/.recovery
+mkdir -p /opt/share/packages/.recovery/pkgmgr
+mkdir -p /opt/share/packages/.recovery/tpk
+mkdir -p /opt/share/packages/.recovery/wgt
 
 mkdir -p /usr/share/applications
 mkdir -p /opt/share/applications

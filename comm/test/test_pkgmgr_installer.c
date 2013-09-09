@@ -149,7 +149,7 @@ static void __test_pi_send_signal(void)
 	struct signal_counter counter = { 0, };
 	comm_client *cc;
 	cc = comm_client_new();
-	comm_client_set_status_callback(cc, get_signal_cb, &counter);
+	comm_client_set_status_callback(COMM_STATUS_BROADCAST_ALL, cc, get_signal_cb, &counter);
 
 	/* sender */
 	g_timeout_add_seconds(1, timer_send_signal, pi);

@@ -28,9 +28,12 @@
 
 #include <pkgmgr-info.h>
 #include <vconf.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include "pkgmgr_installer.h"
 #include "pkgmgr-debug.h"
+#include "package-manager.h"
 
 #undef LOG_TAG
 #ifndef LOG_TAG
@@ -38,80 +41,254 @@
 #endif				/* LOG_TAG */
 
 #define MAX_PKG_BUF_LEN	1024
+#define BLOCK_SIZE      4096 /*in bytes*/
+
 #define PKG_TMP_PATH "/opt/usr/apps/tmp"
+#define PKG_RW_PATH "/opt/usr/apps/"
+#define PKG_RO_PATH "/usr/apps/"
 
-static int _pkg_getsize(int argc, char **argv)
+long long __calculate_dir_size(char *dirname)
 {
-	int ret = 0;
-	char *pkgid = NULL;
-	char *type = NULL;
-	pkgmgr_installer *pi = NULL;
-	pkgmgrinfo_pkginfo_h handle = NULL;
-	int size = -1;
-	int get_type = -1;
-	char *pkeyid = NULL;
-
-	/*make new pkgmgr_installer handle*/
-	pi = pkgmgr_installer_new();
-	retvm_if(!pi, PMINFO_R_ERROR, "service type is error\n");
-
-	/*get args*/
-	ret = pkgmgr_installer_receive_request(pi, argc, argv);
-	tryvm_if(ret < 0, PMINFO_R_ERROR, "pkgmgr_installer_receive_request failed");
-
-	/*get pkgid from installer handle*/
-	pkgid = pkgmgr_installer_get_request_info(pi);
-	tryvm_if(pkgid == NULL, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_request_info failed");
-
-	pkeyid = pkgmgr_installer_get_session_id(pi);
-	tryvm_if(pkeyid == NULL, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_session_id failed");
-
-	get_type = pkgmgr_installer_get_move_type(pi);
-	tryvm_if(pkgid < 0, ret = PMINFO_R_ERROR, "pkgmgr_installer_get_request_info failed");
-
-	/*get pkgmgr handle from pkgid*/
-	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
-	tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_pkginfo[pkgid=%s] failed", pkgid);
-
-	/*get type info from handle*/
-	ret = pkgmgrinfo_pkginfo_get_type(handle, &type);
-	tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_type[pkgid=%s] failed", pkgid);
-
-	/*get size info from handle
-	typedef enum {
-		PM_GET_TOTAL_SIZE= 0,
-		PM_GET_DATA_SIZE = 1,
-	}pkgmgr_getsize_type;
-
-	*/
-	if (get_type == 0) {
-		ret = pkgmgrinfo_pkginfo_get_total_size(handle, &size);
-		tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_total_size[pkgid=%s] failed", pkgid);
+	long long total = 0;
+	long long ret = 0;
+	int q = 0; /*quotient*/
+	int r = 0; /*remainder*/
+	DIR *dp = NULL;
+	struct dirent *ep = NULL;
+	struct stat fileinfo;
+	char abs_filename[FILENAME_MAX] = { 0, };
+	if(dirname == NULL) {
+		_LOGE("dirname is NULL");
+		return PMINFO_R_ERROR;
+	}
+	dp = opendir(dirname);
+	if (dp != NULL) {
+		while ((ep = readdir(dp)) != NULL) {
+			if (!strcmp(ep->d_name, ".") ||
+				!strcmp(ep->d_name, "..")) {
+				continue;
+			}
+			snprintf(abs_filename, FILENAME_MAX, "%s/%s", dirname,
+				 ep->d_name);
+			if (lstat(abs_filename, &fileinfo) < 0)
+				perror(abs_filename);
+			else {
+				if (S_ISDIR(fileinfo.st_mode)) {
+					total += fileinfo.st_size;
+					if (strcmp(ep->d_name, ".")
+					    && strcmp(ep->d_name, "..")) {
+						ret = __calculate_dir_size
+						    (abs_filename);
+						total = total + ret;
+					}
+				} else if (S_ISLNK(fileinfo.st_mode)) {
+					continue;
+				} else {
+					/*It is a file. Calculate the actual
+					size occupied (in terms of 4096 blocks)*/
+				q = (fileinfo.st_size / BLOCK_SIZE);
+				r = (fileinfo.st_size % BLOCK_SIZE);
+				if (r) {
+					q = q + 1;
+				}
+				total += q * BLOCK_SIZE;
+				}
+			}
+		}
+		(void)closedir(dp);
 	} else {
-		ret = pkgmgrinfo_pkginfo_get_data_size(handle, &size);
-		tryvm_if(ret < 0, ret = PMINFO_R_ERROR, "pkgmgrinfo_pkginfo_get_data_size[pkgid=%s] failed", pkgid);
+		_LOGE("Couldn't open the directory\n");
+		return -1;
+	}
+	return total;
+
+}
+
+static int __get_total_size(char *pkgid, int *size)
+
+{
+	char device_path[MAX_PKG_BUF_LEN] = { '\0', };
+	long long rw_size = 0;
+	long long ro_size= 0;
+	long long tmp_size= 0;
+	long long total_size= 0;
+	struct stat fileinfo;
+	int ret = -1;
+
+	/* RW area */
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/bin", PKG_RW_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				rw_size += tmp_size;
+		}
 	}
 
-	vconf_set_int(VCONFKEY_PKGMGR_STATUS, size);
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/info", PKG_RW_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+			rw_size += tmp_size;
+		}
+	}
 
-catch:
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/res", PKG_RW_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+			rw_size += tmp_size;
+		}
+	}
 
-	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-	pkgmgr_installer_free(pi);
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/data", PKG_RW_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				rw_size += tmp_size;
+		}
+	}
 
-	return ret;
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/shared", PKG_RW_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				rw_size += tmp_size;
+	}
+	}
+
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/setting", PKG_RW_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				rw_size += tmp_size;
+		}
+	}
+#if 1
+	/* RO area */
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/bin", PKG_RO_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				ro_size += tmp_size;
+		}
+	}
+
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/info", PKG_RO_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				ro_size += tmp_size;
+		}
+	}
+
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/res", PKG_RO_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				ro_size += tmp_size;
+		}
+	}
+
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/data", PKG_RO_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				ro_size += tmp_size;
+		}
+	}
+
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/shared", PKG_RO_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				ro_size += tmp_size;
+	}
+	}
+
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/setting", PKG_RO_PATH, pkgid);
+	if (lstat(device_path, &fileinfo) == 0) {
+		if (!S_ISLNK(fileinfo.st_mode)) {
+			tmp_size = __calculate_dir_size(device_path);
+			if (tmp_size > 0)
+				ro_size += tmp_size;
+		}
+	}
+#endif
+	/* Total size */
+	total_size = rw_size + ro_size;
+	*size = (int)total_size;
+
+	return PMINFO_R_OK;
+}
+
+static int __get_data_size(char *pkgid, int *size)
+{
+	char device_path[MAX_PKG_BUF_LEN] = { '\0', };
+	long long total_size= 0;
+
+	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/data", PKG_RW_PATH, pkgid);
+	if (access(device_path, R_OK) == 0)
+		total_size = __calculate_dir_size(device_path);
+	if (total_size < 0)
+		return PMINFO_R_ERROR;
+
+	*size = (int)total_size;
+
+	return PMINFO_R_OK;
+}
+
+static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
+{
+	int ret = -1;
+	char *pkgid;
+
+	int size = 0;
+
+	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
+	if(ret < 0) {
+		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
+	}
+
+	__get_total_size(pkgid, &size);
+
+	_LOGD("pkg=[%s], size=[%d]\n", pkgid, size);
+
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
 	int ret = 0;
+	int size = 0;
+	int get_type = 0;
+	char *pkgid = NULL;
 
-	ret = _pkg_getsize(argc, argv);
-	if (ret < 0) {
-		_LOGE("_pkg_getsize failed \n");
-		return -1;
+	pkgid = argv[0];
+	get_type = atoi(argv[1]);
+
+	if (get_type == PM_GET_TOTAL_SIZE) {
+		ret = __get_total_size(pkgid, &size);
+	} else if(get_type == PM_GET_DATA_SIZE) {
+		ret = __get_data_size(pkgid, &size);
+	} else if(get_type == PM_GET_ALL_PKGS) {
+		ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, NULL);
 	}
+	if (ret < 0)
+		_LOGD("_pkg_getsize fail \n");
+	else
+		_LOGD("_pkg_getsize success \n");
 
-	_LOGE("_pkg_getsize success \n");
+	vconf_set_int(VCONFKEY_PKGMGR_STATUS, size);
 	return 0;
 }

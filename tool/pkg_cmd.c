@@ -482,6 +482,28 @@ static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	return ret;
 }
 
+static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
+{
+	int ret = -1;
+	int size = 0;
+	char *pkgid;
+
+	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
+	if(ret < 0) {
+		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
+	}
+
+	ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, NULL, NULL, NULL);
+	if (ret < 0){
+		printf("pkgmgr_client_request_service Failed\n");
+		return -1;
+	}
+
+	printf("pkg[%s] size = %d\n", pkgid, ret);
+
+	return 0;
+}
+
 static int __process_request()
 {
 	int ret = -1;
@@ -876,11 +898,6 @@ static int __process_request()
 		if (data.pkgid[0] == '\0') {
 			printf("Please provide the arguments.\n");
 			printf("use -h option to see usage\n");
-			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
-			break;
-		}
-		if (data.type < 0 || data.type > 1) {
-			printf("Invalid get type...See usage\n");
 			ret = -1;
 			break;
 		}
@@ -889,6 +906,11 @@ static int __process_request()
 		if (pc == NULL) {
 			printf("PkgMgr Client Creation Failed\n");
 			data.result = PKGCMD_ERR_FATAL_ERROR;
+			break;
+		}
+
+		if (data.type == 9) {
+			ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, (void *)pc);
 			break;
 		}
 

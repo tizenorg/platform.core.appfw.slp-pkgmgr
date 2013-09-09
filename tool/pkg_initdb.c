@@ -124,7 +124,7 @@ int initdb_load_directory(const char *directory)
 	int ret;
 	char buf[BUFSZE];
 	int total_cnt = 0;
-//	int ok_cnt = 0;
+	int ok_cnt = 0;
 
 	// desktop file
 	dir = opendir(directory);

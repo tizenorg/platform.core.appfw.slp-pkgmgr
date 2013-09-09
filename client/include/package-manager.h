@@ -97,6 +97,17 @@ extern "C" {
 #define PKGMGR_INFO_STR_DATA_SIZE	"data_size"
 #define PKGMGR_INFO_STR_APP_SIZE	"app_size"
 #define PKGMGR_INFO_STR_INSTALLED_TIME	"installed_time"
+
+/**
+ * @brief listening status type in pkgmgr.
+ */
+#define PKGMGR_CLIENT_STATUS_ALL						0x00
+#define PKGMGR_CLIENT_STATUS_INSTALL					0x01
+#define PKGMGR_CLIENT_STATUS_UNINSTALL					0x02
+#define PKGMGR_CLIENT_STATUS_UPGRADE					0x04
+#define PKGMGR_CLIENT_STATUS_MOVE						0x08
+#define PKGMGR_CLIENT_STATUS_CLEAR_DATA					0x10
+#define PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS			0x20
 /** @} */
 
 /* 1 -100 : Package command errors */
@@ -265,6 +276,8 @@ typedef enum {
 typedef enum {
 	PM_GET_TOTAL_SIZE= 0,
 	PM_GET_DATA_SIZE = 1,
+	PM_GET_ALL_PKGS = 2,
+	PM_GET_MAX
 }pkgmgr_getsize_type;
 
 /**
@@ -483,6 +496,19 @@ int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid);
 */
 int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 				const char *appid, pkgmgr_mode mode);
+
+/**
+ * @brief	This API set status type to listen for the pkgmgr's broadcasting
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	status_type	status type to listen
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+*/
+int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type);
 
 /**
  * @brief	This API request to listen the pkgmgr's broadcasting

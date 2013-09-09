@@ -13,6 +13,7 @@
 			<smack request="system::media" type="rwxat"/>
 			<smack request="ail::db" type="rwx"/>
 			<smack request="system::vconf" type="rwxat"/>
+			<smack request="system::vconf_inhouse" type="rwxat"/>
 			<smack request="pkgmgr::db" type="rwx"/>
 		</request>
 	</define>

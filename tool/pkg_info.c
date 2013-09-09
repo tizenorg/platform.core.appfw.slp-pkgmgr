@@ -43,8 +43,6 @@ static int __get_app_list(char *pkgid);
 static int __get_app_category_list(char *appid);
 static int __get_app_metadata_list(char *appid);
 static int __get_app_control_list(char *appid);
-static int __get_app_visibility(char *appid);
-static int __set_app_visibility(char *appid);
 static int __get_pkg_list(void);
 static int __get_installed_app_list();
 static int __add_app_filter(void);
@@ -302,10 +300,6 @@ static void __print_usage()
 	printf("\tpkginfo --pkg-flt\n\n");
 	printf("To add metadata filter values\n");
 	printf("\tpkginfo --metadata-flt\n\n");
-	printf("To get guest mode visibility of a particular application\n");
-	printf("\tpkginfo --getvisibility <appid>\n\n");
-	printf("To set guest mode visibility of a particular application\n");
-	printf("\tpkginfo --setvisibility <appid>\n\n");
 }
 
 static void __print_arg_filter_usage()
@@ -1564,6 +1558,23 @@ static int __insert_manifest_in_db(char *manifest)
 	return 0;
 }
 
+static int __fota_insert_manifest_in_db(char *manifest)
+{
+	int ret = 0;
+	char *temp[] = {"fota=true", NULL};
+
+	if (manifest == NULL) {
+		printf("Manifest file is NULL\n");
+		return -1;
+	}
+	ret = pkgmgr_parser_parse_manifest_for_installation(manifest, temp);
+	if (ret < 0) {
+		printf("insert in db failed\n");
+		return -1;
+	}
+	return 0;
+}
+
 static int __remove_manifest_from_db(char *manifest)
 {
 	int ret = 0;
@@ -1912,46 +1923,6 @@ static int __get_app_control_list(char *appid)
 		return -1;
 	}
 	pkgmgr_appinfo_destroy_appinfo(handle);
-	return 0;
-}
-
-static int __get_app_visibility(char *appid)
-{
-	int ret = -1;
-	bool status = true;
-	pkgmgr_appinfo_h handle;
-	ret = pkgmgr_appinfo_get_appinfo(appid, &handle);
-	if (ret < 0) {
-		printf("Failed to get handle\n");
-		return -1;
-	}
-	ret = pkgmgrinfo_appinfo_is_guestmode_visibility(handle, &status);
-	if (ret < 0) {
-		printf("pkgmgrinfo_appinfo_is_guestmode_visibility failed\n");
-		pkgmgr_appinfo_destroy_appinfo(handle);
-		return -1;
-	}
-	pkgmgr_appinfo_destroy_appinfo(handle);
-	printf("visibility Status is %d\n",status);
-	return status;
-}
-
-static int __set_app_visibility(char *appid)
-{
-	int ret = 0;
-	int value = 0;
-	pkgmgrinfo_appinfo_h handle;
-	printf("Enter [0/1]: 0--Hide, 1-Show\n");
-	value = __get_integer_input_data();
-	ret = pkgmgrinfo_appinfo_get_appinfo(appid, &handle);
-	if (ret != PMINFO_R_OK)
-		return -1;
-	ret = pkgmgrinfo_appinfo_set_guestmode_visibility(handle, value);
-	if (ret != PMINFO_R_OK) {
-		pkgmgrinfo_appinfo_destroy_appinfo(handle);
-		return -1;
-	}
-	pkgmgrinfo_appinfo_destroy_appinfo(handle);
 	return 0;
 }
 
@@ -2312,6 +2283,12 @@ int main(int argc, char *argv[])
 			printf("insert in db failed\n");
 			goto end;
 		}
+	} else if (strcmp(argv[1], "--fota") == 0) {
+		ret = __fota_insert_manifest_in_db(argv[2]);
+		if (ret == -1) {
+			printf("insert in db failed\n");
+			goto end;
+		}
 	} else if (strcmp(argv[1], "--rmd") == 0) {
 		ret = __remove_manifest_from_db(argv[2]);
 		if (ret == -1) {
@@ -2364,18 +2341,6 @@ int main(int argc, char *argv[])
 		ret = __get_app_control_list(argv[2]);
 		if (ret == -1) {
 			printf("get app control list failed\n");
-			goto end;
-		}
-	} else if (strcmp(argv[1], "--getvisibility") == 0) {
-		ret = __get_app_visibility(argv[2]);
-		if (ret == -1) {
-			printf("get app visibility failed\n");
-			goto end;
-		}
-	} else if (strcmp(argv[1], "--setvisibility") == 0) {
-		ret = __set_app_visibility(argv[2]);
-		if (ret == -1) {
-			printf("set app visibility failed\n");
 			goto end;
 		}
 	} else

@@ -82,7 +82,7 @@ FILE *___log = NULL;
 #define LOCALEDIR "/usr/share/locale"
 #endif
 
-#define PACKAGE_RECOVERY_DIR "/opt/share/packages/.recovery"
+#define PACKAGE_RECOVERY_DIR "/opt/share/packages/.recovery/pkgmgr"
 
 #define DESKTOP_W   720.0
 
@@ -1685,8 +1685,39 @@ pop:
 				}
 				DBGE("manifest : %s\n", manifest);
 
-				if (val)
-					ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+				if (val) {
+					pkgmgrinfo_pkginfo_h handle;
+					ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
+					if (ret < 0) {
+						ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+						if (ret < 0) {
+							DBGE("insert in db failed\n");
+							exit(1);
+						}
+
+						ret = ail_desktop_add(item->pkgid);
+						if (ret != AIL_ERROR_OK) {
+							perror("fail to ail_desktop_add");
+							exit(1);
+						}
+					} else {
+						pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+					}
+
+					ret = pkgmgrinfo_appinfo_set_state_enabled(item->pkgid, val);
+					if (ret != PMINFO_R_OK) {
+						perror("fail to activate/deactivte package");
+						exit(1);
+					}
+
+					ret = ail_desktop_appinfo_modify_bool(item->pkgid,
+								AIL_PROP_X_SLP_ENABLED_BOOL,
+								val, TRUE);
+					if (ret != AIL_ERROR_OK) {
+						perror("fail to ail_desktop_appinfo");
+						exit(1);
+					}
+				}
 				else
 					ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
 

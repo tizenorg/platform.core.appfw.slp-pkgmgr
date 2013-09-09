@@ -80,6 +80,7 @@ typedef struct _listen_cb_info {
 
 typedef struct _pkgmgr_client_t {
 	client_type ctype;
+	int status_type;
 	union {
 		struct _request {
 			comm_client *cc;
@@ -814,11 +815,8 @@ catch:
 static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data)
 {
 	char *req_key = NULL;
-	int req_id = 0;
 	int ret =0;
-	pkgmgrinfo_pkginfo_h handle;
-	char *pkgtype = NULL;
-	char *installer_path = NULL;
+	char *pkgtype = "rpm";
 	char *argv[PKG_ARGC_MAX] = { NULL, };
 	char *args = NULL;
 	int argcnt = 0;
@@ -831,29 +829,10 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, pkgmgr_gets
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
 
-	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
-	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_pkginfo failed");
-
-	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
-	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_type failed");
-
-	installer_path = _get_backend_path_with_type(pkgtype);
 	req_key = __get_req_key(pkgid);
-	req_id = _get_request_id();
 
 	snprintf(buf, 128, "%d", get_type);
-	argv[argcnt++] = installer_path;
-	/* argv[1] */
-	argv[argcnt++] = strdup("-k");
-	/* argv[2] */
-	argv[argcnt++] = req_key;
-	/* argv[3] */
-	argv[argcnt++] = strdup("-d");
-	/* argv[4] */
 	argv[argcnt++] = strdup(pkgid);
-	/* argv[5] */
-	argv[argcnt++] = strdup("-t");
-	/* argv[6] */
 	argv[argcnt++] = strdup(buf);
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
@@ -898,7 +877,6 @@ catch:
 	if (cookie)
 		free(cookie);
 
-	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return ret;
 }
 
@@ -1045,58 +1023,36 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 	pkgmgr_client_t *pc = NULL;
 	int ret = -1;
 
-	if (ctype != PC_REQUEST && ctype != PC_LISTENING
-	    && ctype != PC_BROADCAST)
-		return NULL;
+	retvm_if(ctype != PC_REQUEST && ctype != PC_LISTENING && ctype != PC_BROADCAST, NULL, "ctype is not client_type");
 
 	/* Allocate memory for ADT:pkgmgr_client */
 	pc = calloc(1, sizeof(pkgmgr_client_t));
-	if (pc == NULL) {
-		_LOGE("No memory");
-		return NULL;
-	}
+	retvm_if(pc == NULL, NULL, "No memory");
 
 	/* Manage pc */
 	pc->ctype = ctype;
+	pc->status_type = PKGMGR_CLIENT_STATUS_ALL;
 
 	if (pc->ctype == PC_REQUEST) {
 		pc->info.request.cc = comm_client_new();
-		if (pc->info.request.cc == NULL) {
-			_LOGE("client creation failed");
-			goto err;
-		}
-		ret = comm_client_set_status_callback(pc->info.request.cc,
-						      __operation_callback, pc);
-		if (ret < 0) {
-			_LOGE("comm_client_set_status_callback() failed - %d",
-			      ret);
-			goto err;
-		}
+		trym_if(pc->info.request.cc == NULL, "client creation failed");
+
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ALL, pc->info.request.cc, __operation_callback, pc);
+		trym_if(ret < 0L, "comm_client_set_status_callback() failed - %d", ret);
 	} else if (pc->ctype == PC_LISTENING) {
 		pc->info.listening.cc = comm_client_new();
-		if (pc->info.listening.cc == NULL) {
-			_LOGE("client creation failed");
-			goto err;
-		}
-		ret = comm_client_set_status_callback(pc->info.listening.cc,
-						      __status_callback, pc);
-		if (ret < 0) {
-			_LOGE("comm_client_set_status_callback() failed - %d",
-			      ret);
-			goto err;
-		}
+		trym_if(pc->info.listening.cc == NULL, "client creation failed");
+
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ALL, pc->info.listening.cc, __status_callback, pc);
+		trym_if(ret < 0L, "comm_client_set_status_callback() failed - %d", ret);
 	} else if (pc->ctype == PC_BROADCAST) {
-		pc->info.broadcast.bc = comm_status_broadcast_server_connect();
-		if (pc->info.broadcast.bc == NULL) {
-			_LOGE("client creation failed");
-			goto err;
-		}
-		ret = 0;
+		pc->info.broadcast.bc = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
+		trym_if(pc->info.broadcast.bc == NULL, "client creation failed");
 	}
 
 	return (pkgmgr_client *) pc;
 
- err:
+ catch:
 	if (pc)
 		free(pc);
 	return NULL;
@@ -1106,11 +1062,7 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 {
 	int ret = -1;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
-
-	if (mpc == NULL) {
-		_LOGE("Invalid argument");
-		return PKGMGR_R_EINVAL;
-	}
+	retvm_if(mpc == NULL, PKGMGR_R_EINVAL, "Invalid argument");
 
 	if (mpc->ctype == PC_REQUEST) {
 		req_cb_info *tmp;
@@ -1122,24 +1074,18 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 		}
 
 		ret = comm_client_free(mpc->info.request.cc);
-		if (ret < 0) {
-			_LOGE("comm_client_free() failed - %d", ret);
-			goto err;
-		}
+		tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "comm_client_free() failed");
 	} else if (mpc->ctype == PC_LISTENING) {
-		listen_cb_info *tmp;
-		listen_cb_info *prev;
-		for (tmp = mpc->info.listening.lhead; tmp;) {
-			prev = tmp;
-			tmp = tmp->next;
-			free(prev);
-		}
+			listen_cb_info *tmp;
+			listen_cb_info *prev;
+			for (tmp = mpc->info.listening.lhead; tmp;) {
+				prev = tmp;
+				tmp = tmp->next;
+				free(prev);
+			}
 
-		ret = comm_client_free(mpc->info.listening.cc);
-		if (ret < 0) {
-			_LOGE("comm_client_free() failed - %d", ret);
-			goto err;
-		}
+			ret = comm_client_free(mpc->info.listening.cc);
+			tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "comm_client_free() failed");
 	} else if (mpc->ctype == PC_BROADCAST) {
 		comm_status_broadcast_server_disconnect(mpc->info.broadcast.bc);
 		ret = 0;
@@ -1152,7 +1098,7 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 	mpc = NULL;
 	return PKGMGR_R_OK;
 
- err:
+ catch:
 	if (mpc) {
 		free(mpc);
 		mpc = NULL;
@@ -1813,46 +1759,36 @@ API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
 	char *cookie = NULL;
 	int ret;
 	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
+
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 
 	/* 0. check the pc type */
-	if (mpc->ctype != PC_REQUEST)
-		return PKGMGR_R_EINVAL;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST");
 
 	/* 1. check argument */
-	if (pkgid == NULL)
-		return PKGMGR_R_EINVAL;
+	retvm_if(pkgid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
+	retvm_if(strlen(pkgid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
 	if (pkg_type == NULL) {
 		pkgtype = _get_pkg_type_from_desktop_file(pkgid);
-		if (pkgtype == NULL)
-			return PKGMGR_R_EINVAL;
+		retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 	} else
 		pkgtype = pkg_type;
 
-	if (strlen(pkgid) >= PKG_STRING_LEN_MAX)
-		return PKGMGR_R_EINVAL;
-
 	/* 2. generate req_key */
 	req_key = __get_req_key(pkgid);
+	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  pkgid, "1 PKG", cookie, 1);
-	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
-		free(req_key);
-		return PKGMGR_R_ECOMM;
-	}
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, pkgid, "1 PKG", cookie, 1);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
+	ret = PKGMGR_R_OK;
+
+catch:
 	free(req_key);
-
-	return PKGMGR_R_OK;
+	return ret;
 }
 
 API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
@@ -1863,19 +1799,16 @@ API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 	char *cookie = NULL;
 	int ret;
 	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
+
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 
 	/* 0. check the pc type */
-	if (mpc->ctype != PC_REQUEST)
-		return PKGMGR_R_EINVAL;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST");
 
 	/* 1. check argument */
-	if (pkgid == NULL)
-		return PKGMGR_R_EINVAL;
+	retvm_if(pkgid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
+	retvm_if(strlen(pkgid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
 	if (pkg_type == NULL) {
 		pkgtype = _get_pkg_type_from_desktop_file(pkgid);
@@ -1884,25 +1817,19 @@ API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 	} else
 		pkgtype = pkg_type;
 
-	if (strlen(pkgid) >= PKG_STRING_LEN_MAX)
-		return PKGMGR_R_EINVAL;
-
 	/* 2. generate req_key */
 	req_key = __get_req_key(pkgid);
+	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  pkgid, "0 PKG", cookie, 1);
-	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
-		free(req_key);
-		return PKGMGR_R_ECOMM;
-	}
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, pkgid, "0 PKG", cookie, 1);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
+	ret = PKGMGR_R_OK;
+
+catch:
 	free(req_key);
-
-	return PKGMGR_R_OK;
+	return ret;
 }
 
 API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid)
@@ -1912,41 +1839,33 @@ API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid)
 	char *cookie = NULL;
 	int ret;
 	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
+
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 
 	/* 0. check the pc type */
-	if (mpc->ctype != PC_REQUEST)
-		return PKGMGR_R_EINVAL;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST");
 
 	/* 1. check argument */
-	if (appid == NULL)
-		return PKGMGR_R_EINVAL;
-
-	if (strlen(appid) >= PKG_STRING_LEN_MAX)
-		return PKGMGR_R_EINVAL;
+	retvm_if(appid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
+	retvm_if(strlen(appid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
 	pkgtype = _get_pkg_type_from_desktop_file(appid);
+	retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 
 	/* 2. generate req_key */
 	req_key = __get_req_key(appid);
+	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  appid, "1 APP", cookie, 1);
-	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
-		free(req_key);
-		return PKGMGR_R_ECOMM;
-	}
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, appid, "1 APP", cookie, 1);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
+	ret = PKGMGR_R_OK;
+
+catch:
 	free(req_key);
-
-	return PKGMGR_R_OK;
+	return ret;
 }
 
 API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[])
@@ -1962,27 +1881,23 @@ API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char 
 	char *args = NULL;
 	char *argsr = NULL;
 	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
+
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 
 	/* 0. check the pc type */
-	if (mpc->ctype != PC_REQUEST)
-		return PKGMGR_R_EINVAL;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST");
 
 	/* 1. check argument */
-	if (appid == NULL)
-		return PKGMGR_R_EINVAL;
-
-	if (strlen(appid) >= PKG_STRING_LEN_MAX)
-		return PKGMGR_R_EINVAL;
+	retvm_if(appid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
+	retvm_if(strlen(appid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
 	pkgtype = _get_pkg_type_from_desktop_file(appid);
+	retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 
 	/* 2. generate req_key */
 	req_key = __get_req_key(appid);
+	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	if (argv) {
@@ -1995,11 +1910,7 @@ API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char 
 
 		if (argcnt) {
 			args = (char *)calloc(len, sizeof(char));
-			if (args == NULL) {
-				_LOGE("calloc failed");
-				free(req_key);
-				return PKGMGR_R_ERROR;
-			}
+			tryvm_if(args == NULL, ret = PKGMGR_R_ERROR, "calloc failed");
 			strncpy(args, argv[0], len - 1);
 
 			for (i = 1; i < argcnt; i++) {
@@ -2012,12 +1923,8 @@ API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char 
 	}
 
 	argsr = (char *)calloc(strlen("1 APP")+2+len, sizeof(char));
-	if (argsr == NULL) {
-		_LOGE("calloc failed");
-		free(req_key);
-		free(args);
-		return PKGMGR_R_ERROR;
-	}
+	tryvm_if(argsr == NULL, ret = PKGMGR_R_ERROR, "calloc failed");
+
 	strncpy(argsr, "1 APP", strlen("1 APP"));
 	if (argcnt) {
 		strncat(argsr, " ", strlen(" "));
@@ -2028,22 +1935,18 @@ API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char 
 	/******************* end of quote ************************/
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  appid, argsr, cookie, 1);
-	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
-		free(req_key);
-		free(args);
-		free(argsr);
-		return PKGMGR_R_ECOMM;
-	}
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, appid, argsr, cookie, 1);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
+
+	ret = PKGMGR_R_OK;
+
+catch:
 
 	free(req_key);
 	free(args);
 	free(argsr);
 
-	return PKGMGR_R_OK;
+	return ret;
 }
 
 API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid)
@@ -2053,41 +1956,33 @@ API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid)
 	char *cookie = NULL;
 	int ret;
 	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
+
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 
 	/* 0. check the pc type */
-	if (mpc->ctype != PC_REQUEST)
-		return PKGMGR_R_EINVAL;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST");
 
 	/* 1. check argument */
-	if (appid == NULL)
-		return PKGMGR_R_EINVAL;
-
-	if (strlen(appid) >= PKG_STRING_LEN_MAX)
-		return PKGMGR_R_EINVAL;
+	retvm_if(appid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
+	retvm_if(strlen(appid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
 	pkgtype = _get_pkg_type_from_desktop_file(appid);
+	retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 
 	/* 2. generate req_key */
 	req_key = __get_req_key(appid);
+	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key,
-				  COMM_REQ_TO_ACTIVATOR, pkgtype,
-				  appid, "0 APP", cookie, 1);
-	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
-		free(req_key);
-		return PKGMGR_R_ECOMM;
-	}
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, appid, "0 APP", cookie, 1);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
+	ret = PKGMGR_R_OK;
+
+catch:
 	free(req_key);
-
-	return PKGMGR_R_OK;
+	return ret;
 }
 
 
@@ -2205,29 +2100,80 @@ API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 	return PKGMGR_R_OK;
 }
 
+
+API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
+{
+	int ret = -1;
+
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
+	retvm_if(status_type == PKGMGR_CLIENT_STATUS_ALL, PKGMGR_R_OK, "status_type is PKGMGR_CLIENT_STATUS_ALL");
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+
+	/*  free listening head */
+	listen_cb_info *tmp = NULL;
+	listen_cb_info *prev = NULL;
+	for (tmp = mpc->info.listening.lhead; tmp;) {
+		prev = tmp;
+		tmp = tmp->next;
+		free(prev);
+	}
+
+	/* free dbus connection */
+	ret = comm_client_free(mpc->info.listening.cc);
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "comm_client_free() failed - %d", ret);
+
+	/* Manage pc for seperated event */
+	mpc->ctype = PC_LISTENING;
+	mpc->status_type = status_type;
+
+	mpc->info.listening.cc = comm_client_new();
+	retvm_if(mpc->info.listening.cc == NULL, PKGMGR_R_EINVAL, "client creation failed");
+
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_INSTALL) == PKGMGR_CLIENT_STATUS_INSTALL) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_INSTALL, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "PKGMGR_CLIENT_STATUS_INSTALL failed - %d", ret);
+	}
+
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_UNINSTALL) == PKGMGR_CLIENT_STATUS_UNINSTALL) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_UNINSTALL, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UNINSTALL failed - %d", ret);
+	}
+
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_MOVE) == PKGMGR_CLIENT_STATUS_MOVE) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_MOVE, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_MOVE failed - %d", ret);
+	}
+
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS) == PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_INSTALL_PROGRESS, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_INSTALL_PROGRESS failed - %d", ret);
+	}
+
+   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_UPGRADE) == PKGMGR_CLIENT_STATUS_UPGRADE) {
+	   ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_UPGRADE, mpc->info.listening.cc, __status_callback, pc);
+	   retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
+   }
+
+   return PKGMGR_R_OK;
+}
+
 API int pkgmgr_client_listen_status(pkgmgr_client *pc, pkgmgr_handler event_cb,
 				    void *data)
 {
 	int req_id;
 	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 
-	/* 0. check the pc type */
-	if (mpc->ctype != PC_LISTENING)
-		return PKGMGR_R_EINVAL;
+	/* 0. check input */
+	retvm_if(mpc->ctype != PC_LISTENING, PKGMGR_R_EINVAL, "ctype is not PC_LISTENING");
+	retvm_if(event_cb == NULL, PKGMGR_R_EINVAL, "event_cb is NULL");
 
-	/* 1. check argument */
-	if (event_cb == NULL)
-		return PKGMGR_R_EINVAL;
+	/* 1. get id */
+	req_id = _get_request_id();
 
 	/* 2. add callback info to pkgmgr_client */
-	req_id = _get_request_id();
 	__add_stat_cbinfo(mpc, req_id, event_cb, data);
-
 	return req_id;
 }
 
@@ -2251,7 +2197,7 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 	if (mpc->ctype != PC_BROADCAST)
 		return PKGMGR_R_EINVAL;
 
-	comm_status_broadcast_server_send_signal(mpc->info.broadcast.bc,
+	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, mpc->info.broadcast.bc,
 						 PKG_STATUS, pkg_type,
 						 pkgid, key, val);
 
@@ -2315,7 +2261,7 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 	case PM_REQUEST_GET_SIZE:
 		tryvm_if(pkgid == NULL, ret = PKGMGR_R_EINVAL, "pkgid is NULL\n");
 		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
-		tryvm_if((service_mode < PM_GET_TOTAL_SIZE) || (service_mode > PM_GET_DATA_SIZE), ret = PKGMGR_R_EINVAL, "service_mode is wrong\n");
+		tryvm_if((service_mode < PM_GET_TOTAL_SIZE) || (service_mode >= PM_GET_MAX), ret = PKGMGR_R_EINVAL, "service_mode is wrong\n");
 
 		ret = __get_size_process(pc, pkgid, (pkgmgr_getsize_type)service_mode, event_cb, data);
 		break;
