@@ -1692,13 +1692,11 @@ pop:
 						ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
 						if (ret < 0) {
 							DBGE("insert in db failed\n");
-							exit(1);
 						}
 
 						ret = ail_desktop_add(item->pkgid);
 						if (ret != AIL_ERROR_OK) {
-							perror("fail to ail_desktop_add");
-							exit(1);
+							DBGE("fail to ail_desktop_add");
 						}
 					} else {
 						pkgmgrinfo_pkginfo_destroy_pkginfo(handle);

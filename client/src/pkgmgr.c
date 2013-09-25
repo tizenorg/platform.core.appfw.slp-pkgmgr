@@ -714,7 +714,7 @@ static int __sync_process(char *req_key)
 			break;
 		}
 
-		if (check_cnt > 500) {	/* 5s time over*/
+		if (check_cnt > 6000) {	/* 60s time over*/
 			_LOGD("wait time over!!\n");
 			break;
 		}
@@ -2286,6 +2286,79 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 	}
 
 catch:
+
+	return ret;
+}
+
+API int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data)
+{
+	char *req_key = NULL;
+	int ret =0;
+	char *pkgtype = "rpm";
+	char *argv[PKG_ARGC_MAX] = { NULL, };
+	char *args = NULL;
+	int argcnt = 0;
+	int len = 0;
+	char *temp = NULL;
+	int i = 0;
+	char buf[128] = {'\0'};
+	char *cookie = NULL;
+	int req_id = 0;
+
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
+	retvm_if(event_cb == NULL, PKGMGR_R_EINVAL, "event_cb is NULL\n");
+	retvm_if(pkgid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL\n");
+
+	req_key = __get_req_key(pkgid);
+	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
+
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
+
+	snprintf(buf, 128, "%d", get_type);
+	argv[argcnt++] = strdup(pkgid);
+	argv[argcnt++] = strdup(buf);
+	argv[argcnt++] = strdup("-k");
+	argv[argcnt++] = req_key;
+
+	/*** add quote in all string for special charactor like '\n'***   FIX */
+	for (i = 0; i < argcnt; i++) {
+		temp = g_shell_quote(argv[i]);
+		len += (strlen(temp) + 1);
+		g_free(temp);
+	}
+
+	args = (char *)calloc(len, sizeof(char));
+	tryvm_if(args == NULL, ret = PKGMGR_R_EINVAL, "installer_path fail");
+
+	strncpy(args, argv[0], len - 1);
+
+	for (i = 1; i < argcnt; i++) {
+		strncat(args, " ", strlen(" "));
+		temp = g_shell_quote(argv[i]);
+		strncat(args, temp, strlen(temp));
+		g_free(temp);
+	}
+	_LOGD("[args] %s [len] %d\n", args, len);
+
+	/* get cookie from security-server */
+	cookie = __get_cookie_from_security_server();
+	tryvm_if(cookie == NULL, ret = PKGMGR_R_ERROR, "__get_cookie_from_security_server is NULL");
+
+	/* request */
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_GET_SIZE, pkgtype, pkgid, args, cookie, 1);
+	if (ret < 0)
+		_LOGE("comm_client_request failed, ret=%d\n", ret);
+
+catch:
+	for (i = 0; i < argcnt; i++)
+		free(argv[i]);
+
+	if(args)
+		free(args);
+	if (cookie)
+		free(cookie);
 
 	return ret;
 }

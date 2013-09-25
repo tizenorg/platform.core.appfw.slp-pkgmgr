@@ -219,6 +219,11 @@ comm_status_broadcast_server_send_signal(int comm_status_type, DBusConnection *c
 	};
 	int i;
 
+	if (conn == NULL) {
+		dbg("dbus conn is NULL");
+		return;
+	}
+
 	msg = dbus_message_new_signal(__get_path(comm_status_type), __get_interface(comm_status_type), __get_name(comm_status_type));
 	if (NULL == msg) {
 		dbg("msg NULL");

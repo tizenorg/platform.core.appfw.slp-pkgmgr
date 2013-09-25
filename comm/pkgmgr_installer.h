@@ -61,6 +61,8 @@ typedef void* pkgmgr_instcertinfo_h;
 #define PKGMGR_INSTALLER_UNINSTALL_EVENT_STR						"uninstall"
 #define PKGMGR_INSTALLER_MOVE_EVENT_STR								"move"
 #define PKGMGR_INSTALLER_UPGRADE_EVENT_STR							"upgrade"
+#define PKGMGR_INSTALLER_OK_EVENT_STR								"ok"
+#define PKGMGR_INSTALLER_FAIL_EVENT_STR								"fail"
 
 
 
@@ -78,7 +80,8 @@ enum {
 	PKGMGR_REQ_RECOVER = 5,
 	PKGMGR_REQ_REINSTALL = 6,
 	PKGMGR_REQ_GETSIZE = 7,
-	PKGMGR_REQ_UPGRADE = 8
+	PKGMGR_REQ_UPGRADE = 8,
+	PKGMGR_REQ_SMACK = 9
 };
 
 enum {

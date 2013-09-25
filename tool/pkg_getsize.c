@@ -32,8 +32,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <sys/types.h>
+#include <fcntl.h>
+
 #include "pkgmgr-debug.h"
 #include "package-manager.h"
+#include "pkgmgr_installer.h"
 
 #undef LOG_TAG
 #ifndef LOG_TAG
@@ -47,61 +51,83 @@
 #define PKG_RW_PATH "/opt/usr/apps/"
 #define PKG_RO_PATH "/usr/apps/"
 
-long long __calculate_dir_size(char *dirname)
+long long __get_dir_size(int dfd)
 {
-	long long total = 0;
-	long long ret = 0;
-	int q = 0; /*quotient*/
-	int r = 0; /*remainder*/
-	DIR *dp = NULL;
-	struct dirent *ep = NULL;
-	struct stat fileinfo;
-	char abs_filename[FILENAME_MAX] = { 0, };
-	if(dirname == NULL) {
-		_LOGE("dirname is NULL");
-		return PMINFO_R_ERROR;
-	}
-	dp = opendir(dirname);
-	if (dp != NULL) {
-		while ((ep = readdir(dp)) != NULL) {
-			if (!strcmp(ep->d_name, ".") ||
-				!strcmp(ep->d_name, "..")) {
-				continue;
-			}
-			snprintf(abs_filename, FILENAME_MAX, "%s/%s", dirname,
-				 ep->d_name);
-			if (lstat(abs_filename, &fileinfo) < 0)
-				perror(abs_filename);
-			else {
-				if (S_ISDIR(fileinfo.st_mode)) {
-					total += fileinfo.st_size;
-					if (strcmp(ep->d_name, ".")
-					    && strcmp(ep->d_name, "..")) {
-						ret = __calculate_dir_size
-						    (abs_filename);
-						total = total + ret;
-					}
-				} else if (S_ISLNK(fileinfo.st_mode)) {
-					continue;
-				} else {
-					/*It is a file. Calculate the actual
-					size occupied (in terms of 4096 blocks)*/
-				q = (fileinfo.st_size / BLOCK_SIZE);
-				r = (fileinfo.st_size % BLOCK_SIZE);
-				if (r) {
-					q = q + 1;
-				}
-				total += q * BLOCK_SIZE;
-				}
-			}
-		}
-		(void)closedir(dp);
-	} else {
-		_LOGE("Couldn't open the directory\n");
+    long long size = 0;
+    struct stat f_stat;
+    DIR *dir;
+    struct dirent *de;
+    long long tmp_size = 0;
+
+    dir = fdopendir(dfd);
+    if (dir == NULL) {
+    	_LOGE("Couldn't open the directory\n");
+    	close(dfd);
+        return 0;
+    }
+
+    while ((de = readdir(dir))) {
+        const char *name = de->d_name;
+        if (name[0] == '.') {
+            if (name[1] == 0)
+                continue;
+            if ((name[1] == '.') && (name[2] == 0))
+                continue;
+        }
+
+        if (fstatat(dfd, name, &f_stat, AT_SYMLINK_NOFOLLOW) == 0) {
+       	 size += f_stat.st_blocks * 512;
+        }
+        if (de->d_type == DT_DIR) {
+            int subfd;
+
+            subfd = openat(dfd, name, O_RDONLY | O_DIRECTORY);
+            if (subfd >= 0) {
+            	tmp_size = __get_dir_size(subfd);
+            	size += tmp_size;
+            }
+        }
+    }
+    closedir(dir);
+    return size;
+}
+
+long long __get_pkg_size(char *path)
+{
+	long long size;
+	DIR *dir;
+	int dfd;
+	struct stat f_stat;
+	if (path == NULL){
+		_LOGE("path is NULL");
 		return -1;
 	}
-	return total;
 
+	if (lstat(path, &f_stat) == 0) {
+		if (!S_ISLNK(f_stat.st_mode)) {
+			dir = opendir(path);
+			if (dir == NULL) {
+				_LOGE("Couldn't open the directory %s \n", path);
+				return -1;
+			}
+			dfd = dirfd(dir);
+
+			size = __get_dir_size(dfd);
+			if (size > 0) {
+				 size = size + f_stat.st_blocks * 512;
+			}
+			else {
+				_LOGE("Couldn't open the directory\n");
+				return -1;
+			}
+		}
+	}
+	else {
+		_LOGE("Couldn't lstat the directory %s %d \n", path, errno);
+		return -1;
+	}
+
+	return size;
 }
 
 static int __get_total_size(char *pkgid, int *size)
@@ -112,119 +138,70 @@ static int __get_total_size(char *pkgid, int *size)
 	long long ro_size= 0;
 	long long tmp_size= 0;
 	long long total_size= 0;
-	struct stat fileinfo;
-	int ret = -1;
 
 	/* RW area */
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/bin", PKG_RW_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				rw_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		rw_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/info", PKG_RW_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-			rw_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		rw_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/res", PKG_RW_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-			rw_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		rw_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/data", PKG_RW_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				rw_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		rw_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/shared", PKG_RW_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				rw_size += tmp_size;
-	}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		rw_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/setting", PKG_RW_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				rw_size += tmp_size;
-		}
-	}
-#if 1
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		rw_size += tmp_size;
+#if 0
 	/* RO area */
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/bin", PKG_RO_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				ro_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		ro_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/info", PKG_RO_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				ro_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		ro_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/res", PKG_RO_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				ro_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		ro_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/data", PKG_RO_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				ro_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		ro_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/shared", PKG_RO_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				ro_size += tmp_size;
-	}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		ro_size += tmp_size;
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/setting", PKG_RO_PATH, pkgid);
-	if (lstat(device_path, &fileinfo) == 0) {
-		if (!S_ISLNK(fileinfo.st_mode)) {
-			tmp_size = __calculate_dir_size(device_path);
-			if (tmp_size > 0)
-				ro_size += tmp_size;
-		}
-	}
+	tmp_size = __get_pkg_size(device_path);
+	if (tmp_size > 0)
+		ro_size += tmp_size;
 #endif
+
 	/* Total size */
 	total_size = rw_size + ro_size;
 	*size = (int)total_size;
@@ -239,7 +216,7 @@ static int __get_data_size(char *pkgid, int *size)
 
 	snprintf(device_path, MAX_PKG_BUF_LEN, "%s%s/data", PKG_RW_PATH, pkgid);
 	if (access(device_path, R_OK) == 0)
-		total_size = __calculate_dir_size(device_path);
+		total_size = __get_pkg_size(device_path);
 	if (total_size < 0)
 		return PMINFO_R_ERROR;
 
@@ -262,6 +239,8 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 
 	__get_total_size(pkgid, &size);
 
+	* (int *) user_data += size;
+
 	_LOGD("pkg=[%s], size=[%d]\n", pkgid, size);
 
 	return 0;
@@ -273,6 +252,8 @@ int main(int argc, char *argv[])
 	int size = 0;
 	int get_type = 0;
 	char *pkgid = NULL;
+	pkgmgr_installer *pi;
+	char buf[MAX_PKG_BUF_LEN] = {'\0'};
 
 	pkgid = argv[0];
 	get_type = atoi(argv[1]);
@@ -282,12 +263,22 @@ int main(int argc, char *argv[])
 	} else if(get_type == PM_GET_DATA_SIZE) {
 		ret = __get_data_size(pkgid, &size);
 	} else if(get_type == PM_GET_ALL_PKGS) {
-		ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, NULL);
+		ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, &size);
 	}
 	if (ret < 0)
 		_LOGD("_pkg_getsize fail \n");
 	else
 		_LOGD("_pkg_getsize success \n");
+
+	pi = pkgmgr_installer_new();
+	if (!pi) {
+		_LOGD("Failure in creating the pkgmgr_installer object");
+	} else {
+		pkgmgr_installer_receive_request(pi, argc, argv);
+		snprintf(buf, MAX_PKG_BUF_LEN - 1, "%d", size);
+		pkgmgr_installer_send_signal(pi, "get-size", pkgid, "get-size", buf);
+		pkgmgr_installer_free(pi);
+	}
 
 	vconf_set_int(VCONFKEY_PKGMGR_STATUS, size);
 	return 0;

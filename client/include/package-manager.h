@@ -586,6 +586,23 @@ int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, int 
 					const char *custom_info, pkgmgr_handler event_cb, void *data);
 
 /**
+ * @brief	This API get package size
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc				pkgmgr_client
+ * @param[in]	pkgid			package id
+ * @param[in]	get_type		type for pkgmgr client request to get package size
+ * @param[in]	event_cb		user callback
+ * @param[in]	data			user data
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data);
+
+/**
  * @brief	This API provides package list
  *
  * This API is for package-manager client application.\n

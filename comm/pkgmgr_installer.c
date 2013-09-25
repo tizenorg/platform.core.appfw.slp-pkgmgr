@@ -267,6 +267,18 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 
 			break;
 
+		case 's':	/* smack */
+			if (mode) {
+				r = -EINVAL;
+				goto RET;
+			}
+			mode = 's';
+			pi->request_type = PKGMGR_REQ_SMACK;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 		case 'o': /* optional data*/
 			pi->optional_data = strndup(optarg, MAX_STRLEN);
 			break;

@@ -32,7 +32,7 @@ extern "C" {
 #endif
 
 /* Supported options */
-const char *short_opts = "k:l:i:d:c:m:t:o:r:p:q";
+const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:q";
 const struct option long_opts[] = {
 	{ "session-id", 1, NULL, 'k' },
 	{ "license-path", 1, NULL, 'l' },
@@ -44,6 +44,7 @@ const struct option long_opts[] = {
 	{ "optional-data", 0, NULL, 'o' },
 	{ "reinstall", 0, NULL, 'r' },
 	{ "caller-pkgid", 1, NULL, 'p' },
+	{ "smack", 1, NULL, 's' },
 	{ "quiet", 1, NULL, 'q' },
 	{ 0, 0, 0, 0 }	/* sentinel */
 };
