@@ -113,6 +113,9 @@ mkdir -p %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants
 install -m 0644 %SOURCE1 %{buildroot}%{_libdir}/systemd/system/pkgmgr_recovery.service
 ln -s ../pkgmgr_recovery.service %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/pkgmgr_recovery.service
 
+mkdir -p %{buildroot}/usr/share/license
+cp LICENSE %{buildroot}/usr/share/license/%{name}
+
 %post
 /sbin/ldconfig
 
@@ -182,6 +185,7 @@ mkdir -p /usr/etc/package-manager/server
 %attr(0700,root,root) /usr/etc/package-manager/pkg_recovery.sh
 %{_libdir}/systemd/system/multi-user.target.wants/pkgmgr_recovery.service
 %{_libdir}/systemd/system/pkgmgr_recovery.service
+/usr/share/license/%{name}
 
 %files client
 %manifest pkgmgr-client.manifest
