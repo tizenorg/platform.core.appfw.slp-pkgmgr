@@ -48,7 +48,5 @@ API int comm_client_request(comm_client *cc, const char *req_id,
 			    const char *pkgid, const char *args,
 			    const char *cookie, int is_block);
 
-API int comm_client_set_status_callback(comm_client *cc, status_cb cb,
-					void *cb_data);
-
+API int comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb cb, void *cb_data);
 #endif				/* __COMM_CLIENT_H__ */

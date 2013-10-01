@@ -52,11 +52,6 @@ static int __return_cb(int req_id, const char *pkg_type, const char *pkgid,
 		       const char *key, const char *val, const void *pmsg,
 		       void *data);
 static int __convert_to_absolute_path(char *path);
-static int __pkgcmd_read_proc(const char *path, char *buf, int size);
-static int __pkgcmd_find_pid_by_cmdline(const char *dname,
-			const char *cmdline, const char *apppath);
-static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option);
-static int __app_list_cb(const pkgmgr_appinfo_h handle, void *user_data);
 
 /* Supported options */
 const char *short_options = "iurmcgCkaADL:lsd:p:t:n:T:S:qh";
@@ -232,125 +227,6 @@ static int __return_cb(int req_id, const char *pkg_type,
 	return 0;
 }
 
-static int __pkgcmd_read_proc(const char *path, char *buf, int size)
-{
-	int fd;
-	int ret;
-	if (buf == NULL || path == NULL)
-		return -1;
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		return -1;
-	ret = read(fd, buf, size - 1);
-	if (ret <= 0) {
-		close(fd);
-		return -1;
-	} else
-		buf[ret] = 0;
-	close(fd);
-	return ret;
-}
-
-static int __pkgcmd_find_pid_by_cmdline(const char *dname,
-			const char *cmdline, const char *apppath)
-{
-	int pid = 0;
-
-	if (strcmp(cmdline, apppath) == 0) {
-		pid = atoi(dname);
-		if (pid != getpgid(pid))
-			pid = 0;
-	}
-	return pid;
-}
-
-static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option)
-{
-	DIR *dp;
-	struct dirent *dentry;
-	int pid;
-	int ret;
-	char buf[1024] = {'\0'};
-	int pgid;
-
-	dp = opendir("/proc");
-	if (dp == NULL) {
-		return -1;
-	}
-
-	while ((dentry = readdir(dp)) != NULL) {
-		if (!isdigit(dentry->d_name[0]))
-			continue;
-
-		snprintf(buf, sizeof(buf), "/proc/%s/cmdline", dentry->d_name);
-		ret = __pkgcmd_read_proc(buf, buf, sizeof(buf));
-		if (ret <= 0)
-			continue;
-
-		pid = __pkgcmd_find_pid_by_cmdline(dentry->d_name, buf, apppath);
-		if (pid > 0) {
-			if (option == 0) {
-				closedir(dp);
-				return pid;
-			}
-			pgid = getpgid(pid);
-			if (pgid <= 1) {
-				closedir(dp);
-				return -1;
-			}
-			if (killpg(pgid, SIGKILL) < 0) {
-				closedir(dp);
-				return -1;
-			}
-			closedir(dp);
-			return pid;
-		}
-	}
-	closedir(dp);
-	return 0;
-}
-
-static int __app_list_cb(const pkgmgr_appinfo_h handle, void *user_data)
-{
-	char *exec = NULL;
-	char *appid = NULL;
-	int ret = 0;
-	int pid = -1;
-	if (handle == NULL) {
-		printf("appinfo handle is NULL\n");
-		return -1;
-	}
-	ret = pkgmgr_appinfo_get_exec(handle, &exec);
-	if (ret) {
-		printf("Failed to get app exec path\n");
-		return -1;
-	}
-	ret = pkgmgr_appinfo_get_appid(handle, &appid);
-	if (ret) {
-		printf("Failed to get appid\n");
-		return -1;
-	}
-	/*option 0 to check and option 1 to kill*/
-	switch(data.request) {
-	case CHECKAPP_REQ:
-		pid = __pkgcmd_proc_iter_kill_cmdline(exec, 0);
-		if (pid) {
-			printf("Appid: %s is Running\n", appid);
-		} else {
-			printf("Appid: %s is Not Running\n", appid);
-		}
-		break;
-	case KILLAPP_REQ:
-		pid = __pkgcmd_proc_iter_kill_cmdline(exec, 1);
-		if (pid > 0)
-			printf("Appid: %s is Terminated\n", appid);
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
 static int __convert_to_absolute_path(char *path)
 {
 	char abs[PKG_NAME_STRING_LEN_MAX] = {'\0'};
@@ -449,6 +325,8 @@ static void __print_usage()
 	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n");
 	printf("pkgcmd -m -t <pkg type> -T <move type> -n <pkg name> (-q)\n\n");
 	printf("pkgcmd -g -T <getsize type> -n <pkgid> \n");
+	printf("pkgcmd -C -n <pkgid> \n");
+	printf("pkgcmd -k -n <pkgid> \n");
 
 	printf("Example:\n");
 	printf("pkgcmd -u -n com.samsung.calculator\n");
@@ -456,8 +334,8 @@ static void __print_usage()
 	printf("pkgcmd -r -t rpm -n com.samsung.calculator\n");
 	printf("pkgcmd -c -t rpm -n com.samsung.hello\n");
 	printf("pkgcmd -m -t rpm -T 1 -n com.samsung.hello\n");
-	printf("pkgcmd -C -t rpm -n com.samsung.hello\n");
-	printf("pkgcmd -k -t rpm -n com.samsung.hello\n");
+	printf("pkgcmd -C -n com.samsung.hello\n");
+	printf("pkgcmd -k -n com.samsung.hello\n");
 	printf("pkgcmd -a\n");
 	printf("pkgcmd -a -t rpm -n com.samsung.hello\n");
 	printf("pkgcmd -l\n");
@@ -604,12 +482,35 @@ static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	return ret;
 }
 
+static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
+{
+	int ret = -1;
+	int size = 0;
+	char *pkgid;
+
+	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
+	if(ret < 0) {
+		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
+	}
+
+	ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, NULL, NULL, NULL);
+	if (ret < 0){
+		printf("pkgmgr_client_request_service Failed\n");
+		return -1;
+	}
+
+	printf("pkg[%s] size = %d\n", pkgid, ret);
+
+	return 0;
+}
+
 static int __process_request()
 {
 	int ret = -1;
 	int mode = PM_DEFAULT;
 	pkgmgr_client *pc = NULL;
 	char buf[1024] = {'\0'};
+	int pid = -1;
 	switch (data.request) {
 	case INSTALL_REQ:
 		if (data.pkg_type[0] == '\0' || data.pkg_path[0] == '\0') {
@@ -815,65 +716,39 @@ static int __process_request()
 		break;
 
 	case MOVE_REQ:
-		if (data.quiet == 1) {
-			if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
-				printf("Please provide the arguments.\n");
-				printf("use -h option to see usage\n");
-				ret = -1;
-				break;
-			}
-			if (data.type < 0 || data.type > 1) {
-				printf("Invalid move type...See usage\n");
-				ret = -1;
-				break;
-			}
-			pc = pkgmgr_client_new(PC_REQUEST);
-			if (pc == NULL) {
-				printf("PkgMgr Client Creation Failed\n");
-				ret = -1;
-				break;
-			}
-			mode = PM_QUIET;
-			ret = __is_app_installed(data.pkgid);
-			if (ret == -1) {
-				printf("package is not installed\n");
-				break;
-			}
-			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
-			if (ret < 0)
-				break;
-			ret = data.result;
-		} else {
-			if (data.pkgid[0] == '\0') {
-				printf("Please provide the arguments.\n");
-				printf("use -h option to see usage\n");
-				ret = -1;
-				break;
-			}
-			if (data.type < 0 || data.type > 1) {
-				printf("Invalid move type...See usage\n");
-				ret = -1;
-				break;
-			}
-			g_type_init();
-			main_loop = g_main_loop_new(NULL, FALSE);
-			pc = pkgmgr_client_new(PC_REQUEST);
-			if (pc == NULL) {
-				printf("PkgMgr Client Creation Failed\n");
-				ret = -1;
-				break;
-			}
-			ret = __is_app_installed(data.pkgid);
-			if (ret == -1) {
-				printf("package is not installed\n");
-				break;
-			}
-			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
-			if (ret < 0)
-				break;
-			g_main_loop_run(main_loop);
-			ret = data.result;
+		if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
+			printf("Please provide the arguments.\n");
+			printf("use -h option to see usage\n");
+			ret = -1;
+			break;
 		}
+		if (data.type < 0 || data.type > 1) {
+			printf("Invalid move type...See usage\n");
+			ret = -1;
+			break;
+		}
+		pc = pkgmgr_client_new(PC_REQUEST);
+		if (pc == NULL) {
+			printf("PkgMgr Client Creation Failed\n");
+			ret = -1;
+			break;
+		}
+		mode = PM_QUIET;
+		ret = __is_app_installed(data.pkgid);
+		if (ret == -1) {
+			printf("package is not installed\n");
+			break;
+		}
+		if (data.quiet == 0)
+			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
+		else
+			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
+
+		printf("pkg[%s] move result = %d\n", data.pkgid, ret);
+
+		if (ret < 0)
+			break;
+		ret = data.result;
 		break;
 
 	case APPPATH_REQ:
@@ -911,6 +786,7 @@ static int __process_request()
 		break;
 
 	case KILLAPP_REQ:
+	case CHECKAPP_REQ:
 		if (data.pkgid[0] == '\0') {
 			printf("Please provide the arguments.\n");
 			printf("use -h option to see usage\n");
@@ -925,44 +801,30 @@ static int __process_request()
 			break;
 		}
 
-		ret = pkgmgr_client_request_service(PM_REQUEST_KILL_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, NULL);
-		if (ret < 0){
-			data.result = PKGCMD_ERR_FATAL_ERROR;
-			break;
+		if (data.request == KILLAPP_REQ) {
+			ret = pkgmgr_client_request_service(PM_REQUEST_KILL_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, &pid);
+			if (ret < 0){
+				data.result = PKGCMD_ERR_FATAL_ERROR;
+				break;
+			}
+			if (pid)
+				printf("Pkgid: %s is Terminated\n", data.pkgid);
+			else
+				printf("Pkgid: %s is already Terminated\n", data.pkgid);
+
+		} else if (data.request == CHECKAPP_REQ) {
+			ret = pkgmgr_client_request_service(PM_REQUEST_CHECK_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, &pid);
+			if (ret < 0){
+				data.result = PKGCMD_ERR_FATAL_ERROR;
+				break;
+			}
+
+			if (pid)
+				printf("Pkgid: %s is Running\n", data.pkgid);
+			else
+				printf("Pkgid: %s is Not Running\n", data.pkgid);
 		}
 		ret = data.result;
-		break;
-
-	case CHECKAPP_REQ:
-		if (data.pkg_type[0] == '\0' || data.pkgid[0] == '\0') {
-			printf("Please provide the arguments.\n");
-			printf("use -h option to see usage\n");
-			ret = -1;
-			break;
-		}
-		pkgmgr_pkginfo_h handle;
-		ret = pkgmgr_pkginfo_get_pkginfo(data.pkgid, &handle);
-		if (ret < 0) {
-			printf("Failed to get handle\n");
-			data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
-			return  0;
-		}
-		ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
-		if (ret < 0) {
-			printf("pkgmgr_appinfo_get_list() failed\n");
-			pkgmgr_pkginfo_destroy_pkginfo(handle);
-			data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
-			return  0;
-		}
-		ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
-		if (ret < 0) {
-			printf("pkgmgr_appinfo_get_list() failed\n");
-			pkgmgr_pkginfo_destroy_pkginfo(handle);
-			data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
-			return  0;
-		}
-		pkgmgr_pkginfo_destroy_pkginfo(handle);
-		ret = 0;
 		break;
 
 	case LIST_REQ:
@@ -1036,11 +898,6 @@ static int __process_request()
 		if (data.pkgid[0] == '\0') {
 			printf("Please provide the arguments.\n");
 			printf("use -h option to see usage\n");
-			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
-			break;
-		}
-		if (data.type < 0 || data.type > 1) {
-			printf("Invalid get type...See usage\n");
 			ret = -1;
 			break;
 		}
@@ -1052,7 +909,12 @@ static int __process_request()
 			break;
 		}
 
-		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, NULL, __return_cb, NULL);
+		if (data.type == 9) {
+			ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, (void *)pc);
+			break;
+		}
+
+		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
 		if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			break;
