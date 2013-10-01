@@ -97,6 +97,17 @@ extern "C" {
 #define PKGMGR_INFO_STR_DATA_SIZE	"data_size"
 #define PKGMGR_INFO_STR_APP_SIZE	"app_size"
 #define PKGMGR_INFO_STR_INSTALLED_TIME	"installed_time"
+
+/**
+ * @brief listening status type in pkgmgr.
+ */
+#define PKGMGR_CLIENT_STATUS_ALL						0x00
+#define PKGMGR_CLIENT_STATUS_INSTALL					0x01
+#define PKGMGR_CLIENT_STATUS_UNINSTALL					0x02
+#define PKGMGR_CLIENT_STATUS_UPGRADE					0x04
+#define PKGMGR_CLIENT_STATUS_MOVE						0x08
+#define PKGMGR_CLIENT_STATUS_CLEAR_DATA					0x10
+#define PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS			0x20
 /** @} */
 
 /* 1 -100 : Package command errors */
@@ -258,12 +269,15 @@ typedef enum {
 	PM_REQUEST_MOVE = 1,
 	PM_REQUEST_GET_SIZE = 2,
 	PM_REQUEST_KILL_APP = 3,
+	PM_REQUEST_CHECK_APP = 4,
 	PM_REQUEST_MAX
 }pkgmgr_request_service_type;
 
 typedef enum {
 	PM_GET_TOTAL_SIZE= 0,
 	PM_GET_DATA_SIZE = 1,
+	PM_GET_ALL_PKGS = 2,
+	PM_GET_MAX
 }pkgmgr_getsize_type;
 
 /**
@@ -372,6 +386,26 @@ int pkgmgr_client_move(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode);
 
 /**
+ * @brief	This API moves installed package to SD card or vice versa.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	pkg_type		package type
+ * @param[in]	pkgid	application package id
+ * @param[in]	move_type		PM_MOVE_TO_INTERNAL or PM_MOVE_TO_SDCARD
+ * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
+ * @param[in]	event_cb	user callback
+ * @param[in]	data		user data
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ERROR	general error
+*/
+int pkgmgr_client_move_pkg(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode,
+				pkgmgr_handler event_cb, void *data);
+
+/**
  * @brief	This API activates package.
  *
  * This API is for package-manager client application.\n
@@ -464,6 +498,19 @@ int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 				const char *appid, pkgmgr_mode mode);
 
 /**
+ * @brief	This API set status type to listen for the pkgmgr's broadcasting
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	status_type	status type to listen
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+*/
+int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type);
+
+/**
  * @brief	This API request to listen the pkgmgr's broadcasting
  *
  * This API is for package-manager client application.\n
@@ -537,6 +584,23 @@ int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
 int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, int service_mode,
 					pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
 					const char *custom_info, pkgmgr_handler event_cb, void *data);
+
+/**
+ * @brief	This API get package size
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc				pkgmgr_client
+ * @param[in]	pkgid			package id
+ * @param[in]	get_type		type for pkgmgr client request to get package size
+ * @param[in]	event_cb		user callback
+ * @param[in]	data			user data
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data);
 
 /**
  * @brief	This API provides package list

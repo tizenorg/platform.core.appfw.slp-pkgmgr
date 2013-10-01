@@ -60,20 +60,63 @@ struct pkgmgr_installer {
 	char *license_path;
 	char *quiet_socket_path;
 	char *optional_data;
+	char *caller_pkgid;
 
 	DBusConnection *conn;
 };
 
-static int __validate_cb(void *data, int ncols, char **coltxt, char **colname);
+/* API */
 
-static int __validate_cb(void *data, int ncols, char **coltxt, char **colname)
+static int __send_signal_for_event(int comm_status_type, pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *key, const char *val)
 {
-	int *p = (int*)data;
-	*p = atoi(coltxt[0]);
-	_LOGE("exist value is %d\n", *p);
+	if (!pi)
+		return -1;
+
+	if (!pi->conn)
+		pi->conn = comm_status_broadcast_server_connect(comm_status_type);
+
+	char *sid = pi->session_id;
+	if (!sid)
+		sid = "";
+	comm_status_broadcast_server_send_signal(comm_status_type, pi->conn, sid, pkg_type, pkgid, key, val);
+
 	return 0;
 }
-/* API */
+
+API int __send_event(pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *key, const char *val)
+{
+	int r = -1;
+
+	if (strcmp(key,PKGMGR_INSTALLER_START_KEY_STR) == 0) {
+		if(strcmp(key,PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0) {
+			pi->request_type = PKGMGR_REQ_UPGRADE;
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UPGRADE, pi, pkg_type, pkgid, key, val);
+		}
+		if(pi->request_type == PKGMGR_REQ_INSTALL) {
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL, pi, pkg_type, pkgid, key, val);
+		} else if (pi->request_type == PKGMGR_REQ_UNINSTALL){
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, key, val);
+		}
+	} else if (strcmp(key,PKGMGR_INSTALLER_END_KEY_STR) == 0) {
+		if(pi->request_type == PKGMGR_REQ_INSTALL) {
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL, pi, pkg_type, pkgid, key, val);
+		} else if (pi->request_type == PKGMGR_REQ_UNINSTALL){
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, key, val);
+		} else if (pi->request_type == PKGMGR_REQ_UPGRADE){
+			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UPGRADE, pi, pkg_type, pkgid, key, val);
+		}
+	} else if (strcmp(key,PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR) == 0) {
+		r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL_PROGRESS, pi, pkg_type, pkgid, key, val);
+	}
+
+	return r;
+}
 
 API pkgmgr_installer *pkgmgr_installer_new(void)
 {
@@ -99,6 +142,8 @@ API int pkgmgr_installer_free(pkgmgr_installer *pi)
 		free(pi->session_id);
 	if (pi->optional_data)
 		free(pi->optional_data);
+	if (pi->caller_pkgid)
+		free(pi->caller_pkgid);
 
 	if (pi->conn)
 		comm_status_broadcast_server_disconnect(pi->conn);
@@ -215,6 +260,25 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 
 			break;
 
+		case 'p': /* caller pkgid*/
+			if (pi->caller_pkgid)
+				free(pi->caller_pkgid);
+			pi->caller_pkgid = strndup(optarg, MAX_STRLEN);
+
+			break;
+
+		case 's':	/* smack */
+			if (mode) {
+				r = -EINVAL;
+				goto RET;
+			}
+			mode = 's';
+			pi->request_type = PKGMGR_REQ_SMACK;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 		case 'o': /* optional data*/
 			pi->optional_data = strndup(optarg, MAX_STRLEN);
 			break;
@@ -279,6 +343,12 @@ API int pkgmgr_installer_get_move_type(pkgmgr_installer *pi)
 	return pi->move_type;
 }
 
+API const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->caller_pkgid;
+}
+
 API int
 pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 			     const char *pkg_type,
@@ -288,13 +358,15 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 	int r = 0;
 
 	if (!pi->conn)
-		pi->conn = comm_status_broadcast_server_connect();
+		pi->conn = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
 
 	char *sid = pi->session_id;
 	if (!sid)
 		sid = "";
-	comm_status_broadcast_server_send_signal(pi->conn, sid, pkg_type,
+	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, pi->conn, sid, pkg_type,
 						 pkgid, key, val);
+
+	__send_event(pi, pkg_type, pkgid, key, val);
 
 	return r;
 }

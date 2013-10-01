@@ -160,7 +160,7 @@ int _pm_queue_init()
 	}
 	i = n;
 	/*Find number of backends (symlinks + executables)
-	The /etc/package-manager/backend dir should not conatin
+	The /usr/etc/package-manager/backend dir should not conatin
 	any other file except the backends.*/
 	while(n--)
 	{
