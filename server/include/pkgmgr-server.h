@@ -27,11 +27,11 @@
 #ifndef _PKGMGR_SERVER_H_
 #define _PKGMGR_SERVER_H_
 
-#define CONF_FILE	"/etc/package-manager/server/.config"
+#define CONF_FILE	"/usr/etc/package-manager/server/.config"
 #define DESKTOP_FILE_DIRS	"/usr/share/install-info/desktop.conf"
 
 #define PKG_BACKEND	"backend:"
-#define PKG_CONF_PATH	"/etc/package-manager/pkg_path.conf"
+#define PKG_CONF_PATH	"/usr/etc/package-manager/pkg_path.conf"
 
 #define MAX_REQ_ID_LEN		256
 #define MAX_PKG_TYPE_LEN	128

@@ -62,7 +62,7 @@ time_t _get_info_time(const char *key,
 #define PKG_BACKEND		"backend:"
 #define PKG_BACKENDLIB	"backendlib:"
 #define PKG_PARSERLIB	"parserlib:"
-#define PKG_CONF_PATH	"/etc/package-manager/pkg_path.conf"
+#define PKG_CONF_PATH	"/usr/etc/package-manager/pkg_path.conf"
 
 #define PKG_STATUS		"STATUS"
 

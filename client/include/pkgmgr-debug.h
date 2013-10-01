@@ -89,6 +89,13 @@
 	} \
 } while (0)
 
+#define trym_if(expr, fmt, arg...) do { \
+			 if (expr) { \
+				 PKGMGR_DEBUG_ERR("(%s) "fmt, #expr, ##arg); \
+				 goto catch; \
+			 } \
+		 } while (0)
+
 #define tryvm_if(expr, val, fmt, arg...) do { \
 			 if (expr) { \
 				 PKGMGR_DEBUG_ERR("(%s) "fmt, #expr, ##arg); \

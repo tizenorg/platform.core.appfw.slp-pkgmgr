@@ -316,13 +316,13 @@ Backend must broadcast its installing status. You can broadcast your status by u
 /* ... */
 
 DBusConnection *conn;
-conn = comm_status_broadcast_server_connect();
+conn = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
 
-comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkgid, "start", "0");
+comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, conn, req_id, pkg_type, pkgid, "start", "0");
 /* ... */
-comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkgid, "install_percent", "60");
+comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL,conn,  req_id, pkg_type, pkgid, "install_percent", "60");
 /* ... */
-comm_status_broadcast_server_send_signal(conn, req_id, pkg_type, pkgid, "end", "0");
+comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, conn, req_id, pkg_type, pkgid, "end", "0");
 
 /* ... */
 @endcode

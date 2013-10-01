@@ -43,13 +43,29 @@ extern "C" {
 #include <dlog.h>
 
 
-#define _LOGE(fmt, arg...) LOGE(fmt,##arg)
 
 /**
  * pkgmgr_installer is an opaque type for an object
  */
 typedef struct pkgmgr_installer pkgmgr_installer;
 typedef void* pkgmgr_instcertinfo_h;
+
+/**
+ * @brief listening event type in pkgmgr.
+ */
+#define PKGMGR_INSTALLER_START_KEY_STR								"start"
+#define PKGMGR_INSTALLER_END_KEY_STR								"end"
+#define PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR					"install_percent"
+
+#define PKGMGR_INSTALLER_INSTALL_EVENT_STR							"install"
+#define PKGMGR_INSTALLER_UNINSTALL_EVENT_STR						"uninstall"
+#define PKGMGR_INSTALLER_MOVE_EVENT_STR								"move"
+#define PKGMGR_INSTALLER_UPGRADE_EVENT_STR							"upgrade"
+#define PKGMGR_INSTALLER_OK_EVENT_STR								"ok"
+#define PKGMGR_INSTALLER_FAIL_EVENT_STR								"fail"
+
+
+
 
 /**
  * Request type.
@@ -63,7 +79,9 @@ enum {
 	PKGMGR_REQ_MOVE = 4,
 	PKGMGR_REQ_RECOVER = 5,
 	PKGMGR_REQ_REINSTALL = 6,
-	PKGMGR_REQ_GETSIZE = 7
+	PKGMGR_REQ_GETSIZE = 7,
+	PKGMGR_REQ_UPGRADE = 8,
+	PKGMGR_REQ_SMACK = 9
 };
 
 enum {
@@ -407,6 +425,40 @@ int main(int argc, char **argv)
 	@endcode
  */
 int pkgmgr_installer_get_move_type(pkgmgr_installer *pi);
+
+/**
+	@brief		Get caller package id
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		Operation result
+	@retval		enum value of move type
+	@remark		None
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	char *pkgid = NULL;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	pkgid = (char *) pkgmgr_installer_get_caller_pkgid(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+	@endcode
+ */
+const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi);
 
 /**
 	@brief		Send a process status signal 

@@ -40,9 +40,13 @@
 #include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
+#include <pkgmgr_parser.h>
 
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#include <security-server.h>
+
+#include <vconf.h>
 
 #include "pkgmgr_installer.h"
 #include "comm_pkg_mgr_server.h"
@@ -79,6 +83,8 @@ FILE *___log = NULL;
 #if !defined(LOCALEDIR)
 #define LOCALEDIR "/usr/share/locale"
 #endif
+
+#define PACKAGE_RECOVERY_DIR "/opt/share/packages/.recovery/pkgmgr"
 
 #define DESKTOP_W   720.0
 
@@ -201,6 +207,119 @@ static void __set_backend_mode(int position)
 static void __unset_backend_mode(int position)
 {
 	backend_mode = backend_mode & ~(1<<position);
+}
+
+static void __set_recovery_mode(char *pkgid, char *pkg_type)
+{
+	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
+	char buffer[MAX_PKG_NAME_LEN] = { 0 };
+	char *pkgid_tmp = NULL;
+	FILE *rev_file = NULL;
+
+	if (pkgid == NULL) {
+		DBG("pkgid is null\n");
+		return;
+	}
+
+	/*if pkgid has a "/"charactor, that is a path name for installation, then extract pkgid from absolute path*/
+	if (strstr(pkgid, "/")) {
+		pkgid_tmp = strrchr(pkgid, '/') + 1;
+		if (pkgid_tmp == NULL) {
+			DBG("pkgid_tmp[%s] is null\n", pkgid);
+			return;
+		}
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
+	} else {
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
+	}
+
+	rev_file = fopen(recovery_file, "w");
+	if (rev_file== NULL) {
+		DBG("rev_file[%s] is null\n", recovery_file);
+		return;
+	}
+
+	snprintf(buffer, MAX_PKG_NAME_LEN, "pkgid : %s\n", pkgid);
+	fwrite(buffer, sizeof(char), strlen(buffer), rev_file);
+
+	fclose(rev_file);
+}
+
+static void __unset_recovery_mode(char *pkgid, char *pkg_type)
+{
+	int ret = -1;
+	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
+	char *pkgid_tmp = NULL;
+
+	if (pkgid == NULL) {
+		DBG("pkgid is null\n");
+		return;
+	}
+
+	/*if pkgid has a "/"charactor, that is a path name for installation, then extract pkgid from absolute path*/
+	if (strstr(pkgid, "/")) {
+		pkgid_tmp = strrchr(pkgid, '/') + 1;
+		if (pkgid_tmp == NULL) {
+			DBG("pkgid_tmp[%s] is null\n", pkgid);
+			return;
+		}
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
+	} else {
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
+	}
+
+	ret = remove(recovery_file);
+	if (ret < 0)
+		DBG("remove recovery_file[%s] fail\n", recovery_file);
+}
+
+static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
+{
+	guchar *cookie = NULL;
+	gsize size;
+	int ret = PMINFO_R_OK;	//temp to success , it should be PMINFO_R_ERROR
+
+	if (e_cookie == NULL)	{
+		DBG("e_cookie is NULL!!!\n");
+		return PMINFO_R_ERROR;
+	}
+
+	cookie = g_base64_decode(e_cookie, &size);
+	if (cookie == NULL)	{
+		DBG("Unable to decode cookie!!!\n");
+		return PMINFO_R_ERROR;
+	}
+
+	switch (req_type) {
+		case COMM_REQ_TO_INSTALLER:
+			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "r"))
+				ret = PMINFO_R_OK;
+
+			break;
+
+		case COMM_REQ_TO_MOVER:
+			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "x"))
+				ret = PMINFO_R_OK;
+			break;
+
+		case COMM_REQ_GET_SIZE:
+			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::info", "r"))
+				ret = PMINFO_R_OK;
+			break;
+
+		default:
+			DBG("Check your request[%d]..\n", req_type);
+			break;
+	}
+
+	DBG("security_server[req-type:%d] check cookie result = %d, \n", req_type, ret);
+
+	if (cookie){
+		g_free(cookie);
+		cookie = NULL;
+	}
+
+	return ret;
 }
 
 static int __get_position_from_pkg_type(char *pkgtype)
@@ -870,6 +989,7 @@ static void sighandler(int signo)
 				if (cpid == (ptr + i)->pid) {
 					__set_backend_free(i);
 					__set_backend_mode(i);
+					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
 					break;
 				}
 			}
@@ -882,6 +1002,7 @@ static void sighandler(int signo)
 				if (cpid == (ptr + i)->pid) {
 					__set_backend_free(i);
 					__set_backend_mode(i);
+					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
 					strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
 					strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
 					strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
@@ -901,6 +1022,7 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 	static int sig_reg = 0;
 	int err = -1;
 	int p = 0;
+	int cookie_result = 0;
 
 	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s]",
 	    req_id, req_type, pkg_type, pkgid, args, cookie);
@@ -941,6 +1063,14 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 
 	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:
+		/* check caller privilege */
+		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
+		if (cookie_result < 0){
+			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
+
 		/* -q option should be located at the end of command !! */
 		if (((quiet = strstr(args, " -q")) &&
 		     (quiet[strlen(quiet)] == '\0')) ||
@@ -1028,6 +1158,14 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_MOVER:
+		/* check caller privilege */
+		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
+		if (cookie_result < 0){
+			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
+
 		/* In case of mover, there is no popup */
 		err = _pm_queue_push(item);
 		p = __get_position_from_pkg_type(item->pkg_type);
@@ -1049,6 +1187,14 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_GET_SIZE:
+		/* check caller privilege */
+		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
+		if (cookie_result < 0){
+			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
+
 		err = _pm_queue_push(item);
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);
@@ -1058,6 +1204,8 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 			g_idle_add(queue_job, NULL);
 		*ret = COMM_RET_OK;
 		break;
+
+	case COMM_REQ_CHECK_APP:
 	case COMM_REQ_KILL_APP:
 		/* In case of activate, there is no popup */
 		err = _pm_queue_push(item);
@@ -1291,10 +1439,9 @@ static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option)
 	return 0;
 }
 
-static int __app_list_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
+static int __pkgcmd_app_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 {
 	char *exec = NULL;
-	char *appid = NULL;
 	int ret = 0;
 	int pid = -1;
 	if (handle == NULL) {
@@ -1306,15 +1453,13 @@ static int __app_list_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 		perror("Failed to get app exec path\n");
 		exit(1);
 	}
-	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
-	if (ret) {
-		perror("Failed to get appid\n");
-		exit(1);
-	}
 
-	pid = __pkgcmd_proc_iter_kill_cmdline(exec, 1);
-	if (pid > 0)
-		DBG("Appid: %s is Terminated\n", appid);
+	if (strcmp(user_data, "kill") == 0)
+		pid = __pkgcmd_proc_iter_kill_cmdline(exec, 1);
+	else if(strcmp(user_data, "check") == 0)
+		pid = __pkgcmd_proc_iter_kill_cmdline(exec, 0);
+
+	vconf_set_int(VCONFKEY_PKGMGR_STATUS, pid);
 
 	return 0;
 }
@@ -1347,6 +1492,7 @@ pop:
 		goto pop;
 	}
 	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
+	__set_recovery_mode(item->pkgid, item->pkg_type);
 
 	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:
@@ -1538,17 +1684,53 @@ pop:
 					exit(1);
 				}
 			} else { /* in case of package */
-				DBG("(De)activate PKG");
-				pkgmgrinfo_pkginfo_h handle;
-				ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
-				if (ret != PMINFO_R_OK)
-					exit(1);
-				ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_ALL_APP, __app_func, &val);
-				if (ret != PMINFO_R_OK) {
-					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+				DBGE("(De)activate PKG[pkgid=%s, val=%d]", item->pkgid, val);
+				char *manifest = NULL;
+				manifest = pkgmgr_parser_get_manifest_file(item->pkgid);
+				if (manifest == NULL) {
+					DBGE("Failed to fetch package manifest file\n");
 					exit(1);
 				}
-				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+				DBGE("manifest : %s\n", manifest);
+
+				if (val) {
+					pkgmgrinfo_pkginfo_h handle;
+					ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
+					if (ret < 0) {
+						ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+						if (ret < 0) {
+							DBGE("insert in db failed\n");
+						}
+
+						ret = ail_desktop_add(item->pkgid);
+						if (ret != AIL_ERROR_OK) {
+							DBGE("fail to ail_desktop_add");
+						}
+					} else {
+						pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+					}
+
+					ret = pkgmgrinfo_appinfo_set_state_enabled(item->pkgid, val);
+					if (ret != PMINFO_R_OK) {
+						perror("fail to activate/deactivte package");
+						exit(1);
+					}
+
+					ret = ail_desktop_appinfo_modify_bool(item->pkgid,
+								AIL_PROP_X_SLP_ENABLED_BOOL,
+								val, TRUE);
+					if (ret != AIL_ERROR_OK) {
+						perror("fail to ail_desktop_appinfo");
+						exit(1);
+					}
+				}
+				else
+					ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
+
+				if (ret < 0) {
+					DBGE("insert in db failed\n");
+					exit(1);
+				}
 			}
 
 			_save_queue_status(item, "done");
@@ -1754,7 +1936,8 @@ pop:
 		break;
 
 	case COMM_REQ_KILL_APP:
-		DBG("COMM_REQ_KILL_APP start");
+	case COMM_REQ_CHECK_APP:
+		DBG("COMM_REQ_CHECK_APP start");
 		_save_queue_status(item, "processing");
 		DBG("saved queue status. Now try fork()");
 		/*save pkg type and pkg name for future*/
@@ -1775,17 +1958,21 @@ pop:
 				DBG("Failed to get handle\n");
 				exit(1);
 			}
-			ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __app_list_cb, NULL);
-			if (ret < 0) {
-				DBG("pkgmgrinfo_appinfo_get_list() failed\n");
-				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-				exit(1);
-			}
-			ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_SVC_APP, __app_list_cb, NULL);
-			if (ret < 0) {
-				DBG("pkgmgrinfo_appinfo_get_list() failed\n");
-				pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-				exit(1);
+
+			if (item->req_type == COMM_REQ_KILL_APP) {
+				ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "kill");
+				if (ret < 0) {
+					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
+					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+					exit(1);
+				}
+			} else if (item->req_type == COMM_REQ_CHECK_APP) {
+				ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "check");
+				if (ret < 0) {
+					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
+					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+					exit(1);
+				}
 			}
 
 			pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
@@ -1805,7 +1992,6 @@ pop:
 			break;
 		}
 		break;
-
 
 	default:
 		break;
