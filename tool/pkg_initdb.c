@@ -188,6 +188,7 @@ static int __find_rpm_manifest(const char* manifest)
 		if (pkgtype != NULL) {
 			if ((strcmp(pkgtype,"tpk") == 0) || (strcmp(pkgtype,"wgt") == 0)) {
 				fclose(fp);
+				free(pkgtype);
 				return -1;
 			}
 		}
@@ -315,6 +316,7 @@ int initdb_install_corexml(const char *directory)
 		char buf3[BUFSZE];
 		snprintf(buf3, sizeof(buf3), "/usr/bin/rpm-backend -k rpm-smack -s %s", pkgid);
 		system(buf3);
+		free(pkgid);
 	}
 
 	closedir(dir);

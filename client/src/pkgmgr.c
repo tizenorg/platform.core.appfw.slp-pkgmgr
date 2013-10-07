@@ -1399,14 +1399,6 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_pkginfo fail");
 	tryvm_if(handle == NULL, ret = PKGMGR_R_EINVAL, "Pkgid(%s) can not find in installed pkg DB! \n", pkgid);
 
-	/*check running app , terminate app if it is running*/
-	ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
-
-	/*check running app , terminate app if it is running*/
-	ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
-
 	/*check type	*/
 	ret = pkgmgr_pkginfo_get_type(handle, &pkgtype);
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_type fail");

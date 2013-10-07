@@ -94,9 +94,9 @@ long long __get_dir_size(int dfd)
 
 long long __get_pkg_size(char *path)
 {
-	long long size;
-	DIR *dir;
-	int dfd;
+	long long size = 0;
+	DIR *dir = NULL;
+	int dfd = 0;
 	struct stat f_stat;
 	if (path == NULL){
 		_LOGE("path is NULL");
