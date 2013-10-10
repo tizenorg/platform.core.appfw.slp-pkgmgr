@@ -2245,7 +2245,7 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 	case PM_REQUEST_MOVE:
 		tryvm_if(pkgid == NULL, ret = PKGMGR_R_EINVAL, "pkgid is NULL\n");
 		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
-		tryvm_if((service_mode < PM_MOVE_TO_INTERNAL) || (service_mode > PM_MOVE_TO_SDCARD), ret = PKGMGR_R_EINVAL, "service_mode is wrong\n");
+		tryvm_if((service_mode < PM_MOVE_TO_INTERNAL) || (service_mode > PM_MOVE_TO_SDCARD), ret = PKGMGR_R_EINVAL, "service_mode[%d] is wrong\n", service_mode);
 
 		ret = __move_pkg_process(pc, pkgid, (pkgmgr_move_type)service_mode, event_cb, data);
 		break;
@@ -2253,7 +2253,7 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 	case PM_REQUEST_GET_SIZE:
 		tryvm_if(pkgid == NULL, ret = PKGMGR_R_EINVAL, "pkgid is NULL\n");
 		tryvm_if(pc == NULL, ret = PKGMGR_R_EINVAL, "pc is NULL\n");
-		tryvm_if((service_mode < PM_GET_TOTAL_SIZE) || (service_mode >= PM_GET_MAX), ret = PKGMGR_R_EINVAL, "service_mode is wrong\n");
+		tryvm_if((service_mode < PM_GET_TOTAL_SIZE) || (service_mode >= PM_GET_MAX), ret = PKGMGR_R_EINVAL, "service_mode[%d] is wrong\n", service_mode);
 
 		ret = __get_size_process(pc, pkgid, (pkgmgr_getsize_type)service_mode, event_cb, data);
 		break;

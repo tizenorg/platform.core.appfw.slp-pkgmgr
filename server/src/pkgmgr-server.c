@@ -1333,13 +1333,13 @@ int __app_func(const pkgmgrinfo_appinfo_h handle, void *user_data)
 
 	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
 	if (ret != PMINFO_R_OK) {
-		perror("fail to activate/deactivte package");
+		DBGE("fail to activate/deactivte package");
 		exit(1);
 	}
 
 	ret = pkgmgrinfo_appinfo_set_state_enabled(appid, (*data));
 	if (ret != PMINFO_R_OK) {
-		perror("fail to activate/deactivte package");
+		DBGE("fail to activate/deactivte package");
 		exit(1);
 	}
 
@@ -1347,7 +1347,7 @@ int __app_func(const pkgmgrinfo_appinfo_h handle, void *user_data)
 				AIL_PROP_X_SLP_ENABLED_BOOL,
 				(*data), TRUE);
 	if (ret != AIL_ERROR_OK) {
-		perror("fail to activate/deactivte package");
+		DBGE("fail to activate/deactivte package");
 		exit(1);
 	}
 	return 0;
@@ -1647,14 +1647,14 @@ pop:
 
 				ret = pkgmgrinfo_appinfo_set_state_enabled(item->pkgid, val);
 				if (ret != PMINFO_R_OK) {
-					perror("fail to activate/deactivte package");
+					DBGE("fail to activate/deactivte package");
 					exit(1);
 				}
 
 				if (label) {
 					ret = pkgmgrinfo_appinfo_set_default_label(item->pkgid, label);
 					if (ret != PMINFO_R_OK) {
-						perror("fail to activate/deactivte package");
+						DBGE("fail to activate/deactivte package");
 						exit(1);
 					}
 
@@ -1662,7 +1662,7 @@ pop:
 								AIL_PROP_NAME_STR,
 								label, FALSE);
 					if (ret != AIL_ERROR_OK) {
-						perror("fail to activate/deactivte package");
+						DBGE("fail to activate/deactivte package");
 						exit(1);
 					}
 					free(label);
@@ -1672,7 +1672,7 @@ pop:
 							AIL_PROP_X_SLP_ENABLED_BOOL,
 							val, TRUE);
 				if (ret != AIL_ERROR_OK) {
-					perror("fail to activate/deactivte package");
+					DBGE("fail to activate/deactivte package");
 					exit(1);
 				}
 			} else { /* in case of package */
@@ -1704,7 +1704,7 @@ pop:
 
 					ret = pkgmgrinfo_appinfo_set_state_enabled(item->pkgid, val);
 					if (ret != PMINFO_R_OK) {
-						perror("fail to activate/deactivte package");
+						DBGE("fail to activate/deactivte package");
 						exit(1);
 					}
 
@@ -1712,7 +1712,7 @@ pop:
 								AIL_PROP_X_SLP_ENABLED_BOOL,
 								val, TRUE);
 					if (ret != AIL_ERROR_OK) {
-						perror("fail to ail_desktop_appinfo");
+						DBGE("fail to ail_desktop_appinfo");
 						exit(1);
 					}
 				}
