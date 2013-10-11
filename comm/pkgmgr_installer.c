@@ -94,7 +94,7 @@ API int __send_event(pkgmgr_installer *pi,
 	int r = -1;
 
 	if (strcmp(key,PKGMGR_INSTALLER_START_KEY_STR) == 0) {
-		if(strcmp(key,PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0) {
+		if(strcmp(val,PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0) {
 			pi->request_type = PKGMGR_REQ_UPGRADE;
 			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UPGRADE, pi, pkg_type, pkgid, key, val);
 		}
