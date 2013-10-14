@@ -50,7 +50,8 @@ int main(int argc, char **argv)
 				  "this_is_a_cookie", 0);
 
 	printf("client: waiting signal...\n");
-	comm_client_set_status_callback(cc, stat_cb, NULL);
+	comm_client_set_status_callback(COMM_STATUS_BROADCAST_ALL,
+                                    cc, stat_cb, NULL);
 
 	g_main_loop_run(mainloop);
 

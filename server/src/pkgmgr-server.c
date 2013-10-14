@@ -40,7 +40,7 @@
 #include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
-#include <pkgmgr_parser.h>
+#include <pkgmgr/pkgmgr_parser.h>
 
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -1686,7 +1686,9 @@ pop:
 			} else { /* in case of package */
 				DBGE("(De)activate PKG[pkgid=%s, val=%d]", item->pkgid, val);
 				char *manifest = NULL;
-				manifest = pkgmgr_parser_get_manifest_file(item->pkgid);
+				
+                                // FIXME!!!! pkgmgr_parser_get_manifest_file does not exist!
+                                //manifest = pkgmgr_parser_get_manifest_file(item->pkgid);
 				if (manifest == NULL) {
 					DBGE("Failed to fetch package manifest file\n");
 					exit(1);
@@ -1695,9 +1697,12 @@ pop:
 
 				if (val) {
 					pkgmgrinfo_pkginfo_h handle;
+
 					ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
 					if (ret < 0) {
-						ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+                                                // FIXME!!!! pkgmgr_parser_parse_manifest_for_installation does not exist!
+						// ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+                                                ret = -1;
 						if (ret < 0) {
 							DBGE("insert in db failed\n");
 						}
@@ -1725,7 +1730,9 @@ pop:
 					}
 				}
 				else
-					ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
+                                        // FIXME!!!! pkgmgr_parser_parse_manifest_for_uninstallation does not exist!
+                                        ret = -1;
+					//ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
 
 				if (ret < 0) {
 					DBGE("insert in db failed\n");

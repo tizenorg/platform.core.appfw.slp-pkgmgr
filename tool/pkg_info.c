@@ -1545,6 +1545,7 @@ static int __set_pkginfo_in_db(char *pkgid)
 
 static int __insert_manifest_in_db(char *manifest)
 {
+#if 0 // FIXME!!!! This method depends on a non-existant pkgmgr_parser_parse_manifest_for_installation
 	int ret = 0;
 	if (manifest == NULL) {
 		printf("Manifest file is NULL\n");
@@ -1555,11 +1556,13 @@ static int __insert_manifest_in_db(char *manifest)
 		printf("insert in db failed\n");
 		return -1;
 	}
+#endif
 	return 0;
 }
 
 static int __fota_insert_manifest_in_db(char *manifest)
 {
+#if 0 // FIXME!!!!! This method depends on a non-existant pkgmgr_parser_parse_manifest_for_installation
 	int ret = 0;
 	char *temp[] = {"fota=true", NULL};
 
@@ -1573,10 +1576,12 @@ static int __fota_insert_manifest_in_db(char *manifest)
 		return -1;
 	}
 	return 0;
+#endif
 }
 
 static int __remove_manifest_from_db(char *manifest)
 {
+#if 0 // FIXME!!! pkgmgr_parser_parse_manifest_for_uninstallation does not exist!
 	int ret = 0;
 	if (manifest == NULL) {
 		printf("Manifest file is NULL\n");
@@ -1588,6 +1593,7 @@ static int __remove_manifest_from_db(char *manifest)
 		return -1;
 	}
 	return 0;
+#endif
 }
 
 int app_func(const pkgmgr_appinfo_h handle, void *user_data)
