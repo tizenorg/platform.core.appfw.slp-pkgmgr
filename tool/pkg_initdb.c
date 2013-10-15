@@ -30,7 +30,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "pkgmgr_parser.h"
+#include <pkgmgr_parser.h>
+#include <pkgmgr-info.h>
 
 #define OWNER_ROOT 0
 #define GROUP_MENU 6010
