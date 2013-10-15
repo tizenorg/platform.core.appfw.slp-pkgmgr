@@ -154,6 +154,7 @@ int initdb_load_directory(const char *directory)
 
 		fprintf(stderr, "pkg_initdb : manifest file %s\n", buf);
 
+#if 0 // FIXME!!!! This method depends on a non-existant pkgmgr_parser_check_manifest_validation 
 		ret = pkgmgr_parser_check_manifest_validation(buf);
 		if (ret < 0) {
 			_E("check manifest validation failed code[%d] %s\n", ret, buf);
@@ -161,7 +162,7 @@ int initdb_load_directory(const char *directory)
 			free(manifest);
 			continue;
 		}
-
+#endif
 
 		/*temporarily fixed due to glib abort */
 		// pkgmgr_parser_parse_manifest_for_installation(buf, NULL);
