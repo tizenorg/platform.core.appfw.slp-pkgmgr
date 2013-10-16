@@ -37,7 +37,7 @@ FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-pkg_check_modules(libpkgs REQUIRED dbus-glib-1 dlog ail pkgmgr-info iniparser)
+pkg_check_modules(libpkgs REQUIRED dbus-glib-1 dlog ail pkgmgr-info iniparser security-server)
 
 FOREACH(flag ${libpkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
