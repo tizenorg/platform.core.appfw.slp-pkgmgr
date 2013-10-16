@@ -128,9 +128,13 @@ void __make_sizeinfo_file(char *package_size_info)
 	FILE* file = NULL;
 	int fd = 0;
 
+	if(package_size_info == NULL)
+		return;
+
 	file = fopen(PKG_SIZE_INFO_FILE, "w");
 	if (file == NULL) {
 		_LOGE("Couldn't open the file %s \n", PKG_SIZE_INFO_FILE);
+		return;
 	}
 
 	fwrite(package_size_info, 1, strlen(package_size_info), file);
@@ -156,14 +160,14 @@ int __get_size_info(char *pkgid, int get_type, int *size)
 	struct stat f_stat;
     struct dirent *de = NULL;
 
-	package_size_info = (char*)malloc(info_len);
-	memset(package_size_info, 0, info_len);
-
 	dir = opendir(PKG_RW_PATH);
 	if (dir == NULL) {
 		_LOGE("Couldn't open the directory %s \n", PKG_RW_PATH);
 		return -1;
 	}
+
+	package_size_info = (char*)malloc(info_len);
+	memset(package_size_info, 0, info_len);
 
     while ((de = readdir(dir)))
     {
@@ -223,6 +227,8 @@ int __get_size_info(char *pkgid, int get_type, int *size)
     }
     closedir(dir);
 
+	if(package_size_info)
+		free(package_size_info);
 	return 0;
 }
 
@@ -236,15 +242,15 @@ int __create_size_info(void)
 	struct stat f_stat;
     struct dirent *de = NULL;
 
-	package_size_info = (char*)malloc(info_len);
-	memset(package_size_info, 0, info_len);
-
 	dir = opendir(PKG_RW_PATH);
 	if (dir == NULL)
 	{
 		_LOGE("Couldn't open the directory %s \n", PKG_RW_PATH);
 		return -1;
 	}
+
+	package_size_info = (char*)malloc(info_len);
+	memset(package_size_info, 0, info_len);
 
     while ((de = readdir(dir)))
     {
@@ -295,6 +301,8 @@ int __create_size_info(void)
     closedir(dir);
 
 	__make_sizeinfo_file(package_size_info);
+	if(package_size_info)
+		free(package_size_info);
 
 	return 0;
 }
@@ -326,6 +334,10 @@ int main(int argc, char *argv[])
 	char *pkgid = NULL;
 
 	pkgid = argv[0];
+	if(pkgid == NULL) {
+		_LOGE("pkgid is NULL\n");
+		return -1;
+	}
 	get_type = atoi(argv[1]);
 
 	if(get_type == PM_GET_SIZE_INFO) {

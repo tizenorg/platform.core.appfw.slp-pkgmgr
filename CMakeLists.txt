@@ -86,7 +86,7 @@ SET_TARGET_PROPERTIES(pkgmgr-server PROPERTIES COMPILE_FLAGS "${pkgmgr-server_CF
 CONFIGURE_FILE(pkgmgr.pc.in pkgmgr.pc @ONLY)
 configure_file(org.tizen.slp.pkgmgr.service.in org.tizen.slp.pkgmgr.service @ONLY)
 configure_file(pkg_path.conf.in pkg_path.conf @ONLY)
-configure_file(pkgmgr.patch.sh.in pkgmgr.patch.sh @ONLY)
+configure_file(520.pkgmgr.patch.sh.in 520.pkgmgr.patch.sh @ONLY)
 
 #INSTALL(FILES ${CMAKE_BINARY_DIR}/libpkgmgr-client.so DESTINATION lib)
 INSTALL(TARGETS ${PKGMGR_CLIENT} DESTINATION lib COMPONENT RuntimeLibraries)
@@ -97,7 +97,7 @@ INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/client/include/pkgmgr-dbinfo.h DESTINA
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.service DESTINATION ${PREFIX}/share/dbus-1/services/)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkg_path.conf DESTINATION ${PREFIX}/etc/package-manager/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/queue_status DESTINATION etc/package-manager/server/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pkgmgr.patch.sh DESTINATION /etc/opt/upgrade/)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/520.pkgmgr.patch.sh DESTINATION /etc/opt/upgrade/)
 
 ####################################################################################################
 add_subdirectory(installers)

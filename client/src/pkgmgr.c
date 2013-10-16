@@ -979,10 +979,10 @@ catch:
 
 static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_client * pc, const char *pkgid, void *data)
 {
-	const char *pkgtype;
-	char *req_key;
-	int ret;
-	pkgmgrinfo_pkginfo_h handle;
+	const char *pkgtype = NULL;
+	char *req_key = NULL;
+	int ret = 0;
+	pkgmgrinfo_pkginfo_h handle = NULL;
 	int pid = -1;
 
 	/* Check for NULL value of pc */
@@ -1011,7 +1011,9 @@ static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_
 	* (int *) data = pid;
 
 catch:
-	free(req_key);
+	if(req_key)
+		free(req_key);
+
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 
 	return ret;
@@ -1125,10 +1127,6 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	char *cookie = NULL;
 	char *caller_pkgid = NULL;
 
-	caller_pkgid = __get_caller_pkgid();
-	if (caller_pkgid == NULL)
-		_LOGE("caller dont have pkgid..\n");
-
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL");
 
@@ -1169,6 +1167,10 @@ API int pkgmgr_client_install(pkgmgr_client * pc, const char *pkg_type,
 	/* 4. add callback info - add callback info to pkgmgr_client */
 	req_id = _get_request_id();
 	__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
+
+	caller_pkgid = __get_caller_pkgid();
+	if (caller_pkgid == NULL)
+		_LOGE("caller dont have pkgid..\n");
 
 	/* 5. generate argv */
 
@@ -1362,10 +1364,10 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_mode mode,
 				pkgmgr_handler event_cb, void *data)
 {
-	char *pkgtype;
-	char *installer_path;
-	char *req_key;
-	int req_id;
+	char *pkgtype = NULL;
+	char *installer_path = NULL;
+	char *req_key = NULL;
+	int req_id = 0;
 	int i = 0;
 	char *argv[PKG_ARGC_MAX] = { NULL, };
 	char *args = NULL;
@@ -1376,10 +1378,6 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	char *cookie = NULL;
 	bool removable = false;
 	char *caller_pkgid = NULL;
-
-	caller_pkgid = __get_caller_pkgid();
-	if (caller_pkgid == NULL)
-		_LOGE("caller dont have pkgid..\n");
 
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
@@ -1423,6 +1421,10 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	/* 4. add callback info - add callback info to pkgmgr_client */
 	req_id = _get_request_id();
 	__add_op_cbinfo(mpc, req_id, req_key, event_cb, data);
+
+	caller_pkgid = __get_caller_pkgid();
+	if (caller_pkgid == NULL)
+		_LOGE("caller dont have pkgid..\n");
 
 	/* 5. generate argv */
 
@@ -1616,10 +1618,10 @@ API int pkgmgr_client_move_pkg(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode,
 				pkgmgr_handler event_cb, void *data)
 {
-	char *pkgtype;
-	char *installer_path;
-	char *req_key;
-	int req_id;
+	char *pkgtype = NULL;
+	char *installer_path= NULL;
+	char *req_key = NULL;
+	int req_id = 0;
 	int i = 0;
 	char *argv[PKG_ARGC_MAX] = { NULL, };
 	char *args = NULL;
@@ -1746,10 +1748,10 @@ catch:
 API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
 			       const char *pkgid)
 {
-	const char *pkgtype;
-	char *req_key;
+	const char *pkgtype = NULL;
+	char *req_key = NULL;
 	char *cookie = NULL;
-	int ret;
+	int ret = 0;
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
 
@@ -1786,10 +1788,10 @@ catch:
 API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 				 const char *pkgid)
 {
-	const char *pkgtype;
-	char *req_key;
+	const char *pkgtype = NULL;
+	char *req_key = NULL;
 	char *cookie = NULL;
-	int ret;
+	int ret = 0;
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
 
@@ -1826,10 +1828,10 @@ catch:
 
 API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid)
 {
-	const char *pkgtype;
-	char *req_key;
+	const char *pkgtype = NULL;
+	char *req_key = NULL;
 	char *cookie = NULL;
-	int ret;
+	int ret = 0;
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
 
@@ -1862,10 +1864,10 @@ catch:
 
 API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[])
 {
-	const char *pkgtype;
-	char *req_key;
+	const char *pkgtype = NULL;
+	char *req_key = NULL;
 	char *cookie = NULL;
-	int ret;
+	int ret = 0;
 	int i = 0;
 	char *temp = NULL;
 	int len = 0;
@@ -1943,10 +1945,10 @@ catch:
 
 API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid)
 {
-	const char *pkgtype;
-	char *req_key;
+	const char *pkgtype = NULL;
+	char *req_key = NULL;
 	char *cookie = NULL;
-	int ret;
+	int ret = 0;
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
 
@@ -1981,16 +1983,16 @@ catch:
 API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 				      const char *appid, pkgmgr_mode mode)
 {
-	const char *pkgtype;
-	char *installer_path;
-	char *req_key;
+	const char *pkgtype = NULL;
+	char *installer_path = NULL;
+	char *req_key = NULL;
 	int i = 0;
 	char *argv[PKG_ARGC_MAX] = { NULL, };
 	char *args = NULL;
 	int argcnt = 0;
 	int len = 0;
 	char *temp = NULL;
-	int ret;
+	int ret = 0;
 	char *cookie = NULL;
 
 	/* Check for NULL value of pc */

@@ -191,6 +191,7 @@ static int __find_rpm_manifest(const char* manifest)
 				free(pkgtype);
 				return -1;
 			}
+			free(pkgtype);
 		}
 		memset(buf, 0x00, BUFSZE);
 	}
@@ -255,6 +256,17 @@ static void __remove_joyn_pkg(void)
 	_D("remove xml : %s", joyn_share_xml);
 	memset(buf, 0x00, BUFSZE);
 	snprintf(buf, sizeof(buf), "/usr/bin/pkginfo --rmd %s", joyn_share_xml);
+	system(buf);
+}
+
+static void __enable_permissions_for_rpm(void)
+{
+	char *pkgid = "rpm";
+	char buf[BUFSZE];
+
+	_D("enable permissions for  %s", pkgid);
+
+	snprintf(buf, sizeof(buf), "/usr/bin/rpm-backend -k rpm-perm -s %s", pkgid);
 	system(buf);
 }
 
@@ -327,6 +339,9 @@ int initdb_install_corexml(const char *directory)
 
 	/*remove joyn from db*/
 	__remove_joyn_pkg();
+
+	/*enable permissions*/
+	__enable_permissions_for_rpm();
 
 	return 0;
 }

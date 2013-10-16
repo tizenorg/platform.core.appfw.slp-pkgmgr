@@ -1,7 +1,7 @@
 #sbs-git:slp/pkgs/s/slp-pkgmgr pkgmgr 0.1.103 29b53909a5d6e8728429f0a188177eac691cb6ce
 Name:       pkgmgr
 Summary:    Packager Manager client library package
-Version:    0.2.123
+Version:    0.2.125
 Release:    1
 Group:      System/Libraries
 License:    Apache License, Version 2.0
@@ -178,7 +178,7 @@ mkdir -p /usr/etc/package-manager/server
 %exclude %{_includedir}/pkgmgr/comm_status_broadcast_server.h
 %exclude %{_libdir}/libpkgmgr_backend_lib_sample.so
 %exclude /usr/etc/package-manager/server/queue_status
-%attr(0700,root,root) /etc/opt/upgrade/pkgmgr.patch.sh
+%attr(0700,root,root) /etc/opt/upgrade/520.pkgmgr.patch.sh
 %attr(0700,root,root) /usr/etc/package-manager/pkg_recovery.sh
 %{_libdir}/systemd/system/multi-user.target.wants/pkgmgr_recovery.service
 %{_libdir}/systemd/system/pkgmgr_recovery.service
