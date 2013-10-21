@@ -199,7 +199,8 @@ static int __find_rpm_manifest(const char* manifest)
 	if (fp != NULL)
 		fclose(fp);
 
-	free(pkgtype);
+	if(pkgtype)
+		free(pkgtype);
 	return 0;
 }
 
