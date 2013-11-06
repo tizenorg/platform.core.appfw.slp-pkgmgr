@@ -24,8 +24,9 @@ set(CMAKE_SKIP_BUILD_RPATH true)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/comm )
 
 INCLUDE(FindPkgConfig)
-
+OPTION(SMACK "Enable smack support" ON)
 OPTION(X11_SUPPORT "Enable X support" ON)
+
 IF(X11_SUPPORT)
     ADD_DEFINITIONS("-DHAVE_X11")
     pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-parser pkgmgr-info iniparser)
@@ -33,6 +34,9 @@ ELSE()
     pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-wayland ail ecore-file pkgmgr-parser pkgmgr-info iniparser)
 ENDIF(X11_SUPPORT)
 
+IF(SMACK)
+    ADD_DEFINITIONS("-DSMACK_ENABLED") # enable smack
+ENDIF(SMACK)
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)

@@ -289,7 +289,7 @@ static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
 		DBG("Unable to decode cookie!!!\n");
 		return PMINFO_R_ERROR;
 	}
-
+#ifdef SMACK_ENABLED
 	switch (req_type) {
 		case COMM_REQ_TO_INSTALLER:
 			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "r"))
@@ -311,7 +311,7 @@ static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
 			DBG("Check your request[%d]..\n", req_type);
 			break;
 	}
-
+#endif
 	DBG("security_server[req-type:%d] check cookie result = %d, \n", req_type, ret);
 
 	if (cookie){

@@ -86,6 +86,7 @@ cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURC
 
 %build
 %cmake . \
+    -DSMACK=Off \
 %if %{with wayland}
     -DX11_SUPPORT=Off
 %else
