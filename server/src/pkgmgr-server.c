@@ -41,9 +41,10 @@
 #include <ail.h>
 #include <pkgmgr-info.h>
 #include <pkgmgr/pkgmgr_parser.h>
-
+#ifdef HAVE_X11
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#endif
 #include <security-server.h>
 
 #include <vconf.h>
