@@ -32,7 +32,7 @@
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <ail.h>
-#include <aul.h>
+#include <aul/aul.h>
 #include <vconf.h>
 #include <db-util.h>
 #include <pkgmgr-info.h>
