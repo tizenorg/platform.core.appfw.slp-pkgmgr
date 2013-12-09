@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <aul.h>
 #include <xdgmime.h>
 
 #include "pkgmgr-internal.h"
@@ -38,7 +37,7 @@
 #include <dlfcn.h>
 #include <sys/time.h>
 #include <ail.h>
-#include <aul.h>
+#include <aul/aul.h>
 
 #include "package-manager.h"
 #include <pkgmgr-info.h>
