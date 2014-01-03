@@ -36,14 +36,14 @@
 #include <appcore-efl.h>
 #ifdef HAVE_X11
 #include <Ecore_X.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #endif
 #include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
 #include <pkgmgr/pkgmgr_parser.h>
 
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
 #include <security-server.h>
 
 #include <vconf.h>
