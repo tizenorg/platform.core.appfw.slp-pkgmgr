@@ -1,0 +1,8 @@
+Code-Review+2: Sunwook Bae <sunwook45.bae@samsung.com>
+Code-Review+1: wu <zhiwen.wu@linux.intel.com>
+Verified+1: wang fei <feix.w.wang@intel.com>
+Submitted-by: junsuk oh <junsuk77.oh@samsung.com>
+Submitted-at: Sun, 05 Jan 2014 20:05:30 -0800
+Reviewed-on: https://review.tizen.org/gerrit/13531
+Project: platform/core/appfw/slp-pkgmgr
+Branch: refs/heads/tizen
