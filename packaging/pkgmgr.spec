@@ -4,7 +4,7 @@ Summary:    Packager Manager client library package
 Version:    0.2.125
 Release:    1
 Group:      System/Libraries
-License:    Apache License, Version 2.0
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:	pkgmgr_recovery.service
 BuildRequires:  cmake
@@ -113,6 +113,9 @@ mkdir -p %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants
 install -m 0644 %SOURCE1 %{buildroot}%{_libdir}/systemd/system/pkgmgr_recovery.service
 ln -s ../pkgmgr_recovery.service %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/pkgmgr_recovery.service
 
+mkdir -p %{buildroot}/usr/share/license
+cp LICENSE %{buildroot}/usr/share/license/%{name}
+
 %post
 /sbin/ldconfig
 
@@ -182,12 +185,14 @@ mkdir -p /usr/etc/package-manager/server
 %attr(0700,root,root) /usr/etc/package-manager/pkg_recovery.sh
 %{_libdir}/systemd/system/multi-user.target.wants/pkgmgr_recovery.service
 %{_libdir}/systemd/system/pkgmgr_recovery.service
+/usr/share/license/%{name}
 
 %files client
 %manifest pkgmgr-client.manifest
 %defattr(-,root,root,-)
 %{_prefix}/etc/package-manager/pkg_path.conf
 %{_libdir}/libpkgmgr-client.so.*
+/usr/share/license/%{name}
 
 %files client-devel
 %defattr(-,root,root,-)
@@ -195,6 +200,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_includedir}/pkgmgr-dbinfo.h
 %{_libdir}/pkgconfig/pkgmgr.pc
 %{_libdir}/libpkgmgr-client.so
+/usr/share/license/%{name}
 
 %files server
 %manifest pkgmgr-server.manifest
@@ -202,6 +208,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_datadir}/dbus-1/services/org.tizen.slp.pkgmgr.service
 %{_bindir}/pkgmgr-server
 %{_datadir}/locale/*/LC_MESSAGES/*.mo
+/usr/share/license/%{name}
 
 %files installer
 %manifest pkgmgr-installer.manifest
@@ -209,6 +216,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_libdir}/libpkgmgr_installer.so.*
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so.*
 %{_libdir}/libpkgmgr_installer_client.so.*
+/usr/share/license/%{name}
 
 %files installer-devel
 %defattr(-,root,root,-)
@@ -219,6 +227,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_libdir}/libpkgmgr_installer.so
 %{_libdir}/libpkgmgr_installer_client.so
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so
+/usr/share/license/%{name}
 
 
 %files types-devel
@@ -226,3 +235,4 @@ mkdir -p /usr/etc/package-manager/server
 %{_includedir}/package-manager-types.h
 %{_includedir}/package-manager-plugin.h
 %{_libdir}/pkgconfig/pkgmgr-types.pc
+/usr/share/license/%{name}
