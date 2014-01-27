@@ -115,6 +115,12 @@ ln -s ../pkgmgr_recovery.service %{buildroot}%{_libdir}/systemd/system/multi-use
 
 mkdir -p %{buildroot}/usr/share/license
 cp LICENSE %{buildroot}/usr/share/license/%{name}
+cp LICENSE %{buildroot}/usr/share/license/%{name}-client
+cp LICENSE %{buildroot}/usr/share/license/%{name}-client-devel
+cp LICENSE %{buildroot}/usr/share/license/%{name}-server
+cp LICENSE %{buildroot}/usr/share/license/%{name}-installer
+cp LICENSE %{buildroot}/usr/share/license/%{name}-installer-devel
+cp LICENSE %{buildroot}/usr/share/license/%{name}-types-devel
 
 %post
 /sbin/ldconfig
@@ -192,7 +198,7 @@ mkdir -p /usr/etc/package-manager/server
 %defattr(-,root,root,-)
 %{_prefix}/etc/package-manager/pkg_path.conf
 %{_libdir}/libpkgmgr-client.so.*
-/usr/share/license/%{name}
+/usr/share/license/%{name}-client
 
 %files client-devel
 %defattr(-,root,root,-)
@@ -200,7 +206,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_includedir}/pkgmgr-dbinfo.h
 %{_libdir}/pkgconfig/pkgmgr.pc
 %{_libdir}/libpkgmgr-client.so
-/usr/share/license/%{name}
+/usr/share/license/%{name}-client-devel
 
 %files server
 %manifest pkgmgr-server.manifest
@@ -208,7 +214,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_datadir}/dbus-1/services/org.tizen.slp.pkgmgr.service
 %{_bindir}/pkgmgr-server
 %{_datadir}/locale/*/LC_MESSAGES/*.mo
-/usr/share/license/%{name}
+/usr/share/license/%{name}-server
 
 %files installer
 %manifest pkgmgr-installer.manifest
@@ -216,7 +222,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_libdir}/libpkgmgr_installer.so.*
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so.*
 %{_libdir}/libpkgmgr_installer_client.so.*
-/usr/share/license/%{name}
+/usr/share/license/%{name}-installer
 
 %files installer-devel
 %defattr(-,root,root,-)
@@ -227,7 +233,7 @@ mkdir -p /usr/etc/package-manager/server
 %{_libdir}/libpkgmgr_installer.so
 %{_libdir}/libpkgmgr_installer_client.so
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so
-/usr/share/license/%{name}
+/usr/share/license/%{name}-installer-devel
 
 
 %files types-devel
@@ -235,4 +241,4 @@ mkdir -p /usr/etc/package-manager/server
 %{_includedir}/package-manager-types.h
 %{_includedir}/package-manager-plugin.h
 %{_libdir}/pkgconfig/pkgmgr-types.pc
-/usr/share/license/%{name}
+/usr/share/license/%{name}-types-devel
