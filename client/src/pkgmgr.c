@@ -758,8 +758,8 @@ static int __csc_process(const char *csc_path, char *result_path)
 		snprintf(type_buf, PKG_STRING_LEN_MAX - 1, "csc packages:type_%03d", cnt);
 		snprintf(des_buf, PKG_STRING_LEN_MAX - 1, "csc packages:description_%03d", cnt);
 
-		pkgtype = iniparser_getstr(csc, type_buf);
-		des = iniparser_getstr(csc, des_buf);
+		pkgtype = iniparser_getstring(csc, type_buf, NULL);
+		des = iniparser_getstring(csc, des_buf, NULL);
 		ret = 0;
 
 		if (pkgtype == NULL) {
