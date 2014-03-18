@@ -28,16 +28,16 @@ INCLUDE(FindPkgConfig)
 OPTION(X11_SUPPORT "Enable X support" ON)
 IF(X11_SUPPORT)
     ADD_DEFINITIONS("-DHAVE_X11")
-    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-parser pkgmgr-info iniparser)
+    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-parser pkgmgr-info iniparser vconf)
 ELSE()
-    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-wayland ail ecore-file pkgmgr-parser pkgmgr-info iniparser)
+    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-wayland ail ecore-file pkgmgr-parser pkgmgr-info iniparser vconf)
 ENDIF(X11_SUPPORT)
 
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-pkg_check_modules(libpkgs REQUIRED dbus-glib-1 dlog ail pkgmgr-parser pkgmgr-info iniparser)
+pkg_check_modules(libpkgs REQUIRED dbus-glib-1 dlog ail pkgmgr-parser pkgmgr-info iniparser security-server vconf)
 
 FOREACH(flag ${libpkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -95,7 +95,7 @@ CONFIGURE_FILE(pkgmgr.pc.in pkgmgr.pc @ONLY)
 configure_file(org.tizen.slp.pkgmgr.service.in org.tizen.slp.pkgmgr.service @ONLY)
 configure_file(org.tizen.slp.pkgmgr.conf.in org.tizen.slp.pkgmgr.conf @ONLY)
 configure_file(pkg_path.conf.in pkg_path.conf @ONLY)
-configure_file(pkgmgr.patch.sh.in pkgmgr.patch.sh @ONLY)
+configure_file(520.pkgmgr.patch.sh.in 520.pkgmgr.patch.sh @ONLY)
 
 #INSTALL(FILES ${CMAKE_BINARY_DIR}/libpkgmgr-client.so DESTINATION ${LIB_INSTALL_DIR})
 INSTALL(TARGETS ${PKGMGR_CLIENT} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
@@ -107,7 +107,7 @@ INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.service DESTINATI
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.conf DESTINATION ${SYSCONFDIR}/dbus-1/system.d/)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkg_path.conf DESTINATION ${SYSCONFDIR}/package-manager/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/queue_status DESTINATION ${SYSCONFDIR}/package-manager/server/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pkgmgr.patch.sh DESTINATION ${SYSCONFDIR}/opt/upgrade/)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/520.pkgmgr.patch.sh DESTINATION ${SYSCONFDIR}/opt/upgrade/)
 
 ####################################################################################################
 add_subdirectory(installers)

@@ -1,0 +1,12 @@
+/bin/cat /dev/null > /opt/dbspace/.livebox.db
+/bin/cat /dev/null > /opt/dbspace/.shortcut_service.db
+/bin/cat /dev/null > /opt/dbspace/.livebox.db-journal
+/bin/cat /dev/null > /opt/dbspace/.shortcut_service.db-journal
+
+echo "--------------------------------------"
+echo "Update package database..............."
+echo "--------------------------------------"
+/bin/rm /opt/dbspace/.pkgmgr_parser.db
+/bin/rm /opt/dbspace/.pkgmgr_parser.db-journal
+/usr/bin/pkg_fota
+/usr/bin/ail_fota

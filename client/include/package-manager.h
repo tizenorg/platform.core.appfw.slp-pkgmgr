@@ -277,6 +277,8 @@ typedef enum {
 	PM_GET_TOTAL_SIZE= 0,
 	PM_GET_DATA_SIZE = 1,
 	PM_GET_ALL_PKGS = 2,
+	PM_GET_SIZE_INFO = 3,
+	PM_GET_TOTAL_AND_DATA = 4,
 	PM_GET_MAX
 }pkgmgr_getsize_type;
 
