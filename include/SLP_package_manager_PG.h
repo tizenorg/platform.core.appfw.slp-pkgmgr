@@ -75,7 +75,7 @@ Client application
 - Install request with return callback function
 
 @code
-// the package path is "/opt/usr/apps/org.tizen.hello.deb"
+// the package path is "TZ_USER_APP/org.tizen.hello.deb"
 #include <package-manager.h>
 
 int static return_cb(pkg_request_id req_id, const char *pkg_type, const char *pkg_name, const char *key, const char *val, const void *pmsg, void *data)
@@ -99,7 +99,7 @@ void install_func()
 		return -1;
 	}
 	
-	result = pkgmgr_client_install(pc, NULL, des, "/opt/usr/apps/org.tizen.hello.deb", NULL, PM_DEFAULT, return_cb, pc);
+	result = pkgmgr_client_install(pc, NULL, des, "TZ_USER_APP/org.tizen.hello.deb", NULL, PM_DEFAULT, return_cb, pc);
 	if(result < 0) {
 		fprintf(stderr, "Install failed! %d\n", result);
 		return -1;

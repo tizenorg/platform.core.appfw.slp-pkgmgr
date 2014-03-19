@@ -39,6 +39,9 @@
 #include <iniparser.h>
 #include <security-server.h>
 
+/* For multi-user support */
+#include <tzplatform_config.h>
+
 #include "package-manager.h"
 #include "pkgmgr-internal.h"
 #include "pkgmgr-debug.h"
@@ -51,7 +54,7 @@
 #define LOG_TAG "PKGMGR"
 #endif				/* LOG_TAG */
 
-#define PKG_TMP_PATH "/opt/usr/apps/tmp"
+#define PKG_TMP_PATH tzplatform_mkpath(TZ_USER_APP, "tmp")
 
 #define BINSH_NAME	"/bin/sh"
 #define BINSH_SIZE	7

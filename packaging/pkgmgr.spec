@@ -3,17 +3,17 @@
 Name:       pkgmgr
 Summary:    Packager Manager client library package
 Version:    0.2.89
-Release:    1
+Release:    0
 Group:      Application Framework/Package Management
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
-Source1001:	%{name}.manifest
-Source1002:	%{name}-client.manifest
-Source1003:	%{name}-client-devel.manifest
-Source1004:	%{name}-server.manifest
-Source1005:	%{name}-installer.manifest
-Source1006:	%{name}-installer-devel.manifest
-Source1007:	%{name}-types-devel.manifest
+Source1001: %{name}.manifest
+Source1002: %{name}-client.manifest
+Source1003: %{name}-client-devel.manifest
+Source1004: %{name}-server.manifest
+Source1005: %{name}-installer.manifest
+Source1006: %{name}-installer-devel.manifest
+Source1007: %{name}-types-devel.manifest
 BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
@@ -27,6 +27,7 @@ BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(appcore-efl)
 BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(iniparser)
+BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
 
@@ -130,8 +131,8 @@ update-mime-database /usr/share/mime
 %defattr(-,root,root,-)
 %dir %{_sysconfdir}/package-manager/backend
 %dir %{_sysconfdir}/package-manager/backendlib
-%dir /etc/opt/upgrade
-/etc/opt/upgrade/pkgmgr.patch.sh
+%dir %{_sysconfdir}/opt/upgrade
+%{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
 %{_bindir}/pkgcmd
 %{_bindir}/pkg_initdb
 %{_bindir}/pkg_getsize
@@ -149,8 +150,8 @@ update-mime-database /usr/share/mime
 %files client
 %manifest %{name}-client.manifest
 %defattr(-,root,root,-)
-%dir /etc/package-manager
-/etc/package-manager/pkg_path.conf
+%dir %{_sysconfdir}/package-manager
+%config %{_sysconfdir}/package-manager/pkg_path.conf
 %{_libdir}/libpkgmgr-client.so.*
 
 %files client-devel
@@ -165,7 +166,7 @@ update-mime-database /usr/share/mime
 %manifest %{name}-server.manifest
 %defattr(-,root,root,-)
 %{_datadir}/dbus-1/system-services/org.tizen.slp.pkgmgr.service
-%{_sysconfdir}/dbus-1/system.d/org.tizen.slp.pkgmgr.conf
+%config %{_sysconfdir}/dbus-1/system.d/org.tizen.slp.pkgmgr.conf
 %{_bindir}/pkgmgr-server
 %{_sysconfdir}/package-manager/server
 

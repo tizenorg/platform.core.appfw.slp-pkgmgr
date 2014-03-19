@@ -48,6 +48,9 @@
 
 #include <vconf.h>
 
+/* For multi-user support */
+#include <tzplatform_config.h>
+
 #include "pkgmgr_installer.h"
 #include "comm_pkg_mgr_server.h"
 #include "pkgmgr-server.h"
@@ -84,7 +87,7 @@ FILE *___log = NULL;
 #define LOCALEDIR "/usr/share/locale"
 #endif
 
-#define PACKAGE_RECOVERY_DIR "/opt/share/packages/.recovery/pkgmgr"
+#define PACKAGE_RECOVERY_DIR tzplatform_mkpath(TZ_SYS_RW_PACKAGES, ".recovery/pkgmgr")
 
 #define DESKTOP_W   720.0
 
