@@ -35,6 +35,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+/* For multi-user support */
+#include <tzplatform_config.h>
+
 #include "pkgmgr-debug.h"
 #include "package-manager.h"
 #include "pkgmgr_installer.h"
@@ -47,9 +50,9 @@
 #define MAX_PKG_BUF_LEN	1024
 #define BLOCK_SIZE      4096 /*in bytes*/
 
-#define PKG_TMP_PATH "/opt/usr/apps/tmp"
-#define PKG_RW_PATH "/opt/usr/apps/"
-#define PKG_RO_PATH "/usr/apps/"
+#define PKG_TMP_PATH tzplatform_mkpath(TZ_USER_APP, "tmp")
+#define PKG_RW_PATH tzplatform_getenv(TZ_USER_APP)
+#define PKG_RO_PATH tzplaform_getenv(TZ_SYS_RO_APP)
 
 long long __get_dir_size(int dfd)
 {

@@ -30,19 +30,22 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+/* For multi-user support */
+#include <tzplatform_config.h>
+
 #include "pkgmgr_parser.h"
 
 #define OWNER_ROOT 0
 #define GROUP_MENU 6010
 #define BUFSZE 1024
-#define OPT_MANIFEST_DIRECTORY "/opt/share/packages"
-#define USR_MANIFEST_DIRECTORY "/usr/share/packages"
-#define PACKAGE_INFO_DB_FILE "/opt/dbspace/.pkgmgr_parser.db"
+#define OPT_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RW_PACKAGES)
+#define USR_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RO_PACKAGES)
+#define PACKAGE_INFO_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
 
-#define PKG_PARSER_DB_FILE "/opt/dbspace/.pkgmgr_parser.db"
-#define PKG_PARSER_DB_FILE_JOURNAL "/opt/dbspace/.pkgmgr_parser.db-journal"
-#define PKG_CERT_DB_FILE "/opt/dbspace/.pkgmgr_cert.db"
-#define PKG_CERT_DB_FILE_JOURNAL "/opt/dbspace/.pkgmgr_cert.db-journal"
+#define PKG_PARSER_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
+#define PKG_PARSER_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
+#define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
+#define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
 #define PKG_INFO_DB_LABEL "pkgmgr::db"
 
 #ifdef _E

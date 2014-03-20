@@ -37,11 +37,15 @@
 #include <ail.h>
 #include <glib-object.h>
 #include <pkgmgr-info.h>
+
+/* For multi-user support */
+#include <tzplatform_config.h>
+
 #include "package-manager.h"
 #include "package-manager-types.h"
 
 #define PKG_TOOL_VERSION	"0.1"
-#define APP_INSTALLATION_PATH_RW	"/opt/usr/apps"
+#define APP_INSTALLATION_PATH_RW	tzplatform_getenv(TZ_USER_APP)
 
 static int __process_request();
 static void __print_usage();

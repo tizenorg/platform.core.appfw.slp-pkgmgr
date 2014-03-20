@@ -1,5 +1,8 @@
 echo "--------------------------------------"
 echo "Update package database..............."
 echo "--------------------------------------"
-/bin/rm /opt/dbspace/.pkgmgr_parser.db
-/usr/bin/pkg_initdb
+
+source /etc/tizen-platform.conf
+
+/bin/rm $TZ_SYS_DB/.pkgmgr_parser.db
+$TZ_SYS_BIN/pkg_initdb
