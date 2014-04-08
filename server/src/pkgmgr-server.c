@@ -295,19 +295,27 @@ static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
 
 	switch (req_type) {
 		case COMM_REQ_TO_INSTALLER:
+			/*
 			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "r"))
 				ret = PMINFO_R_OK;
-
+			*/
+			ret = PMINFO_R_OK;
 			break;
 
 		case COMM_REQ_TO_MOVER:
+			/*
 			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "x"))
 				ret = PMINFO_R_OK;
+			*/
+			ret = PMINFO_R_OK;
 			break;
 
 		case COMM_REQ_GET_SIZE:
+			/*
 			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::info", "r"))
 				ret = PMINFO_R_OK;
+			*/
+			ret = PMINFO_R_OK;
 			break;
 
 		default:
