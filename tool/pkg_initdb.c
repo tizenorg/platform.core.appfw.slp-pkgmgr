@@ -42,6 +42,7 @@
 #define OPT_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RW_PACKAGES)
 #define USR_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RO_PACKAGES)
 #define PACKAGE_INFO_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
+#define PACKAGE_INFO_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
 
 #define PKG_PARSER_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
 #define PKG_PARSER_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
@@ -230,14 +231,17 @@ static int __is_authorized()
 		return 0;
 }
 
-
 int main(int argc, char *argv[])
 {
 	int ret;
 
 	if (!__is_authorized()) {
 		_E("You are not an authorized user!\n");
-		return -1;
+	} else {
+		const char *argv_rm[] = { "/bin/rm", PACKAGE_INFO_DB_FILE, NULL };
+		initdb_xsystem(argv_rm);
+		const char *argv_rmjn[] = { "/bin/rm", PACKAGE_INFO_DB_FILE_JOURNAL, NULL };
+		initdb_xsystem(argv_rmjn);
 	}
 
 	/* This is for AIL initializing */
@@ -260,12 +264,13 @@ int main(int argc, char *argv[])
 		_E("cannot load usr manifest directory.");
 	}
 
-	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
-	if (ret == -1) {
-		_E("cannot chown.");
-		return -1;
+	if (!__is_authorized()) {
+		ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
+		if (ret == -1) {
+			_E("cannot chown.");
+			return -1;
+		}
 	}
-
 /*
 	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
 	initdb_xsystem(argv_parser);
