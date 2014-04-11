@@ -36,12 +36,9 @@ add_executable(pkg_getsize
                 pkg_getsize.c)
 target_link_libraries(pkg_getsize pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_getsize DESTINATION bin)
-
-add_executable(pkg_initdb
-                pkg_initdb.c)
+add_executable(pkg_initdb pkg_initdb.c)
 target_link_libraries(pkg_initdb ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
-
 
 add_executable(pkgmgr-install pkgmgr-install.c)
 target_link_libraries(pkgmgr-install pkgmgr-client pkgmgr-info ${toolpkgs_LDFLAGS})

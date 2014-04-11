@@ -972,7 +972,6 @@ int main(int argc, char *argv[])
 
 	if (!__is_authorized()) {
 		printf("You are not an authorized user!\n");
-		return PKGCMD_ERR_FATAL_ERROR;
 	}
 
 	if (argc == 1)
