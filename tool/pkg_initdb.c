@@ -47,7 +47,7 @@
 #define PKG_PARSER_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
 #define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
 #define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
-#define PKG_INFO_DB_LABEL "pkgmgr::db"
+#define PKG_INFO_DB_LABEL "User"
 
 #ifdef _E
 #undef _E
@@ -266,7 +266,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-/*
 	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
 	initdb_xsystem(argv_parser);
 	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
@@ -275,8 +274,6 @@ int main(int argc, char *argv[])
 	initdb_xsystem(argv_cert);
 	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
 	initdb_xsystem(argv_certjn);
-*/
+
 	return 0;
 }
-
-
