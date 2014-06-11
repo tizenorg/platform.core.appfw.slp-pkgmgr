@@ -31,9 +31,9 @@ BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
 
-
 %description
 Packager Manager client library package for packaging
+
 
 %package client
 Summary:    Package Manager client library develpoment package
@@ -44,12 +44,14 @@ Requires(post): pkgmgr
 %description client
 Package Manager client library develpoment package for packaging
 
+
 %package client-devel
 Summary:    Package Manager client library develpoment package
 Requires:   %{name} = %{version}-%{release}
 
 %description client-devel
 Package Manager client library develpoment package for packaging
+
 
 %package server
 Summary:    Package Manager server
@@ -58,12 +60,14 @@ Requires:   %{name} = %{version}-%{release}
 %description server
 Package Manager server for packaging
 
+
 %package installer
 Summary:    Library for installer frontend/backend
 Requires:   %{name} = %{version}-%{release}
 
 %description installer
 Library for installer frontend/backend for packaging.
+
 
 %package installer-devel
 Summary:    Dev package for libpkgmgr-installer
@@ -107,8 +111,9 @@ mkdir -p %{buildroot}/etc/opt/upgrade
 
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 
-
 %find_lang package-manager
+
+
 %post
 /sbin/ldconfig
 
@@ -116,15 +121,16 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 # Update mime database to support package mime types
 update-mime-database /usr/share/mime
 
-%post server -p /sbin/ldconfig
+%post -n pkgmgr-server -p /sbin/ldconfig
 
-%post client -p /sbin/ldconfig
+%post -n pkgmgr-client -p /sbin/ldconfig
 
-%postun client -p /sbin/ldconfig
+%postun -n pkgmgr-client -p /sbin/ldconfig
 
-%post installer -p /sbin/ldconfig
+%post -n pkgmgr-installer -p /sbin/ldconfig
 
-%postun installer -p /sbin/ldconfig
+%postun -n pkgmgr-installer -p /sbin/ldconfig
+
 
 %files
 %manifest %{name}.manifest
@@ -188,7 +194,6 @@ update-mime-database /usr/share/mime
 %{_libdir}/libpkgmgr_installer.so
 %{_libdir}/libpkgmgr_installer_client.so
 %{_libdir}/libpkgmgr_installer_status_broadcast_server.so
-
 
 %files types-devel
 %manifest %{name}-types-devel.manifest
