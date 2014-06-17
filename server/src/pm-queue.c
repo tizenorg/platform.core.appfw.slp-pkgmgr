@@ -479,7 +479,8 @@ void _save_queue_status(pm_dbus_msg *item, char *status)
 	fprintf(fp_status, "%s\n", status);
 	fprintf(fp_status, "%s\n", item->pkg_type);
 
-	fsync(fp_status->_fileno);
+	fsync(fileno(fp_status));
+
 	fclose(fp_status);
 }
 
