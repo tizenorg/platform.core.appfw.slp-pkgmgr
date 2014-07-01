@@ -45,6 +45,12 @@ API int pkgmgr_create_pkgdbinfo(const char *pkgid, pkgmgr_pkgdbinfo_h *handle)
 	ret = pkgmgrinfo_create_pkgdbinfo(pkgid, handle);
 	return ret;
 }
+API int pkgmgr_create_pkgusrdbinfo(const char *pkgid, uid_t uid, pkgmgr_pkgdbinfo_h *handle)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_create_pkgusrdbinfo(pkgid, uid, handle);
+	return ret;
+}
 
 API int pkgmgr_set_type_to_pkgdbinfo(pkgmgr_pkgdbinfo_h handle, const char *type)
 {
@@ -121,6 +127,13 @@ API int pkgmgr_save_pkgdbinfo(pkgmgr_pkgdbinfo_h handle)
 {
 	int ret = 0;
 	ret = pkgmgrinfo_save_pkgdbinfo(handle);
+	return ret;
+}
+
+API int pkgmgr_save_pkgusrdbinfo(pkgmgr_pkgdbinfo_h handle, uid_t uid)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_save_pkgusrdbinfo(handle, uid);
 	return ret;
 }
 

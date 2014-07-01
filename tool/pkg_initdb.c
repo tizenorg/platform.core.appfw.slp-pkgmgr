@@ -219,6 +219,44 @@ static int initdb_change_perm(const char *db_file)
 	return 0;
 }
 
+static int pkg_fota_give_smack(uid_t uid)
+{
+	int ret = 0;
+	char *label;
+	
+	label = getUserDBLabel();
+
+	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", label, getUserPkgParserDBPathUID(uid), NULL };
+	ret = pkg_fota_xsystem(argv_parser);
+	if (ret == -1) {
+		free(label);
+		_E("exec : argv_parser fail");
+		return -1;
+	}
+	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", label, getUserPkgParserJournalDBPath(uid), NULL };
+	ret = pkg_fota_xsystem(argv_parserjn);
+	if (ret == -1) {
+		free(label);
+		_E("exec : argv_parserjn fail");
+		return -1;
+	}
+	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", label, getUserPkgCertDBPathUID(uid), NULL };
+	ret = pkg_fota_xsystem(argv_cert);
+	if (ret == -1) {
+		free(label);
+		_E("exec : argv_cert fail");
+		return -1;
+	}
+	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", label, getUserPkgCertJournalDBPath(), NULL };
+	ret = pkg_fota_xsystem(argv_certjn);
+	if (ret == -1) {
+		free(label);
+		_E("exec : argv_certjn fail");
+		return -1;
+	}
+
+	return 0;
+}
 
 static int __is_authorized()
 {
@@ -240,10 +278,10 @@ int main(int argc, char *argv[])
 		_E("You are not an authorized user!\n");
 		return -1;
 	} else {
-		const char *argv_rm[] = { "/bin/rm", PACKAGE_INFO_DB_FILE, NULL };
-		initdb_xsystem(argv_rm);
-		const char *argv_rmjn[] = { "/bin/rm", PACKAGE_INFO_DB_FILE_JOURNAL, NULL };
-		initdb_xsystem(argv_rmjn);
+		const char *argv_rm[] = { "/bin/rm", getUserPkgParserDBPathUID(uid), NULL };
+		pkg_fota_xsystem(argv_rm);
+		const char *argv_rmjn[] = { "/bin/rm", getUserPkgParserJournalDBPath(uid), NULL };
+		pkg_fota_xsystem(argv_rmjn);
 	}
 
 	/* This is for AIL initializing */
@@ -255,18 +293,19 @@ int main(int argc, char *argv[])
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
+if (__is_authorized()) {
 
 	ret = initdb_load_directory(OPT_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load opt manifest directory.");
 	}
-
-	ret = initdb_load_directory(USR_MANIFEST_DIRECTORY);
+else {	
+	ret = pkg_fota_load_directory(getUserManifestPath(uid));
 	if (ret == -1) {
 		_E("cannot load usr manifest directory.");
 	}
-
-	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
+}
+	ret = pkg_fota_change_perm(getUserPkgParserDBPathUID(uid));
 	if (ret == -1) {
 		_E("cannot chown.");
 		return -1;
@@ -280,5 +319,11 @@ int main(int argc, char *argv[])
 	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
 	initdb_xsystem(argv_certjn);
 
+		ret = pkg_fota_give_smack(uid);
+		if (ret == -1) {
+			_E("cannot pkg_fota_give_smack.");
+			return -1;
+		}
+	}
 	return 0;
 }
