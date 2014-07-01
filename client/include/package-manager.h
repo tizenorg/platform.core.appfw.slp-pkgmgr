@@ -52,7 +52,8 @@
 
 #include <errno.h>
 #include <stdbool.h>
-
+#include <stdio.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -326,7 +327,10 @@ int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
 			    const char *descriptor_path, const char *pkg_path,
 			    const char *optional_file, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data);
-
+int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
+			    const char *descriptor_path, const char *pkg_path,
+			    const char *optional_file, pkgmgr_mode mode,
+			    pkgmgr_handler event_cb, void *data, uid_t uid);
 /**
  * @brief	This API reinstalls package.
  *
@@ -359,6 +363,7 @@ int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type, const char 
  * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
  * @param[in]	event_cb	user callback
  * @param[in]	data		user data
+ * @param[in]	uid	the addressee user id of the instruction
  * @return	request_id (>0), error code(<0) if fail\n
  * @retval	PKGMGR_R_OK	success
  * @retval	PKGMGR_R_EINVAL	invalid argument
@@ -367,7 +372,10 @@ int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type, const char 
 int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_mode mode,
 				pkgmgr_handler event_cb, void *data);
-
+int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkgid, pkgmgr_mode mode,
+				pkgmgr_handler event_cb, void *data, uid_t uid);
+				
 /**
  * @brief	This API moves installed package to SD card or vice versa.
  *
@@ -378,13 +386,15 @@ int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
  * @param[in]	pkgid	application package id
  * @param[in]	move_type		PM_MOVE_TO_INTERNAL or PM_MOVE_TO_SDCARD
  * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
+ * @param[in]	uid	the addressee user id of the instruction
  * @retval	PKGMGR_R_OK	success
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ERROR	general error
 */
 int pkgmgr_client_move(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode);
-
+int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode, uid_t uid);
 /**
  * @brief	This API moves installed package to SD card or vice versa.
  *
@@ -420,7 +430,8 @@ int pkgmgr_client_move_pkg(pkgmgr_client *pc, const char *pkg_type,
 */
 int pkgmgr_client_activate(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid);
-
+int pkgmgr_client_usr_activate(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkgid, uid_t uid);
 /**
  * @brief	This API deactivates package.
  *
@@ -436,7 +447,8 @@ int pkgmgr_client_activate(pkgmgr_client *pc, const char *pkg_type,
 */
 int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 				 const char *pkgid);
-
+int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
+				 const char *pkgid, uid_t uid);
 /**
  * @brief	This API activates package.
  *
@@ -450,7 +462,7 @@ int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_activate_app(pkgmgr_client *pc, const char *appid);
-
+int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid, uid_t uid);
 /**
  * @brief	This API activates package.
  *
@@ -465,7 +477,7 @@ int pkgmgr_client_activate_app(pkgmgr_client *pc, const char *appid);
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[]);
-
+int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[], uid_t uid);
 /**
  * @brief	This API deactivates package.
  *
@@ -479,7 +491,7 @@ int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *con
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid);
-
+int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid, uid_t uid);
 /**
  * @brief	This API deletes application's private data.
  *
@@ -496,7 +508,8 @@ int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid);
 */
 int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 				const char *appid, pkgmgr_mode mode);
-
+int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
+				const char *appid, pkgmgr_mode mode, uid_t uid);
 /**
  * @brief	This API set status type to listen for the pkgmgr's broadcasting
  *
@@ -584,7 +597,9 @@ int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
 int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, int service_mode,
 					pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
 					const char *custom_info, pkgmgr_handler event_cb, void *data);
-
+int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_type, int service_mode,
+					pkgmgr_client * pc, const char *pkg_type, const char *pkgid, uid_t uid,
+					const char *custom_info, pkgmgr_handler event_cb, void *data);
 /**
  * @brief	This API get package size
  *
@@ -614,7 +629,7 @@ int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ERROR	internal error
 */
-int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data);
+int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data, uid_t uid);
 /** @} */
 
 /**
@@ -637,9 +652,11 @@ int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data);
  * 
  * @param[in]	pkg_type		package type for the package to get infomation
  * @param[in]	pkgid	package id for the package to get infomation
+ * @param[in]	uid	the addressee user id of the instruction
  * @return	package entry pointer if success, NULL if fail\n
 */
 pkgmgr_info * pkgmgr_info_new(const char *pkg_type, const char *pkgid);
+pkgmgr_info * pkgmgr_info_usr_new(const char *pkg_type, const char *pkgid, uid_t uid);
 
 /**
  * @brief	This API  gets the package's information.
@@ -695,6 +712,7 @@ int pkgmgr_pkginfo_get_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_data
  * @return	0 if success, error code(<0) if fail\n
 */
 int pkgmgr_pkginfo_get_pkginfo(const char *pkgid, pkgmgr_pkginfo_h *handle);
+int pkgmgr_pkginfo_get_usr_pkginfo(const char *pkgid, uid_t uid,pkgmgr_pkginfo_h *handle);
 
 /**
  * @brief	This API  gets type of the given package.

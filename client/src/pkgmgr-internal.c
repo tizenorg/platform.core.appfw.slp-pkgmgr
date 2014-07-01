@@ -48,6 +48,8 @@
 #define LOG_TAG "PKGMGR"
 #endif				/* LOG_TAG */
 
+#define GLOBAL_USER	0 //#define 	tzplatform_getenv(TZ_GLOBAL) //TODO
+
 #define IS_WHITESPACE(CHAR) \
 	((CHAR == ' ' || CHAR == '\t' || CHAR == '\r' || CHAR == '\n') ? \
 	true : false)
@@ -265,15 +267,20 @@ int _get_mime_extension(const char *mimetype, char *ext, int len)
 	return 0;
 }
 
-char *_get_pkg_type_from_desktop_file(const char *pkgid)
+char *_get_pkg_type_from_desktop_file(const char *pkgid, uid_t uid)
 {
 	static char pkg_type[PKG_EXT_LEN_MAX];
 	
 	ail_appinfo_h handle;
 	ail_error_e ret;
 	char *str;
-
-	ret = ail_package_get_appinfo(pkgid, &handle);
+	if(uid != GLOBAL_USER)
+	{
+		ret = ail_package_get_usr_appinfo(pkgid, &handle, uid);
+	}else
+	{
+		ret = ail_package_get_appinfo(pkgid, &handle);
+	}
 	if (ret != AIL_ERROR_OK) {
 		return NULL;
 	}

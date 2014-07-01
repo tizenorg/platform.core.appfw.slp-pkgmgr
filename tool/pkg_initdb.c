@@ -219,7 +219,6 @@ static int initdb_change_perm(const char *db_file)
 	return 0;
 }
 
-
 static int __is_authorized()
 {
 	/* pkg_init db should be called by as root privilege. */
@@ -255,12 +254,12 @@ int main(int argc, char *argv[])
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
+if (__is_authorized()) {
 
 	ret = initdb_load_directory(OPT_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load opt manifest directory.");
 	}
-
 	ret = initdb_load_directory(USR_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load usr manifest directory.");
