@@ -218,28 +218,28 @@ static int pkg_fota_change_perm(const char *db_file)
 	return 0;
 }
 
-static int pkg_fota_give_smack()
+static int pkg_fota_give_smack(uid_t uid)
 {
 	int ret = 0;
 	char *label;
 	
 	label = getUserDBLabel();
 
-	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", label, getUserPkgParserDBPath(), NULL };
+	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", label, getUserPkgParserDBPathUID(uid), NULL };
 	ret = pkg_fota_xsystem(argv_parser);
 	if (ret == -1) {
 		free(label);
 		_E("exec : argv_parser fail");
 		return -1;
 	}
-	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", label, getUserPkgParserJournalDBPath(), NULL };
+	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", label, getUserPkgParserJournalDBPath(uid), NULL };
 	ret = pkg_fota_xsystem(argv_parserjn);
 	if (ret == -1) {
 		free(label);
 		_E("exec : argv_parserjn fail");
 		return -1;
 	}
-	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", label, getUserPkgCertDBPath(), NULL };
+	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", label, getUserPkgCertDBPathUID(uid), NULL };
 	ret = pkg_fota_xsystem(argv_cert);
 	if (ret == -1) {
 		free(label);
@@ -275,9 +275,9 @@ int main(int argc, char *argv[])
 	if (!__is_authorized()) {
 		_E("You are not an authorized user!\n");
 	} else {
-		const char *argv_rm[] = { "/bin/rm", getUserPkgParserDBPath(), NULL };
+		const char *argv_rm[] = { "/bin/rm", getUserPkgParserDBPathUID(uid), NULL };
 		pkg_fota_xsystem(argv_rm);
-		const char *argv_rmjn[] = { "/bin/rm", getUserPkgParserJournalDBPath(), NULL };
+		const char *argv_rmjn[] = { "/bin/rm", getUserPkgParserJournalDBPath(uid), NULL };
 		pkg_fota_xsystem(argv_rmjn);
 	}
 
@@ -290,24 +290,25 @@ int main(int argc, char *argv[])
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
+if (__is_authorized()) {
 
 	ret = pkg_fota_load_directory(OPT_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load opt manifest directory.");
 	}
-
-	ret = pkg_fota_load_directory(USR_MANIFEST_DIRECTORY);
+else {	
+	ret = pkg_fota_load_directory(getUserManifestPath(uid));
 	if (ret == -1) {
 		_E("cannot load usr manifest directory.");
 	}
-
-	ret = pkg_fota_change_perm(getUserPkgParserDBPath());
+}
+	ret = pkg_fota_change_perm(getUserPkgParserDBPathUID(uid));
 	if (ret == -1) {
 		_E("cannot chown.");
 		return -1;
 	}
 
-		ret = pkg_fota_give_smack();
+		ret = pkg_fota_give_smack(uid);
 		if (ret == -1) {
 			_E("cannot pkg_fota_give_smack.");
 			return -1;

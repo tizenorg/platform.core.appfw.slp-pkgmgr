@@ -50,7 +50,7 @@
 static int __process_request();
 static void __print_usage();
 static int __is_authorized();
-static int __is_app_installed(char *pkgid);
+static int __is_app_installed(char *pkgid, uid_t uid);
 static void __print_pkg_info(pkgmgr_info * pkg_info);
 static int __return_cb(int req_id, const char *pkg_type, const char *pkgid,
 		       const char *key, const char *val, const void *pmsg,
@@ -266,13 +266,19 @@ static int __convert_to_absolute_path(char *path)
 	return 0;
 }
 
-static int __is_app_installed(char *pkgid)
+static int __is_app_installed(char *pkgid, uid_t uid)
 {
 #if 0
 	ail_appinfo_h handle;
 	ail_error_e ret;
 	char *str = NULL;
-	ret = ail_package_get_appinfo(pkgid, &handle);
+	if (uid != GLOBAL_USER)
+	{
+		ret = ail_package_get_usr_appinfo(pkgid, &handle, uid);
+	}else
+	{
+		ret = ail_package_get_appinfo(pkgid, &handle);
+	}
 	if (ret != AIL_ERROR_OK) {
 		return -1;
 	}
@@ -508,7 +514,7 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 	return 0;
 }
 
-static int __process_request()
+static int __process_request(uid_t uid)
 {
 	int ret = -1;
 	int mode = PM_DEFAULT;
@@ -536,16 +542,35 @@ static int __process_request()
 		else
 			mode = PM_QUIET;
 		if (data.des_path[0] == '\0')
-			ret =
+		{
+			if(uid != GLOBAL_USER)
+			{
+				ret =
+					pkgmgr_client_usr_install(pc, data.pkg_type, NULL,
+							data.pkg_path, NULL, mode,
+							__return_cb, pc, uid);
+			}else
+			{
+				ret =
 			    pkgmgr_client_install(pc, data.pkg_type, NULL,
 						  data.pkg_path, NULL, mode,
 						  __return_cb, pc);
-		else
-			ret =
-			    pkgmgr_client_install(pc, data.pkg_type,
-						  data.des_path, data.pkg_path,
-						  NULL, mode, __return_cb, pc);
-		if (ret < 0){
+			}
+		}else{
+			if(uid != GLOBAL_USER)
+			{
+				ret =
+					pkgmgr_client_usr_install(pc, data.pkg_type,
+							data.des_path, data.pkg_path,
+							NULL, mode, __return_cb, pc, uid);
+			}else
+			{
+				ret =
+					pkgmgr_client_install(pc, data.pkg_type,
+							data.des_path, data.pkg_path,
+							NULL, mode, __return_cb, pc);
+			}
+		}if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			if (access(data.pkg_path, F_OK) != 0)
 				data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
@@ -575,7 +600,7 @@ static int __process_request()
 		else
 			mode = PM_QUIET;
 
-		ret = __is_app_installed(data.pkgid);
+		ret = __is_app_installed(data.pkgid, uid);
 		if (ret == -1) {
 			printf("package is not installed\n");
 			break;
@@ -640,13 +665,20 @@ static int __process_request()
 			mode = PM_DEFAULT;
 		else
 			mode = PM_QUIET;
-		ret = __is_app_installed(data.pkgid);
+		ret = __is_app_installed(data.pkgid, uid);
 		if (ret == -1) {
 			printf("package is not installed\n");
 			break;
 		}
-		ret = pkgmgr_client_clear_user_data(pc, data.pkg_type,
+		if(uid != GLOBAL_USER)
+		{
+			ret = pkgmgr_client_clear_user_data(pc, data.pkg_type,
 						    data.pkgid, mode);
+		}else
+		{
+			ret = pkgmgr_client_clear_user_data(pc, data.pkg_type,
+						    data.pkgid, mode);
+		}
 		if (ret < 0)
 			break;
 		ret = data.result;
@@ -669,7 +701,13 @@ static int __process_request()
 
 		if ( strcmp(data.pkg_type, "app") == 0 ) {
 			if (strlen(data.label) == 0) {
-				ret = pkgmgr_client_activate_app(pc, data.pkgid);
+				if (uid != GLOBAL_USER)
+				{
+					ret = pkgmgr_client_usr_activate_app(pc, data.pkgid, uid);
+				}else
+				{
+					ret = pkgmgr_client_activate_app(pc, data.pkgid);
+				}
 				if (ret < 0)
 					break;
 			} else {
@@ -677,12 +715,24 @@ static int __process_request()
 				char *largv[3] = {NULL, };
 				largv[0] = "-l";
 				largv[1] = data.label;
-				ret = pkgmgr_client_activate_appv(pc, data.pkgid, largv);
+				if(uid != GLOBAL_USER)
+				{
+					ret = pkgmgr_client_usr_activate_appv(pc, data.pkgid, largv, uid);
+				}else
+				{
+					ret = pkgmgr_client_activate_appv(pc, data.pkgid, largv);
+				}
 				if (ret < 0)
 					break;
 			}
 		} else {
-			ret = pkgmgr_client_activate(pc, data.pkg_type, data.pkgid);
+			if (uid != GLOBAL_USER)
+			{
+				ret = pkgmgr_client_usr_activate(pc, data.pkg_type, data.pkgid, uid);
+			}else
+			{
+				ret = pkgmgr_client_activate(pc, data.pkg_type, data.pkgid);
+			}
 			if (ret < 0)
 				break;
 		}
@@ -707,11 +757,23 @@ static int __process_request()
 		}
 
 		if ( strcmp(data.pkg_type, "app") == 0 ) {
-			ret = pkgmgr_client_deactivate_app(pc, data.pkgid);
+			if (uid != GLOBAL_USER)
+			{
+				ret = pkgmgr_client_usr_deactivate_app(pc, data.pkgid, uid);
+			}else
+			{
+				ret = pkgmgr_client_deactivate_app(pc, data.pkgid);
+			}
 			if (ret < 0)
 				break;
-		} else {
-			ret = pkgmgr_client_deactivate(pc, data.pkg_type, data.pkgid);
+		}else {
+			if(uid != GLOBAL_USER)
+			{
+				ret = pkgmgr_client_usr_deactivate(pc, data.pkg_type, data.pkgid, uid);
+			}else
+			{
+				ret = pkgmgr_client_deactivate(pc, data.pkg_type, data.pkgid);
+			}
 			if (ret < 0)
 				break;
 		}
@@ -738,14 +800,21 @@ static int __process_request()
 			break;
 		}
 		mode = PM_QUIET;
-		ret = __is_app_installed(data.pkgid);
+		ret = __is_app_installed(data.pkgid, uid);
 		if (ret == -1) {
 			printf("package is not installed\n");
 			break;
 		}
 		if (data.quiet == 0)
-			ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
-		else
+		{
+			if(uid != GLOBAL_USER)
+			{
+				ret = pkgmgr_client_usr_move(pc, data.pkg_type, data.pkgid,  data.type, mode, uid);
+			}else
+			{
+				ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
+			}
+		}else
 			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
 
 		printf("pkg[%s] move result = %d\n", data.pkgid, ret);
@@ -864,8 +933,16 @@ static int __process_request()
 
 	case SHOW_REQ:
 		if (data.pkgid[0] != '\0') {
-			pkgmgr_info *pkg_info =
-			    pkgmgr_info_new(data.pkg_type, data.pkgid);
+			pkgmgr_info *pkg_info;
+			if(uid != GLOBAL_USER)
+			{
+				pkg_info =
+					pkgmgr_info_usr_new(data.pkg_type, data.pkgid, uid);
+			}else
+			{
+				pkg_info =
+					pkgmgr_info_new(data.pkg_type, data.pkgid);
+			}
 			if (pkg_info == NULL) {
 				printf("Failed to get pkginfo handle\n");
 				ret = -1;
@@ -1116,7 +1193,7 @@ int main(int argc, char *argv[])
 
 		}
 	}
-	ret = __process_request();
+	ret = __process_request(getuid());
 	if ((ret == -1) && (data.result != 0))
 		data.result = PKGCMD_ERR_ARGUMENT_INVALID;
 

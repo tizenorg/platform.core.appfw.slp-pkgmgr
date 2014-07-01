@@ -37,19 +37,19 @@
 
 
 static void __print_usage();
-static int __get_pkg_info(char *pkgid);
+static int __get_pkg_info(char *pkgid, uid_t uid);
 static int __get_app_info(char *appid);
-static int __get_app_list(char *pkgid);
+static int __get_app_list(char *pkgid, uid_t uid);
 static int __get_app_category_list(char *appid);
 static int __get_app_metadata_list(char *appid);
 static int __get_app_control_list(char *appid);
 static int __get_pkg_list(void);
-static int __get_installed_app_list();
+static int __get_installed_app_list(uid_t uid);
 static int __add_app_filter(void);
 static int __add_pkg_filter(void);
-static int __insert_manifest_in_db(char *manifest);
-static int __remove_manifest_from_db(char *manifest);
-static int __set_pkginfo_in_db(char *pkgid);
+static int __insert_manifest_in_db(char *manifest, uid_t uid);
+static int __remove_manifest_from_db(char *manifest, uid_t uid);
+static int __set_pkginfo_in_db(char *pkgid, uid_t uid);
 static int __set_certinfo_in_db(char *pkgid);
 static int __get_certinfo_from_db(char *pkgid);
 static int __del_certinfo_from_db(char *pkgid);
@@ -1135,7 +1135,7 @@ static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid)
 	return 0;
 }
 
-static int __compare_app_certinfo_from_db(char *lhs_appid, char *rhs_appid)
+static int __compare_app_certinfo_from_db(char *lhs_appid, char *rhs_appid, uid_t uid)
 {
 	if (lhs_appid == NULL || rhs_appid == NULL) {
 		printf("appid is NULL\n");
@@ -1144,7 +1144,10 @@ static int __compare_app_certinfo_from_db(char *lhs_appid, char *rhs_appid)
 
 	int ret = 0;
 	pkgmgrinfo_cert_compare_result_type_e result;
-	ret = pkgmgrinfo_pkginfo_compare_app_cert_info(lhs_appid, rhs_appid, &result);
+	if (uid != GLOBAL_USER)
+		ret = pkgmgrinfo_pkginfo_compare_usr_app_cert_info(lhs_appid, rhs_appid, uid, &result);
+	else
+		ret = pkgmgrinfo_pkginfo_compare_app_cert_info(lhs_appid, rhs_appid, &result);
 	if (ret != PMINFO_R_OK) {
 		return -1;
 	}
@@ -1325,7 +1328,7 @@ err:
 	return ret;
 }
 
-static int __set_pkginfo_in_db(char *pkgid)
+static int __set_pkginfo_in_db(char *pkgid, uid_t uid)
 {
 	if (pkgid == NULL) {
 		printf("pkgid is NULL\n");
@@ -1340,7 +1343,13 @@ static int __set_pkginfo_in_db(char *pkgid)
 	pkgmgr_pkgdbinfo_h handle = NULL;
 	INSTALL_LOCATION storage = 0;
 
-	ret = pkgmgrinfo_create_pkgdbinfo(pkgid, &handle);
+	if(uid != GLOBAL_USER)
+	{
+		ret = pkgmgrinfo_create_pkgusrdbinfo(pkgid, uid, &handle);
+	}else
+	{
+		ret = pkgmgrinfo_create_pkgdbinfo(pkgid, &handle);
+	}
 	if (ret < 0) {
 		printf("pkgmgrinfo_create_pkgdbinfo failed\n");
 		return -1;
@@ -1543,14 +1552,20 @@ static int __set_pkginfo_in_db(char *pkgid)
 	return 0;
 }
 
-static int __insert_manifest_in_db(char *manifest)
+static int __insert_manifest_in_db(char *manifest, uid_t uid)
 {
 	int ret = 0;
 	if (manifest == NULL) {
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+	if (uid != GLOBAL_USER)
+	{
+		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
+	}else
+	{
+		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+	}
 	if (ret < 0) {
 		printf("insert in db failed\n");
 		return -1;
@@ -1558,7 +1573,7 @@ static int __insert_manifest_in_db(char *manifest)
 	return 0;
 }
 
-static int __fota_insert_manifest_in_db(char *manifest)
+static int __fota_insert_manifest_in_db(char *manifest, uid_t uid)
 {
 	int ret = 0;
 	char *temp[] = {"fota=true", NULL};
@@ -1567,7 +1582,13 @@ static int __fota_insert_manifest_in_db(char *manifest)
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	ret = pkgmgr_parser_parse_manifest_for_installation(manifest, temp);
+	if (uid != GLOBAL_USER)
+	{
+		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
+	}else
+	{
+		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+	}
 	if (ret < 0) {
 		printf("insert in db failed\n");
 		return -1;
@@ -1575,14 +1596,20 @@ static int __fota_insert_manifest_in_db(char *manifest)
 	return 0;
 }
 
-static int __remove_manifest_from_db(char *manifest)
+static int __remove_manifest_from_db(char *manifest, uid_t uid)
 {
 	int ret = 0;
 	if (manifest == NULL) {
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
+	if (uid != GLOBAL_USER)
+	{
+		ret = pkgmgr_parser_parse_usr_manifest_for_uninstallation(manifest, uid, NULL);
+	}else
+	{
+		ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
+	}
 	if (ret < 0) {
 		printf("remove from db failed\n");
 		return -1;
@@ -1783,10 +1810,13 @@ static int __get_pkg_list()
 	return 0;
 }
 
-static int __get_installed_app_list()
+static int __get_installed_app_list(uid_t uid)
 {
 	int ret = -1;
-	ret = pkgmgrinfo_appinfo_get_installed_list(app_func, NULL);
+	if(uid != GLOBAL_USER)
+		ret = pkgmgrinfo_appinfo_get_usr_installed_list(app_func, uid, NULL);
+	else
+		ret = pkgmgrinfo_appinfo_get_installed_list(app_func, NULL);
 	if (ret < 0) {
 		printf("pkgmgrinfo_appinfo_get_installed_list() failed\n");
 		return -1;
@@ -1937,12 +1967,15 @@ static int __set_app_enabled(char *appid, bool enabled)
 	return 0;
 }
 
-static int __get_app_list(char *pkgid)
+static int __get_app_list(char *pkgid, uid_t uid)
 {
 	pkgmgr_pkginfo_h handle;
 	int ret = -1;
 	char *test_data = "test data";
-	ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+	if(uid != GLOBAL_USER)
+		ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+	else
+		ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
@@ -1961,13 +1994,16 @@ static int __get_app_list(char *pkgid)
 	return 0;
 }
 
-static int __get_pkg_info(char *pkgid)
+static int __get_pkg_info(char *pkgid, uid_t uid)
 {
 	pkgmgrinfo_pkginfo_h handle;
 	int ret = -1;
 
 	printf("Get Pkg Info Called [%s]\n", pkgid);
-	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+	if(uid != GLOBAL_USER)
+		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+	else
+		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
@@ -2193,7 +2229,7 @@ int main(int argc, char *argv[])
 				goto end;
 			}
 		} else if (strcmp(argv[1], "--listapp") == 0) {
-			ret = __get_installed_app_list();
+			ret = __get_installed_app_list(getuid());
 			if (ret == -1) {
 				printf("get installed app list failed\n");
 				goto end;
@@ -2228,7 +2264,7 @@ int main(int argc, char *argv[])
 			}
 			goto end;
 		} else if (strcmp(argv[1], "--cmp-appcert") == 0) {
-			ret = __compare_app_certinfo_from_db(argv[2], argv[3]);
+			ret = __compare_app_certinfo_from_db(argv[2], argv[3], getuid());
 			if (ret == -1) {
 				printf("compare certinfo from db failed\n");
 				goto end;
@@ -2260,7 +2296,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (strcmp(argv[1], "--pkg") == 0) {
-		ret = __get_pkg_info(argv[2]);
+		ret = __get_pkg_info(argv[2], getuid());
 		if (ret == -1) {
 			printf("get pkg info failed\n");
 			goto end;
@@ -2272,31 +2308,31 @@ int main(int argc, char *argv[])
 			goto end;
 		}
 	} else if (strcmp(argv[1], "--list") == 0) {
-		ret = __get_app_list(argv[2]);
+		ret = __get_app_list(argv[2], getuid());
 		if (ret == -1) {
 			printf("get app list failed\n");
 			goto end;
 		}
 	} else if (strcmp(argv[1], "--imd") == 0) {
-		ret = __insert_manifest_in_db(argv[2]);
+		ret = __insert_manifest_in_db(argv[2], getuid());
 		if (ret == -1) {
 			printf("insert in db failed\n");
 			goto end;
 		}
 	} else if (strcmp(argv[1], "--fota") == 0) {
-		ret = __fota_insert_manifest_in_db(argv[2]);
+		ret = __fota_insert_manifest_in_db(argv[2], getuid());
 		if (ret == -1) {
 			printf("insert in db failed\n");
 			goto end;
 		}
 	} else if (strcmp(argv[1], "--rmd") == 0) {
-		ret = __remove_manifest_from_db(argv[2]);
+		ret = __remove_manifest_from_db(argv[2], getuid());
 		if (ret == -1) {
 			printf("remove from db failed\n");
 			goto end;
 		}
 	} else if (strcmp(argv[1], "--setdb") == 0) {
-		ret = __set_pkginfo_in_db(argv[2]);
+		ret = __set_pkginfo_in_db(argv[2], getuid());
 		if (ret == -1) {
 			printf("set pkginfo in db failed\n");
 			goto end;

@@ -45,6 +45,8 @@
 
 #include <stdbool.h>
 
+#define GLOBAL_USER 0 //@TODO tzpl
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -66,11 +68,12 @@ typedef void* pkgmgr_pkgdbinfo_h;
  *              This API is for backend installers.\n
  *
  * @param[in]		pkgid		package id.
+ * @param[in]	uid	the addressee user id of the instruction
  * @param[out]	handle			package info handle.
  * @return		0 if success, error code(<0) if fail\n
 */
 int pkgmgr_create_pkgdbinfo(const char *pkgid, pkgmgr_pkgdbinfo_h *handle);
-
+int pkgmgr_create_pkgusrdbinfo(const char *pkgid, uid_t uid, pkgmgr_pkgdbinfo_h *handle);
 /**
  * @brief	This API sets the package type in DB.
  *
@@ -194,9 +197,11 @@ int pkgmgr_set_preload_to_pkgdbinfo(pkgmgr_pkgdbinfo_h handle, int preload);
  *              This API is for backend installers.\n
  *
  * @param[in]		handle		package info handle.
+ * @param[in]	uid	the addressee user id of the instruction
  * @return		0 if success, error code(<0) if fail\n
 */
 int pkgmgr_save_pkgdbinfo(pkgmgr_pkgdbinfo_h handle);
+int pkgmgr_save_pkgusrdbinfo(pkgmgr_pkgdbinfo_h handle, uid_t uid);
 
 /**
  * @brief	This API destroy pakage info handle and free the resources.
