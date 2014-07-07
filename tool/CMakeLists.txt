@@ -22,8 +22,13 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 SET(CMAKE_C_FLAGS_RELEASE "-O2")
 
-add_executable(pkgcmd
+add_executable(pkgcmd.real
 		pkg_cmd.c)
+target_link_libraries(pkgcmd.real pkgmgr-client ${pkgs_test_LDFLAGS})
+INSTALL(TARGETS pkgcmd.real DESTINATION bin)
+
+add_executable(pkgcmd
+		pkg_cmd_WA.c)
 target_link_libraries(pkgcmd pkgmgr-client ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkgcmd DESTINATION bin)
 
@@ -49,4 +54,6 @@ install(FILES ${CMAKE_BINARY_DIR}/org.tizen.pkgmgr-install.xml DESTINATION /usr/
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.wac.xml DESTINATION /usr/share/mime/packages/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.tpk.xml DESTINATION /usr/share/mime/packages/)
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pkgcmd.wrapper DESTINATION /usr/bin/)
 
