@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# This script is a workaround for bug TC-320 where pkgcmd doesn't work with xwalk
+#
+# - the real command pkgcmd is renamed pkgcmd.real
+# - the "new" pkgcmd command is only a small binary with setuid bit (executes as root)
+# - this script "pkgcmd.wrapper" decides what to do depending on arguments
+#
+#                                                          /-> xwalkctl (if install or uninstall)
+# sbdb -> (developer) pkgcmd (gets root) -> pkgcmd.wrapper
+#                                                          \-> pkgcmd.real (original binary in other cases)
+#
+# Authors:!
+#	Stéphane Desneux <stephane.desneux@open.eurogiciel.org>
+#	Baptiste Durand <baptiste.durand@open.eurogiciel.org>
+
+DEBUG=0
+
+function debug() {
+	[[ "$DEBUG" == 1 ]] && echo "$0: $@"
+}
+
+TEMP=$(getopt -n 'pkgcmd' -o iurmcgCkaADL:lsd:p:t:n:T:T:S:qh --long install,uninstall,reinstall,move,clear,getsize,check,kill,app-path,activate,deactivate,activate\ with\ Label:,list,show,descriptor:,package-path:,package-type:,package-name:,move-type:,getsize-type:,csc:,quiet,help -- "$@")
+[[ $? != 0 ]] && { echo "pkgcmd.wrapper: invalid options. Terminating..." >&2; exit 1; }
+
+# save initial arguments
+ARGS="$@"
+debug "ARGS: $ARGS"
+
+# change args to getopt output
+eval set -- "$TEMP"
+
+op=
+while true; do
+	case "$1" in
+		-i|--install)		op="install";	shift;;
+		-u|--uninstall)		op="uninstall"; shift;;
+		-t|--package-type)	pkgtype=$2;		shift 2;;
+		-p|--package-path)	pkgpath=$2;		shift 2;;
+		-n|--package-name)	pkgname=$2;		shift 2;;
+
+		# other options (we don't care of)
+		-r|--reinstall) shift;;
+		-m|--move) shift;;
+		-c|--clear) shift;;
+		-g|--getsize) shift;;
+		-C|--check) shift;;
+		-k|--kill) shift;;
+		-a|--app-path) shift;;
+		-A|--activate) shift;;
+		-D|--deactivate) shift;;
+		-l|--list) shift;;
+		-s|--show) shift;;
+		-q|--quiet) shift;;
+		-h|--help) shift;;
+
+		# other options with argument (we don't care of)
+		-L|--activate\ with\ Label) shift 2;;
+		-d|--descriptor) shift 2;;
+		-T|--move-type|--getsize-type) shift 2;;
+		-S|--csc) shift 2;;
+		--) shift; break;;
+	esac
+done
+
+debug "op=$op type=$pkgtype path=$pkgpath name=$pkgname"
+
+# get user to install to from USER env var (or 'guest' as fallback)
+USER=${USER:-guest}
+
+if [[ "$USER" == "root" || "$USER" == "developer" ]]; then
+	# root and developer don't install apps for themselves.
+	# so take the first valid user: check app, check guest
+	if getent passwd | grep -q "^app:"; then
+		USER=app
+	else
+		USER=guest
+	fi
+fi
+
+[[ "$USER" == "root" ]] && USER
+
+shopt -s nocasematch
+if [[ "$op" == "install" && "$pkgtype" =~ wgt ]]; then
+	# call xwalkctl
+	debug exec su - $USER -c "bash -l -c 'xwalkctl -i $pkgpath'"
+          exec su - $USER -c "bash -l -c 'xwalkctl -i $pkgpath'"
+elif [[ "$op" == "uninstall" ]]; then
+	# call xwalkctl
+	debug exec su - $USER -c "bash -l -c 'xwalkctl -u $pkgname'"
+	      exec su - $USER -c "bash -l -c 'xwalkctl -u $pkgname'"
+else
+	# launch the real pkgcmd binary if we're not installing or uninstalling
+	debug exec /usr/bin/pkgcmd.real $ARGS
+	      exec /usr/bin/pkgcmd.real $ARGS
+fi
+
