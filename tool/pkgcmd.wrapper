@@ -99,7 +99,8 @@ elif [[ "$op" == "uninstall" ]]; then
 	      exec su - $USER -c "bash -l -c 'xwalkctl -u $pkgname'"
 else
 	# launch the real pkgcmd binary if we're not installing or uninstalling
-	debug exec /usr/bin/pkgcmd.real $ARGS
-	      exec /usr/bin/pkgcmd.real $ARGS
+	debug exec su - $USER -c "bash -l -c '/usr/bin/pkgcmd.real $ARGS'"
+	      exec su - $USER -c "bash -l -c '/usr/bin/pkgcmd.real $ARGS'" | grep -v "^You are not an authorized user"
+	      
 fi
 
