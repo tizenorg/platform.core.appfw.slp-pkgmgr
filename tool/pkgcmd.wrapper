@@ -17,7 +17,7 @@
 DEBUG=0
 
 function debug() {
-	[[ "$DEBUG" == 1 ]] && echo "$0: $@"
+	[[ "$DEBUG" == 1 ]] && echo "$0: $@" >&2
 }
 
 TEMP=$(getopt -n 'pkgcmd' -o iurmcgCkaADL:lsd:p:t:n:T:T:S:qh --long install,uninstall,reinstall,move,clear,getsize,check,kill,app-path,activate,deactivate,activate\ with\ Label:,list,show,descriptor:,package-path:,package-type:,package-name:,move-type:,getsize-type:,csc:,quiet,help -- "$@")
@@ -28,6 +28,7 @@ ARGS="$@"
 debug "ARGS: $ARGS"
 
 # change args to getopt output
+debug "OPTS: $TEMP"
 eval set -- "$TEMP"
 
 op=
@@ -35,6 +36,7 @@ while true; do
 	case "$1" in
 		-i|--install)		op="install";	shift;;
 		-u|--uninstall)		op="uninstall"; shift;;
+		-a|--app-path)		op="app_path";	shift;;
 		-t|--package-type)	pkgtype=$2;		shift 2;;
 		-p|--package-path)	pkgpath=$2;		shift 2;;
 		-n|--package-name)	pkgname=$2;		shift 2;;
@@ -46,7 +48,6 @@ while true; do
 		-g|--getsize) shift;;
 		-C|--check) shift;;
 		-k|--kill) shift;;
-		-a|--app-path) shift;;
 		-A|--activate) shift;;
 		-D|--deactivate) shift;;
 		-l|--list) shift;;
@@ -78,10 +79,17 @@ if [[ "$USER" == "root" || "$USER" == "developer" ]]; then
 	fi
 fi
 
-[[ "$USER" == "root" ]] && USER
-
 shopt -s nocasematch
-if [[ "$op" == "install" && "$pkgtype" =~ wgt ]]; then
+if [[ "$op" == "app_path" ]]; then
+	path=/tmp/app_rw
+	mkdir -p $path
+	chmod 777 $path
+	chown app:app $path
+	chsmack -a User $path
+	debug "App path: $path"
+	echo "Tizen Application Installation Path: $path"
+	echo "spend time for pkgcmd is [0]ms"
+elif [[ "$op" == "install" && "$pkgtype" =~ wgt ]]; then
 	# call xwalkctl
 	debug exec su - $USER -c "bash -l -c 'xwalkctl -i $pkgpath'"
           exec su - $USER -c "bash -l -c 'xwalkctl -i $pkgpath'"
