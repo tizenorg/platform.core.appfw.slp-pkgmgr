@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # This script is a workaround for bug TC-320 where pkgcmd doesn't work with xwalk
 #
@@ -15,6 +15,7 @@
 #	Baptiste Durand <baptiste.durand@open.eurogiciel.org>
 
 DEBUG=0
+[[ "$DEBUG" == 1 ]] && exec 2>>/tmp/pkgcmd.log || exec 2>/dev/null
 
 function debug() {
 	[[ "$DEBUG" == 1 ]] && echo "$0: $@" >&2
@@ -25,6 +26,7 @@ TEMP=$(getopt -n 'pkgcmd' -o iurmcgCkaADL:lsd:p:t:n:T:T:S:qh --long install,unin
 
 # save initial arguments
 ARGS="$@"
+debug "--------------------- new call -----------------------"
 debug "ARGS: $ARGS"
 
 # change args to getopt output
@@ -37,6 +39,7 @@ while true; do
 		-i|--install)		op="install";	shift;;
 		-u|--uninstall)		op="uninstall"; shift;;
 		-a|--app-path)		op="app_path";	shift;;
+		-l|--list)			op="list";		shift;;
 		-t|--package-type)	pkgtype=$2;		shift 2;;
 		-p|--package-path)	pkgpath=$2;		shift 2;;
 		-n|--package-name)	pkgname=$2;		shift 2;;
@@ -50,7 +53,6 @@ while true; do
 		-k|--kill) shift;;
 		-A|--activate) shift;;
 		-D|--deactivate) shift;;
-		-l|--list) shift;;
 		-s|--show) shift;;
 		-q|--quiet) shift;;
 		-h|--help) shift;;
@@ -67,40 +69,49 @@ done
 debug "op=$op type=$pkgtype path=$pkgpath name=$pkgname"
 
 # get user to install to from USER env var (or 'guest' as fallback)
-USER=${USER:-guest}
+USER=${USER:-root}
 
 if [[ "$USER" == "root" || "$USER" == "developer" ]]; then
 	# root and developer don't install apps for themselves.
 	# so take the first valid user: check app, check guest
 	if getent passwd | grep -q "^app:"; then
 		USER=app
-	else
+	elif getent passwd | grep -q "^guest:"; then
 		USER=guest
+	else
+		debug "Using 'app' user by default: 'app' or 'guest' not found"
+		USER=app
 	fi
 fi
+debug "user: $USER"
 
 shopt -s nocasematch
-if [[ "$op" == "app_path" ]]; then
+if [[ "$op" == "list" ]]; then
+	debug "list"
+	su - app -c "bash -l -c 'xwalkctl'" | awk '/^\w+\s+\w+$/{printf("%s %s\n",$1,$2)}' | while read id name; do
+		echo "pkg_type [wgt]	pkgid [$id]	name [$name]	version [0.0]"
+	done
+	exec /usr/bin/pkgcmd.real $ARGS | grep -v "^You are not an authorized user"
+elif [[ "$op" == "app_path" ]]; then
 	path=/tmp/app_rw
 	mkdir -p $path
 	chmod 777 $path
 	chown app:app $path
 	chsmack -a User $path
-	debug "App path: $path"
+	debug "send app path: $path"
 	echo "Tizen Application Installation Path: $path"
 	echo "spend time for pkgcmd is [0]ms"
 elif [[ "$op" == "install" && "$pkgtype" =~ wgt ]]; then
 	# call xwalkctl
-	debug exec su - $USER -c "bash -l -c 'xwalkctl -i $pkgpath'"
-          exec su - $USER -c "bash -l -c 'xwalkctl -i $pkgpath'"
+	debug "run: xwalkctl -i $pkgpath"
+	exec su - $USER -c "bash -l -c 'xwalkctl -i $pkgpath'"
 elif [[ "$op" == "uninstall" ]]; then
 	# call xwalkctl
-	debug exec su - $USER -c "bash -l -c 'xwalkctl -u $pkgname'"
-	      exec su - $USER -c "bash -l -c 'xwalkctl -u $pkgname'"
+	debug "run xwalkctl -u $pkgname"
+	exec su - $USER -c "bash -l -c 'xwalkctl -u $pkgname'"
 else
 	# launch the real pkgcmd binary if we're not installing or uninstalling
-	debug exec su - $USER -c "bash -l -c '/usr/bin/pkgcmd.real $ARGS'"
-	      exec su - $USER -c "bash -l -c '/usr/bin/pkgcmd.real $ARGS'" | grep -v "^You are not an authorized user"
-	      
+	debug "run pkgcmd.real"
+	exec su - $USER -c "bash -l -c '/usr/bin/pkgcmd.real $ARGS'" | grep -v "^You are not an authorized user"
 fi
 
