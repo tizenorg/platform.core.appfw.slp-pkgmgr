@@ -254,7 +254,6 @@ int main(int argc, char *argv[])
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
-if (__is_authorized()) {
 
 	ret = initdb_load_directory(OPT_MANIFEST_DIRECTORY);
 	if (ret == -1) {
