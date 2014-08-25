@@ -701,7 +701,7 @@ int pkgmgr_info_free(pkgmgr_info * pkg_info);
  * @return	0 if success, error code(<0) if fail\n
 */
 int pkgmgr_pkginfo_get_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_data);
-
+int pkgmgr_pkginfo_get_usr_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_data, uid_t uid);
 /**
  * @brief	This API  get package info entry from db
  *
@@ -939,7 +939,8 @@ int pkgmgr_pkginfo_get_installed_time(pkgmgr_pkginfo_h handle, int *installed_ti
 */
 int pkgmgr_appinfo_get_list(pkgmgr_pkginfo_h handle, pkgmgr_app_component component,
 							pkgmgr_info_app_list_cb app_func, void *user_data);
-
+int pkgmgr_appinfo_get_usr_list(pkgmgr_pkginfo_h handle, pkgmgr_app_component component,
+							pkgmgr_info_app_list_cb app_func, void *user_data, uid_t uid);
 /**
  * @brief	This API gets list of category for ui-application/service application.
  *

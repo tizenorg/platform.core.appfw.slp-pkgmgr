@@ -43,10 +43,10 @@ static int __get_app_list(char *pkgid, uid_t uid);
 static int __get_app_category_list(char *appid);
 static int __get_app_metadata_list(char *appid);
 static int __get_app_control_list(char *appid);
-static int __get_pkg_list(void);
+static int __get_pkg_list(uid_t uid);
 static int __get_installed_app_list(uid_t uid);
-static int __add_app_filter(void);
-static int __add_pkg_filter(void);
+static int __add_app_filter(uid_t uid);
+static int __add_pkg_filter(uid_t uid);
 static int __insert_manifest_in_db(char *manifest, uid_t uid);
 static int __remove_manifest_from_db(char *manifest, uid_t uid);
 static int __set_pkginfo_in_db(char *pkgid, uid_t uid);
@@ -55,7 +55,7 @@ static int __get_certinfo_from_db(char *pkgid);
 static int __del_certinfo_from_db(char *pkgid);
 static int __get_integer_input_data(void);
 char *__get_string_input_data(void);
-static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data);
+static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data, uid_t uid);
 static int __app_category_list_cb(const char *category_name, void *user_data);
 static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data);
 static int __app_metadata_list_cb(const char *metadata_name, const char *metadata_value, void *user_data);
@@ -380,7 +380,7 @@ err:
 	return ret;
 }
 
-static int __add_app_filter()
+static int __add_app_filter(uid_t uid)
 {
 	int ret = 0;
 	int choice = -1;
@@ -426,7 +426,10 @@ static int __add_app_filter()
 			printf("App count = %d\n", count);
 			break;
 		case 1:
-			ret = pkgmgrinfo_appinfo_filter_foreach_appinfo(handle, app_func, NULL);
+			if (uid != GLOBAL_USER)
+				ret = pkgmgrinfo_appinfo_usr_filter_foreach_appinfo(handle, app_func, NULL, uid);
+			else
+				ret = pkgmgrinfo_appinfo_filter_foreach_appinfo(handle, app_func, NULL);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_foreach_appinfo() failed\n");
 				ret = -1;
@@ -632,7 +635,7 @@ err:
 	return ret;
 }
 
-static int __add_pkg_filter()
+static int __add_pkg_filter(uid_t uid)
 {
 	int ret = 0;
 	int choice = -1;
@@ -667,7 +670,10 @@ static int __add_pkg_filter()
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
-			ret = pkgmgrinfo_pkginfo_filter_count(handle, &count);
+			if (uid != GLOBAL_USER)
+				ret = pkgmgrinfo_pkginfo_usr_filter_count(handle, &count, uid);
+			else
+				ret = pkgmgrinfo_pkginfo_filter_count(handle, &count);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_count() failed\n");
 				ret = -1;
@@ -676,9 +682,12 @@ static int __add_pkg_filter()
 			printf("Package count = %d\n", count);
 			break;
 		case 1:
-			ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkg_list_cb, NULL);
+			if (uid != GLOBAL_USER)
+				ret = pkgmgrinfo_pkginfo_usr_filter_foreach_pkginfo(handle, __pkg_list_cb, NULL, uid);
+			else
+				ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkg_list_cb, NULL);
 			if (ret < 0) {
-				printf("pkgmgrinfo_pkginfo_filter_foreach_pkginfo() failed\n");
+				printf("pkgmgrinfo_pkginfo_(usr)_filter_foreach_pkginfo() failed\n");
 				ret = -1;
 				goto err;
 			}
@@ -856,7 +865,7 @@ err:
 	return ret;
 }
 
-static int __add_arg_filter(char *key, char *value)
+static int __add_arg_filter(char *key, char *value, uid_t uid)
 {
 	int ret = 0;
 	int choice = -1;
@@ -1010,8 +1019,10 @@ static int __add_arg_filter(char *key, char *value)
 		__print_arg_filter_usage();
 		goto err;
 	}
-
-	ret = pkgmgrinfo_appinfo_filter_foreach_appinfo(handle, __get_app_id, NULL);
+	if (uid != GLOBAL_USER)
+		ret = pkgmgrinfo_appinfo_usr_filter_foreach_appinfo(handle, __get_app_id, NULL, uid);
+	else
+		ret = pkgmgrinfo_appinfo_filter_foreach_appinfo(handle, __get_app_id, NULL);
 	if (ret < 0) {
 		printf("pkgmgrinfo_appinfo_filter_foreach_appinfo() failed\n");
 		ret = -1;
@@ -1116,7 +1127,7 @@ static int __get_certinfo_from_db(char *pkgid)
 	return -1;
 }
 
-static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid)
+static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid, uid_t uid)
 {
 	if (lhs_pkgid == NULL || rhs_pkgid == NULL) {
 		printf("pkgid is NULL\n");
@@ -1125,7 +1136,10 @@ static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid)
 
 	int ret = 0;
 	pkgmgrinfo_cert_compare_result_type_e result;
-	ret = pkgmgrinfo_pkginfo_compare_pkg_cert_info(lhs_pkgid, rhs_pkgid, &result);
+	if (uid != GLOBAL_USER)
+		ret = pkgmgrinfo_pkginfo_compare_usr_pkg_cert_info(lhs_pkgid, rhs_pkgid, uid, &result);
+	else
+		ret = pkgmgrinfo_pkginfo_compare_pkg_cert_info(lhs_pkgid, rhs_pkgid, &result);
 	if (ret != PMINFO_R_OK) {
 		return -1;
 	}
@@ -1344,12 +1358,9 @@ static int __set_pkginfo_in_db(char *pkgid, uid_t uid)
 	INSTALL_LOCATION storage = 0;
 
 	if(uid != GLOBAL_USER)
-	{
 		ret = pkgmgrinfo_create_pkgusrdbinfo(pkgid, uid, &handle);
-	}else
-	{
+	else
 		ret = pkgmgrinfo_create_pkgdbinfo(pkgid, &handle);
-	}
 	if (ret < 0) {
 		printf("pkgmgrinfo_create_pkgdbinfo failed\n");
 		return -1;
@@ -1560,12 +1571,9 @@ static int __insert_manifest_in_db(char *manifest, uid_t uid)
 		return -1;
 	}
 	if (uid != GLOBAL_USER)
-	{
 		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
-	}else
-	{
+	else
 		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
-	}
 	if (ret < 0) {
 		printf("insert in db failed\n");
 		return -1;
@@ -1583,12 +1591,9 @@ static int __fota_insert_manifest_in_db(char *manifest, uid_t uid)
 		return -1;
 	}
 	if (uid != GLOBAL_USER)
-	{
 		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
-	}else
-	{
+	else
 		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
-	}
 	if (ret < 0) {
 		printf("insert in db failed\n");
 		return -1;
@@ -1604,12 +1609,9 @@ static int __remove_manifest_from_db(char *manifest, uid_t uid)
 		return -1;
 	}
 	if (uid != GLOBAL_USER)
-	{
 		ret = pkgmgr_parser_parse_usr_manifest_for_uninstallation(manifest, uid, NULL);
-	}else
-	{
+	else
 		ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
-	}
 	if (ret < 0) {
 		printf("remove from db failed\n");
 		return -1;
@@ -1747,7 +1749,7 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 }
 
 
-static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
+static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data, uid_t uid)
 {
 	char *test_data = "test data";
 	int ret = -1;
@@ -1783,26 +1785,41 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	printf("pkg_type [%s]\tpkgid [%s]\tversion [%s]\tpreload [%d]\tinstalled_time [%d]\n", pkg_type,
 	       pkgid, pkg_version, preload, installed_time);
 
-	printf("**List of Ui-Apps**\n");
-	ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, app_func, (void *)test_data);
-	if (ret < 0) {
-		printf("pkgmgr_get_info_app() failed\n");
+	if (uid != GLOBAL_USER) {
+		printf("**List of Ui-Apps**\n");
+		ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, app_func, (void *)test_data, uid);
+		if (ret < 0) {
+			printf("pkgmgr_get_info_app() failed\n");
+		}
+		printf("**List of Svc-Apps**\n");
+		ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, app_func, (void *)test_data, uid);
+		if (ret < 0) {
+			printf("pkgmgr_get_info_app() failed\n");
+		}
+	} else {
+		printf("**List of Ui-Apps**\n");
+		ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, app_func, (void *)test_data);
+		if (ret < 0) {
+			printf("pkgmgr_get_info_app() failed\n");
+		}
+		printf("**List of Svc-Apps**\n");
+		ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, app_func, (void *)test_data);
+		if (ret < 0) {
+			printf("pkgmgr_get_info_app() failed\n");
+		}
 	}
-	printf("**List of Svc-Apps**\n");
-	ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, app_func, (void *)test_data);
-	if (ret < 0) {
-		printf("pkgmgr_get_info_app() failed\n");
-	}
-
 	printf("---------------------------------------\n");
 
 	return 0;
 }
 
-static int __get_pkg_list()
+static int __get_pkg_list(uid_t uid)
 {
 	int ret = -1;
-	ret = pkgmgr_pkginfo_get_list(__pkg_list_cb, NULL);
+	if (uid != GLOBAL_USER)
+		ret = pkgmgr_pkginfo_get_usr_list(__pkg_list_cb, NULL, uid);
+	else
+		ret = pkgmgr_pkginfo_get_list(__pkg_list_cb, NULL);
 	if (ret < 0) {
 		printf("pkgmgr_pkginfo_get_list() failed\n");
 		return -1;
@@ -1836,7 +1853,7 @@ static int __app_metadata_list_cb(const char *metadata_name, const char *metadat
 {
 	if (metadata_name && metadata_value) {
 		printf("Name: %s\n", metadata_name);
-		printf("Value: %s\n",  metadata_value);
+		printf("Value: %s\n",	metadata_value);
 		printf("\n");
 	}
 	return 0;
@@ -1980,15 +1997,28 @@ static int __get_app_list(char *pkgid, uid_t uid)
 		printf("Failed to get handle\n");
 		return -1;
 	}
-	printf("List of Ui-Apps\n\n");
-	ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, app_func, (void *)test_data);
-	if (ret < 0) {
-		printf("pkgmgr_appinfo_get_list() failed\n");
-	}
-	printf("List of Svc-Apps\n\n");
-	ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, app_func, (void *)test_data);
-	if (ret < 0) {
-		printf("pkgmgr_appinfo_get_list() failed\n");
+	if (uid != GLOBAL_USER) {
+		printf("List of Ui-Apps\n\n");
+		ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, app_func, (void *)test_data, uid);
+		if (ret < 0) {
+			printf("pkgmgr_appinfo_get_list() failed\n");
+		}
+		printf("List of Svc-Apps\n\n");
+		ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, app_func, (void *)test_data, uid);
+		if (ret < 0) {
+			printf("pkgmgr_appinfo_get_list() failed\n");
+		}
+	} else {
+		printf("List of Ui-Apps\n\n");
+		ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, app_func, (void *)test_data);
+		if (ret < 0) {
+			printf("pkgmgr_appinfo_get_list() failed\n");
+		}
+		printf("List of Svc-Apps\n\n");
+		ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, app_func, (void *)test_data);
+		if (ret < 0) {
+			printf("pkgmgr_appinfo_get_list() failed\n");
+		}
 	}
 	pkgmgr_pkginfo_destroy_pkginfo(handle);
 	return 0;
@@ -2197,7 +2227,7 @@ int main(int argc, char *argv[])
 	locale = NULL;
 	if (argc == 2) {
 		if (strcmp(argv[1], "--listpkg") == 0) {
-			ret = __get_pkg_list();
+			ret = __get_pkg_list(getuid());
 			if (ret == -1) {
 				printf("get pkg list failed\n");
 				goto end;
@@ -2205,7 +2235,7 @@ int main(int argc, char *argv[])
 				goto end;
 			}
 		} else if (strcmp(argv[1], "--app-flt") == 0) {
-			ret = __add_app_filter();
+			ret = __add_app_filter(getuid());
 			if (ret == -1) {
 				printf("Adding app filter failed\n");
 				goto end;
@@ -2213,7 +2243,7 @@ int main(int argc, char *argv[])
 				goto end;
 			}
 		} else if (strcmp(argv[1], "--pkg-flt") == 0) {
-			ret = __add_pkg_filter();
+			ret = __add_pkg_filter(getuid());
 			if (ret == -1) {
 				printf("Adding pkg filter failed\n");
 				goto end;
@@ -2257,7 +2287,7 @@ int main(int argc, char *argv[])
 			}
 			goto end;
 		} else if (strcmp(argv[1], "--cmp-pkgcert") == 0) {
-			ret = __compare_pkg_certinfo_from_db(argv[2], argv[3]);
+			ret = __compare_pkg_certinfo_from_db(argv[2], argv[3], getuid());
 			if (ret == -1) {
 				printf("compare certinfo from db failed\n");
 				goto end;
@@ -2271,7 +2301,7 @@ int main(int argc, char *argv[])
 			}
 			goto end;
 		} else if (strcmp(argv[1], "--arg-flt") == 0) {
-			ret = __add_arg_filter(argv[2], argv[3]);
+			ret = __add_arg_filter(argv[2], argv[3], getuid());
 			if (ret == -1) {
 				printf("compare certinfo from db failed\n");
 				goto end;
