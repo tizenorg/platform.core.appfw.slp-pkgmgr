@@ -526,7 +526,6 @@ static char *__get_app_info_from_db_by_apppath(const char *apppath, uid_t uid)
 	}
 	if(uid != GLOBAL_USER)
 		ail_filter_list_usr_appinfo_foreach(filter, __appinfo_cb, &caller_appid,uid);
-
 	else
 		ail_filter_list_appinfo_foreach(filter, __appinfo_cb, &caller_appid);	
 
@@ -1693,15 +1692,24 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_pkginfo fail");
 	tryvm_if(handle == NULL, ret = PKGMGR_R_EINVAL, "Pkgid(%s) can not find in installed pkg DB! \n", pkgid);
 
-	/*check running app , terminate app if it is running*/
-	ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
+  if (uid != GLOBAL_USER) {
+	  /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
 
-	/*check running app , terminate app if it is running*/
-	ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
+	  /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
+  } else {
+ 	  /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
 
-	/*check type	*/
+	  /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail"); 
+	}
+  /*check type	*/
 	ret = pkgmgr_pkginfo_get_type(handle, &pkgtype);
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_type fail");
 	tryvm_if(pkgtype == NULL, ret = PKGMGR_R_ERROR, "pkgtype is NULL");
@@ -2197,20 +2205,32 @@ API int pkgmgr_client_move_usr_pkg(pkgmgr_client *pc, const char *pkg_type,
 	retv_if(pkgid == NULL, PKGMGR_R_EINVAL);
 
 	pkgmgr_pkginfo_h handle;
-	ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+  if (uid != GLOBAL_USER)
+	  ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+  else
+	  ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
 
 	/*check package id	*/
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_pkginfo fail");
 	tryvm_if(handle == NULL, ret = PKGMGR_R_EINVAL, "Pkgid(%s) can not find in installed pkg DB! \n", pkgid);
 
-	/*check running app , terminate app if it is running*/
-	ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
+  if (uid != GLOBAL_USER) {
+	  /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
 
-	/*check running app , terminate app if it is running*/
-	ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
+    /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
 
+  } else {
+    /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
+    /*check running app , terminate app if it is running*/
+	  ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
+  }
 	/*check type	*/
 	ret = pkgmgr_pkginfo_get_type(handle, &pkgtype);
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_type fail");
@@ -3375,12 +3395,9 @@ API int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data, uid_t uid)
 	}
 	
 	if(uid != GLOBAL_USER)
-	{
 		ret = ail_filter_count_usr_appinfo(filter, &cnt, uid);
-	}else
-	{
+	else
 		ret = ail_filter_count_appinfo(filter, &cnt);
-	}
 	if (ret != AIL_ERROR_OK) {
 		ail_filter_destroy(filter);
 		return PKGMGR_R_ERROR;
@@ -3397,12 +3414,9 @@ API int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data, uid_t uid)
 	udata->data = data;
 	
 	if(uid != GLOBAL_USER)
-	{
 		ail_filter_list_usr_appinfo_foreach(filter, __appinfo_func, udata, uid);
-	}else
-	{
+	else
 		ail_filter_list_appinfo_foreach(filter, __appinfo_func, udata);
-	}
 	free(udata);
 
 	ret = ail_filter_destroy(filter);
@@ -3600,6 +3614,13 @@ API int pkgmgr_pkginfo_get_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_
 	return ret;
 }
 
+API int pkgmgr_pkginfo_get_usr_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_data, uid_t uid)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_get_usr_list(pkg_list_cb, user_data, uid);
+	return ret;
+}
+
 API int pkgmgr_pkginfo_get_pkginfo(const char *pkgid, pkgmgr_pkginfo_h *handle)
 {
 	int ret = 0;
@@ -3756,6 +3777,14 @@ API int pkgmgr_appinfo_get_list(pkgmgr_pkginfo_h handle, pkgmgr_app_component co
 {
 	int ret = 0;
 	ret = pkgmgrinfo_appinfo_get_list(handle, component, app_func, user_data);
+	return ret;
+}
+
+API int pkgmgr_appinfo_get_usr_list(pkgmgr_pkginfo_h handle, pkgmgr_app_component component,
+							pkgmgr_info_app_list_cb app_func, void *user_data, uid_t uid)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_appinfo_get_usr_list(handle, component, app_func, user_data, uid);
 	return ret;
 }
 

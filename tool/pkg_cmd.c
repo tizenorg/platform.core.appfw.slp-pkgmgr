@@ -47,7 +47,7 @@
 #define PKG_TOOL_VERSION	"0.1"
 #define APP_INSTALLATION_PATH_RW	tzplatform_getenv(TZ_USER_APP)
 
-static int __process_request();
+static int __process_request(uid_t uid);
 static void __print_usage();
 static int __is_authorized();
 static int __is_app_installed(char *pkgid, uid_t uid);
@@ -273,12 +273,9 @@ static int __is_app_installed(char *pkgid, uid_t uid)
 	ail_error_e ret;
 	char *str = NULL;
 	if (uid != GLOBAL_USER)
-	{
 		ret = ail_package_get_usr_appinfo(pkgid, &handle, uid);
-	}else
-	{
+	else
 		ret = ail_package_get_appinfo(pkgid, &handle);
-	}
 	if (ret != AIL_ERROR_OK) {
 		return -1;
 	}
@@ -492,7 +489,7 @@ static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	return ret;
 }
 
-static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
+static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data, uid_t uid)
 {
 	int ret = -1;
 	int size = 0;
@@ -502,8 +499,10 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 	if(ret < 0) {
 		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
 	}
-
-	ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, NULL, NULL, NULL);
+  if (uid != GLOBAL_USER)
+	  ret = pkgmgr_client_usr_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, uid, NULL, NULL, NULL);
+  else
+	  ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, NULL, NULL, NULL);
 	if (ret < 0){
 		printf("pkgmgr_client_request_service Failed\n");
 		return -1;
@@ -672,8 +671,8 @@ static int __process_request(uid_t uid)
 		}
 		if(uid != GLOBAL_USER)
 		{
-			ret = pkgmgr_client_clear_user_data(pc, data.pkg_type,
-						    data.pkgid, mode);
+			ret = pkgmgr_client_usr_clear_user_data(pc, data.pkg_type,
+						    data.pkgid, mode, uid);
 		}else
 		{
 			ret = pkgmgr_client_clear_user_data(pc, data.pkg_type,
@@ -702,12 +701,9 @@ static int __process_request(uid_t uid)
 		if ( strcmp(data.pkg_type, "app") == 0 ) {
 			if (strlen(data.label) == 0) {
 				if (uid != GLOBAL_USER)
-				{
 					ret = pkgmgr_client_usr_activate_app(pc, data.pkgid, uid);
-				}else
-				{
+				else
 					ret = pkgmgr_client_activate_app(pc, data.pkgid);
-				}
 				if (ret < 0)
 					break;
 			} else {
@@ -716,23 +712,17 @@ static int __process_request(uid_t uid)
 				largv[0] = "-l";
 				largv[1] = data.label;
 				if(uid != GLOBAL_USER)
-				{
 					ret = pkgmgr_client_usr_activate_appv(pc, data.pkgid, largv, uid);
-				}else
-				{
+				else
 					ret = pkgmgr_client_activate_appv(pc, data.pkgid, largv);
-				}
 				if (ret < 0)
 					break;
 			}
 		} else {
 			if (uid != GLOBAL_USER)
-			{
 				ret = pkgmgr_client_usr_activate(pc, data.pkg_type, data.pkgid, uid);
-			}else
-			{
+			else
 				ret = pkgmgr_client_activate(pc, data.pkg_type, data.pkgid);
-			}
 			if (ret < 0)
 				break;
 		}
@@ -758,22 +748,16 @@ static int __process_request(uid_t uid)
 
 		if ( strcmp(data.pkg_type, "app") == 0 ) {
 			if (uid != GLOBAL_USER)
-			{
 				ret = pkgmgr_client_usr_deactivate_app(pc, data.pkgid, uid);
-			}else
-			{
+			else
 				ret = pkgmgr_client_deactivate_app(pc, data.pkgid);
-			}
 			if (ret < 0)
 				break;
 		}else {
 			if(uid != GLOBAL_USER)
-			{
 				ret = pkgmgr_client_usr_deactivate(pc, data.pkg_type, data.pkgid, uid);
-			}else
-			{
+			else
 				ret = pkgmgr_client_deactivate(pc, data.pkg_type, data.pkgid);
-			}
 			if (ret < 0)
 				break;
 		}
@@ -808,15 +792,16 @@ static int __process_request(uid_t uid)
 		if (data.quiet == 0)
 		{
 			if(uid != GLOBAL_USER)
-			{
 				ret = pkgmgr_client_usr_move(pc, data.pkg_type, data.pkgid,  data.type, mode, uid);
-			}else
-			{
+			else
 				ret = pkgmgr_client_move(pc, data.pkg_type, data.pkgid,  data.type, mode);
-			}
 		}else
-			ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
-
+    {
+      if (uid != GLOBAL_USER)
+			  ret = pkgmgr_client_usr_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, uid, NULL, NULL, NULL);
+      else
+			  ret = pkgmgr_client_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
+    }
 		printf("pkg[%s] move result = %d\n", data.pkgid, ret);
 
 		if (ret < 0)
@@ -875,7 +860,10 @@ static int __process_request(uid_t uid)
 		}
 
 		if (data.request == KILLAPP_REQ) {
-			ret = pkgmgr_client_request_service(PM_REQUEST_KILL_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, &pid);
+      if (uid != GLOBAL_USER)
+			  ret = pkgmgr_client_usr_request_service(PM_REQUEST_KILL_APP, NULL, pc, NULL, data.pkgid, uid, NULL, NULL, &pid);
+      else
+			  ret = pkgmgr_client_request_service(PM_REQUEST_KILL_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, &pid);
 			if (ret < 0){
 				data.result = PKGCMD_ERR_FATAL_ERROR;
 				break;
@@ -886,7 +874,10 @@ static int __process_request(uid_t uid)
 				printf("Pkgid: %s is already Terminated\n", data.pkgid);
 
 		} else if (data.request == CHECKAPP_REQ) {
-			ret = pkgmgr_client_request_service(PM_REQUEST_CHECK_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, &pid);
+      if (uid != GLOBAL_USER)
+			  ret = pkgmgr_client_usr_request_service(PM_REQUEST_CHECK_APP, NULL, pc, NULL, data.pkgid, uid, NULL, NULL, &pid);
+      else
+			  ret = pkgmgr_client_request_service(PM_REQUEST_CHECK_APP, NULL, pc, NULL, data.pkgid, NULL, NULL, &pid);
 			if (ret < 0){
 				data.result = PKGCMD_ERR_FATAL_ERROR;
 				break;
@@ -902,11 +893,14 @@ static int __process_request(uid_t uid)
 
 	case LIST_REQ:
 		if (data.pkg_type[0] == '\0') {
-			ret = pkgmgr_pkginfo_get_list(__pkgmgr_list_cb, NULL);
-			if (ret == -1) {
-				printf("Failed to get package list\n");
-				break;
-			}
+      if (uid != GLOBAL_USER)
+			  ret = pkgmgr_pkginfo_get_usr_list(__pkgmgr_list_cb, NULL, uid);
+			else
+        ret = pkgmgr_pkginfo_get_list(__pkgmgr_list_cb, NULL);
+      if (ret == -1) {
+        printf("Failed to get package list\n");
+        break;
+      }
 			break;
 		} else {
 			pkgmgrinfo_pkginfo_filter_h handle;
@@ -970,7 +964,10 @@ static int __process_request(uid_t uid)
 		break;
 
 	case CSC_REQ:
-		ret = pkgmgr_client_request_service(PM_REQUEST_CSC, 0, NULL, NULL, NULL, data.des_path, NULL, (void *)data.pkg_path);
+    if (uid != GLOBAL_USER)
+		  ret = pkgmgr_client_usr_request_service(PM_REQUEST_CSC, 0, NULL, NULL, NULL, uid, data.des_path, NULL, (void *)data.pkg_path);
+    else
+		  ret = pkgmgr_client_request_service(PM_REQUEST_CSC, 0, NULL, NULL, NULL, data.des_path, NULL, (void *)data.pkg_path);
 		if (ret < 0)
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 		break;
@@ -991,11 +988,16 @@ static int __process_request(uid_t uid)
 		}
 
 		if (data.type == 9) {
-			ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, (void *)pc);
-			break;
-		}
-
-		ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
+      if (uid != GLOBAL_USER)
+			  ret = pkgmgrinfo_pkginfo_get_usr_list(__pkg_list_cb, (void *)pc, uid);
+      else
+        ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, (void *)pc);
+      break;
+    }
+    if (uid != GLOBAL_USER)
+		  ret = pkgmgr_client_usr_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, uid, NULL, NULL, NULL);
+    else
+		  ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, data.type, pc, NULL, data.pkgid, NULL, NULL, NULL);
 		if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			break;
