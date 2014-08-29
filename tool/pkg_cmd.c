@@ -58,7 +58,7 @@ static int __return_cb(int req_id, const char *pkg_type, const char *pkgid,
 static int __convert_to_absolute_path(char *path);
 
 /* Supported options */
-const char *short_options = "iurmcgCkaADL:lsd:p:t:n:T:S:qh";
+const char *short_options = "iurmcgCkaADL:lsd:p:t:n:T:S:Gqh";
 const struct option long_options[] = {
 	{"install", 0, NULL, 'i'},
 	{"uninstall", 0, NULL, 'u'},
@@ -81,6 +81,7 @@ const struct option long_options[] = {
 	{"move-type", 1, NULL, 'T'},
 	{"getsize-type", 1, NULL, 'T'},
 	{"csc", 1, NULL, 'S'},
+	{"global", 0, NULL, 'G'},
 	{"quiet", 0, NULL, 'q'},
 	{"help", 0, NULL, 'h'},
 	{0, 0, 0, 0}		/* sentinel */
@@ -113,6 +114,7 @@ struct pm_tool_args_t {
 	char des_path[PKG_NAME_STRING_LEN_MAX];
 	char label[PKG_NAME_STRING_LEN_MAX];
 	int quiet;
+	int global;
 	int type;
 	int result;
 };
@@ -268,34 +270,18 @@ static int __convert_to_absolute_path(char *path)
 
 static int __is_app_installed(char *pkgid, uid_t uid)
 {
-#if 0
-	ail_appinfo_h handle;
-	ail_error_e ret;
-	char *str = NULL;
-	if (uid != GLOBAL_USER)
-		ret = ail_package_get_usr_appinfo(pkgid, &handle, uid);
-	else
-		ret = ail_package_get_appinfo(pkgid, &handle);
-	if (ret != AIL_ERROR_OK) {
-		return -1;
-	}
-	ret = ail_appinfo_get_str(handle, AIL_PROP_NAME_STR, &str);
-	if (ret != AIL_ERROR_OK) {
-		return -1;
-	}
-	ret = ail_package_destroy_appinfo(handle);
-	if (ret != AIL_ERROR_OK) {
-		return -1;
-	}
-//#else
 	pkgmgr_pkginfo_h handle;
-	int ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+	int ret;
+	if (uid != GLOBAL_USER)
+		ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+	else
+		ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+
 	if(ret < 0) {
 		printf("package is not in pkgmgr_info DB\n");
 		return -1;
 	} else
 		pkgmgr_pkginfo_destroy_pkginfo(handle);
-#endif
 
 	return 0;
 }
@@ -310,7 +296,7 @@ static void __print_usage()
 	printf("-m, --move		move package\n");
 	printf("-g, --getsize		get size of given package\n");
 	printf("-T, --getsize-type	get type [0 : total size /1: data size]\n");
-	printf("-l, --list		display list of installed packages\n");
+	printf("-l, --list		display list of installed packages available for the current user [i.e. User's specific Apps and Global Apps] \n");
 	printf("-s, --show		show detail package info\n");
 	printf("-a, --app-path		show app installation path\n");
 	printf("-C, --check		check if applications belonging to a package are running or not\n");
@@ -321,12 +307,13 @@ static void __print_usage()
 	printf("-t, --package-type	provide package type\n");
 	printf("-T, --move-type	provide move type [0 : move to internal /1: move to external]\n");
 	printf("-q, --quiet		quiet mode operation\n");
-	printf("-h, --help		print this help\n\n");
+	printf("-G, --global	Global Mode [Warning user should be privilegied to use this mode] \n");
+	printf("-h, --help	.	print this help\n\n");
 
 	printf("Usage: pkgcmd [options] (--quiet)\n");
-	printf("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-q)\n");
-	printf("pkgcmd -u -n <pkgid> (-q)\n");
-	printf("pkgcmd -r -t <pkg type> -n <pkgid> \n");
+	printf("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-G) (-q)\n");
+	printf("pkgcmd -u -n <pkgid> (-G) (-q)\n");
+	printf("pkgcmd -r -t <pkg type> -n <pkgid> (-G) \n");
 	printf("pkgcmd -l (-t <pkg type>) \n");
 	printf("pkgcmd -s -t <pkg type> -p <pkg path> (-q)\n");
 	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n");
@@ -599,6 +586,7 @@ static int __process_request(uid_t uid)
 		else
 			mode = PM_QUIET;
 
+//if global
 		ret = __is_app_installed(data.pkgid, uid);
 		if (ret == -1) {
 			printf("package is not installed\n");
@@ -893,14 +881,19 @@ static int __process_request(uid_t uid)
 
 	case LIST_REQ:
 		if (data.pkg_type[0] == '\0') {
-			if (uid != GLOBAL_USER)
+			ret = 0;
+			if (uid != GLOBAL_USER) {
+				printf(" = USER APPS =\n");
 				ret = pkgmgr_pkginfo_get_usr_list(__pkgmgr_list_cb, NULL, uid);
-			else
-				ret = pkgmgr_pkginfo_get_list(__pkgmgr_list_cb, NULL);
-			if (ret == -1) {
-				printf("Failed to get package list\n");
-				break;
+				if (ret == -1) {
+					printf("Failed to get usr package list\n");
+					break;
+				}
 			}
+			printf(" = SYSTEM APPS =\n");
+			ret = pkgmgr_pkginfo_get_list(__pkgmgr_list_cb, NULL);
+			if (ret == -1)
+				printf("Failed to get package list\n");
 			break;
 		} else {
 			pkgmgrinfo_pkginfo_filter_h handle;
@@ -915,35 +908,54 @@ static int __process_request(uid_t uid)
 				pkgmgrinfo_pkginfo_filter_destroy(handle);
 				break;
 			}
-			ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL);
-			if (ret == -1) {
-				printf("Failed to get package filter list\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
+			if (uid != GLOBAL_USER) {
+				printf(" = USER APPS =\n");
+				if (pkgmgrinfo_pkginfo_usr_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL,uid) != PMINFO_R_OK) {
+					printf("Failed to get package filter list\n");
+					pkgmgrinfo_pkginfo_filter_destroy(handle);
 				break;
+				}
 			}
+			printf(" = SYSTEM APPS =\n");
+			ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL);
+			if (ret != PMINFO_R_OK)
+				printf("Failed to get package filter list\n");
+
 			pkgmgrinfo_pkginfo_filter_destroy(handle);
 			break;
 		}
 
 	case SHOW_REQ:
 		if (data.pkgid[0] != '\0') {
-			pkgmgr_info *pkg_info;
-			if(uid != GLOBAL_USER)
-			{
+			pkgmgr_info *pkg_info = NULL;
+			pkgmgr_info *pkg_info_GLobal = NULL;
+
+			if(uid != GLOBAL_USER) {
 				pkg_info =
 					pkgmgr_info_usr_new(data.pkg_type, data.pkgid, uid);
-			}else
-			{
-				pkg_info =
-					pkgmgr_info_new(data.pkg_type, data.pkgid);
+				if ( pkg_info == NULL ) {
+					printf("Failed to get pkginfo handle in USER Apps, try in SYSTEM Apps\n");
+					ret = -1;
+				} else {
+					printf("USER APPS \n");
+					__print_pkg_info(pkg_info);
+					ret = pkgmgr_info_free(pkg_info);
+					break;
+				}
 			}
-			if (pkg_info == NULL) {
+			pkg_info_GLobal =
+					pkgmgr_info_new(data.pkg_type, data.pkgid);
+			if ( pkg_info_GLobal == NULL ) {
 				printf("Failed to get pkginfo handle\n");
 				ret = -1;
 				break;
 			}
-			__print_pkg_info(pkg_info);
-			ret = pkgmgr_info_free(pkg_info);
+
+			printf("GLOBAL APPS \n");
+			__print_pkg_info(pkg_info_GLobal);
+			if(pkg_info_GLobal)
+				ret = pkgmgr_info_free(pkg_info_GLobal);
+
 			break;
 		}
 		if (data.pkg_path[0] != '\0') {
@@ -1049,9 +1061,6 @@ int main(int argc, char *argv[])
 	long endtime;
 	struct timeval tv;
 
-	if (!__is_authorized()) {
-		printf("You are not an authorized user!\n");
-	}
 
 	if (argc == 1)
 		__print_usage();
@@ -1066,6 +1075,7 @@ int main(int argc, char *argv[])
 	memset(data.pkg_type, '\0', PKG_TYPE_STRING_LEN_MAX);
 	memset(data.label, '\0', PKG_TYPE_STRING_LEN_MAX);
 	data.quiet = 0;
+	data.global = 0; //By default pkg_cmd will manage for the current user 
 	data.result = 0;
 	data.type = -1;
 	while (1) {
@@ -1074,6 +1084,10 @@ int main(int argc, char *argv[])
 		if (c == -1)
 			break;	/* Parse end */
 		switch (c) {
+		case 'G':	/* install */
+			data.global = 1;
+			break;
+
 		case 'i':	/* install */
 			data.request = INSTALL_REQ;
 			break;
@@ -1195,7 +1209,11 @@ int main(int argc, char *argv[])
 
 		}
 	}
-	ret = __process_request(getuid());
+	uid_t uid = getuid();
+	if(data.global == 1) {
+		uid = GLOBAL_USER;
+	}
+	ret = __process_request(uid);
 	if ((ret == -1) && (data.result != 0))
 		data.result = PKGCMD_ERR_ARGUMENT_INVALID;
 
