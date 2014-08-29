@@ -139,9 +139,7 @@ update-mime-database /usr/share/mime
 %dir %{_sysconfdir}/package-manager/backendlib
 %dir %{_sysconfdir}/opt/upgrade
 %{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
-%attr(4755, root, root) %{_bindir}/pkgcmd
-%{_bindir}/pkgcmd.real
-%attr(755, root, root) %{_bindir}/pkgcmd.wrapper
+%{_bindir}/pkgcmd
 %{_bindir}/pkg_initdb
 %{_bindir}/pkg_getsize
 %{_bindir}/pkginfo

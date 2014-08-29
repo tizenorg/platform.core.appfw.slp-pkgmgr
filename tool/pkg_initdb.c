@@ -39,8 +39,7 @@
 #define OWNER_ROOT 0
 #define GROUP_MENU 6010
 #define BUFSZE 1024
-#define OPT_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RW_PACKAGES)
-#define USR_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RO_PACKAGES)
+#define SYS_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RW_PACKAGES)
 #define PACKAGE_INFO_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
 #define PACKAGE_INFO_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
 
@@ -255,13 +254,9 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	ret = initdb_load_directory(OPT_MANIFEST_DIRECTORY);
+	ret = initdb_load_directory(SYS_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load opt manifest directory.");
-	}
-	ret = initdb_load_directory(USR_MANIFEST_DIRECTORY);
-	if (ret == -1) {
-		_E("cannot load usr manifest directory.");
 	}
 
 	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
