@@ -44,8 +44,9 @@
 #define __PKGMGR_DBINFO_H__
 
 #include <stdbool.h>
+#include <tzplatform_config.h>
 
-#define GLOBAL_USER 0 //@TODO tzpl
+#define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
 #ifdef __cplusplus
 extern "C" {
