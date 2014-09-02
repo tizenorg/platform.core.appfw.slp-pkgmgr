@@ -39,6 +39,7 @@
 #include <sys/time.h>
 #include <ail.h>
 #include <aul.h>
+#include <tzplatform_config.h>
 
 #include "package-manager.h"
 #include <pkgmgr-info.h>
@@ -48,7 +49,7 @@
 #define LOG_TAG "PKGMGR"
 #endif				/* LOG_TAG */
 
-#define GLOBAL_USER	0 //#define 	tzplatform_getenv(TZ_GLOBAL) //TODO
+#define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
 #define IS_WHITESPACE(CHAR) \
 	((CHAR == ' ' || CHAR == '\t' || CHAR == '\r' || CHAR == '\n') ? \
