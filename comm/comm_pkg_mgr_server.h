@@ -38,7 +38,7 @@ typedef struct PkgMgrObject PkgMgrObject;
 API GType pkg_mgr_object_get_type(void);
 #define PKG_MGR_TYPE_OBJECT (pkg_mgr_object_get_type())
 
-typedef void (*request_callback) (void *cb_data, const char *req_id,
+typedef void (*request_callback) (void *cb_data, uid_t uid, const char *req_id,
 				  const int req_type, const char *pkg_type,
 				  const char *pkgid, const char *args,
 				  const char *cookie, int *ret);

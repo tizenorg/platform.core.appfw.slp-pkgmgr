@@ -96,6 +96,13 @@ FILE *___log = NULL;
 static int backend_flag = 0;	/* 0 means that backend process is not running */
 static int drawing_popup = 0;	/* 0 means that pkgmgr-server has no popup now */
 
+typedef struct  {
+	char **env;
+	uid_t uid;
+	gid_t gid;
+} user_ctx;
+
+
 /* For pkgs with no desktop file, inotify callback wont be called.
 *  To handle that case ail_db_update is initialized as 1
 *  This flag will be used to ensure that pkgmgr server does not exit
@@ -1018,7 +1025,7 @@ static void sighandler(int signo)
 
 }
 
-void req_cb(void *cb_data, const char *req_id, const int req_type,
+void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	    const char *pkg_type, const char *pkgid, const char *args,
 	    const char *cookie, int *ret)
 {
@@ -1041,7 +1048,7 @@ void req_cb(void *cb_data, const char *req_id, const int req_type,
 	strncpy(item->pkgid, pkgid, sizeof(item->pkgid) - 1);
 	strncpy(item->args, args, sizeof(item->args) - 1);
 	strncpy(item->cookie, cookie, sizeof(item->cookie) - 1);
-
+	item->uid = uid;
 	if (sig_reg == 0) {
 		struct sigaction act;
 
@@ -1467,6 +1474,74 @@ static int __pkgcmd_app_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 	return 0;
 }
 
+
+user_ctx* getUserContext(uid_t uid)
+{
+	/* we can use getpwnam because this is used only after a
+	 * fork and just before an execv
+	 * No concurrencial call can corrupt the data
+	 * returned by getpwuid
+	 */
+	user_ctx *context_res;
+	char ** env;
+	struct passwd * pwd;
+	int len;
+	int ret = 0;
+
+	pwd = getpwuid(uid);
+	if (!pwd)
+		return NULL;
+	
+	do {
+		context_res = (user_ctx *)malloc(sizeof(user_ctx));
+		if (!context_res) {
+			ret = -1;
+			break;
+		}
+		env = (char**)malloc(3* sizeof(char *));
+		if (!env) {
+			ret = -1;
+			break;
+		}
+		// Build environment context
+		len = snprintf(NULL,0, "HOME=%s", pwd->pw_dir);
+		env[0] = (char*)malloc((len+1)* sizeof(char));
+		if(env[0] == NULL) {
+			ret = -1;
+			break;
+		}
+		snprintf(env[0],len, "HOME=%s", pwd->pw_dir);
+		len = snprintf(NULL,0, "USER=%s", pwd->pw_name);
+		env[1] = (char*)malloc((len+1)* sizeof(char));
+		if(env[1] == NULL) {
+			ret = -1;
+			break;
+		}
+		
+		snprintf(env[1],len, "USER=%s", pwd->pw_name);
+		env[2] = NULL;
+	} while (0);
+	
+	if(ret == -1) {
+		free(context_res);
+		context_res = NULL;
+		int i = 0;
+		//env variable ends by NULL element
+		while (env[i]) {
+			free(env[i]);
+			i++;
+		}
+		free(env);
+		env = NULL;
+	} else {
+		context_res->env = env;
+		context_res->uid = uid;
+		context_res->gid = pwd->pw_gid;
+	}
+	return context_res;
+}
+  
+
 gboolean queue_job(void *data)
 {
 	/* DBG("queue_job start"); */
@@ -1513,6 +1588,7 @@ pop:
 		switch ((ptr + x)->pid) {
 		case 0:	/* child */
 			DBG("before run _get_backend_cmd()");
+			user_ctx* user_context; 
 			/*Check for efl-tpk app*/
 			backend_cmd = _get_backend_cmd(item->pkg_type);
 
@@ -1573,8 +1649,14 @@ pop:
 			}
 
 			/* Execute backend !!! */
-			ret = execv(backend_cmd, args_vector);
-
+			user_context = getUserContext(item->uid);
+			if(user_context)
+				ret = execve(backend_cmd, args_vector,user_context->env);
+			else {
+				ret = -1;
+				perror("fail to retreive user context");
+				exit(1);
+			}
 			/* Code below: exec failure. Should not be happened! */
 			DBG(">>>>>> OOPS 2!!!");
 

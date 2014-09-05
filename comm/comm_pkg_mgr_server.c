@@ -75,7 +75,7 @@ G_DEFINE_TYPE(PkgMgrObject, pkg_mgr_object, G_TYPE_OBJECT);
 GCallback pkgmgr_request(PkgMgrObject *obj, const gchar *req_id,
 			 const gint req_type, const gchar *pkg_type,
 			 const gchar *pkgid, const gchar *args,
-			 const gchar *cookie, gint *ret, GError *err);
+			 const gchar *cookie, uid_t uid, gint *ret, GError *err);
 
 /* Include stub header */
 #include "comm_pkg_mgr_server_dbus_bindings.h"
@@ -165,7 +165,7 @@ pkgmgr_request(PkgMgrObject *obj,
 	       const gchar *pkg_type,
 	       const gchar *pkgid,
 	       const gchar *args,
-	       const gchar *cookie, gint *ret, GError *err)
+	       const gchar *cookie, uid_t uid, gint *ret, GError *err)
 {
 	dbg("Called");
 	*ret = COMM_RET_OK;	/* TODO: fix this! */
@@ -175,9 +175,9 @@ pkgmgr_request(PkgMgrObject *obj,
 	 * */
 
 	if (obj->req_cb) {
-		dbg("Call request callback(obj, %s, %d, %s, %s, %s, *ret)",
-		    req_id, req_type, pkg_type, pkgid, args);
-		obj->req_cb(obj->req_cb_data, req_id, req_type, pkg_type,
+		dbg("Call request callback(obj, %lu, %s, %d, %s, %s, %s, *ret)",
+		    uid, req_id, req_type, pkg_type, pkgid, args);
+		obj->req_cb(obj->req_cb_data, uid, req_id, req_type, pkg_type,
 			    pkgid, args, cookie, ret);
 	} else {
 		dbg("Attempt to call request callback,"
