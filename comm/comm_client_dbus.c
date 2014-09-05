@@ -337,8 +337,9 @@ comm_client_request(
 		const char *pkgid,
 		const char *args,
 		const char *cookie,
+		uid_t uid,
 		int is_block)
-{
+{	
 	DBusError err;
 	DBusMessage *msg = NULL;
 	int r = COMM_RET_ERROR;	/* Default return */
@@ -381,6 +382,7 @@ comm_client_request(
 				      DBUS_TYPE_STRING, &pkgid,
 				      DBUS_TYPE_STRING, &args,
 				      DBUS_TYPE_STRING, &cookie,
+				      DBUS_TYPE_INT32, &uid,
 				      DBUS_TYPE_INVALID)) {
 		r = -3;
 		ERR("dbus_message_append_args fail");

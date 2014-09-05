@@ -43,6 +43,7 @@
 typedef struct {
 	char req_id[MAX_REQ_ID_LEN];
 	int req_type;
+	uid_t uid;
 	char pkg_type[MAX_PKG_TYPE_LEN];
 	char pkgid[MAX_PKG_NAME_LEN];
 	char args[MAX_PKG_ARGS_LEN];

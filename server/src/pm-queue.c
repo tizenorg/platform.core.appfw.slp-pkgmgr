@@ -280,6 +280,7 @@ int _pm_queue_push(pm_dbus_msg *item)
 
 	strncpy(data->msg->req_id, item->req_id, strlen(item->req_id));
 	data->msg->req_type = item->req_type;
+	data->msg->uid = item->uid;
 	strncpy(data->msg->pkg_type, item->pkg_type, strlen(item->pkg_type));
 	strncpy(data->msg->pkgid, item->pkgid, strlen(item->pkgid));
 	strncpy(data->msg->args, item->args, strlen(item->args));
@@ -333,6 +334,7 @@ pm_dbus_msg *_pm_queue_pop(int position)
 
 	strncpy(ret->req_id, cur->msg->req_id, strlen(cur->msg->req_id));
 	ret->req_type = cur->msg->req_type;
+	ret->uid = cur->msg->uid;
 	strncpy(ret->pkg_type, cur->msg->pkg_type, strlen(cur->msg->pkg_type));
 	strncpy(ret->pkgid, cur->msg->pkgid, strlen(cur->msg->pkgid));
 	strncpy(ret->args, cur->msg->args, strlen(cur->msg->args));
