@@ -1650,9 +1650,11 @@ pop:
 
 			/* Execute backend !!! */
 			user_context = getUserContext(item->uid);
-			if(user_context)
+			if(user_context) {
+				setgid(user_context->gid);
+				setuid(item->uid);
 				ret = execve(backend_cmd, args_vector,user_context->env);
-			else {
+			} else {
 				ret = -1;
 				perror("fail to retreive user context");
 				exit(1);
