@@ -49,7 +49,6 @@
 
 static int __process_request(uid_t uid);
 static void __print_usage();
-static int __is_authorized();
 static int __is_app_installed(char *pkgid, uid_t uid);
 static void __print_pkg_info(pkgmgr_info * pkg_info);
 static int __return_cb(int req_id, const char *pkg_type, const char *pkgid,
@@ -974,19 +973,6 @@ static int __process_request(uid_t uid)
 		pc = NULL;
 	}
 	return ret;
-}
-
-static int __is_authorized()
-{
-	/* pkgcmd needs root or developer privileges.
-	   If launched via fork/exec, the launching program 
-	   must be running as root */
-
-	uid_t uid = getuid();
-	if ((uid_t) 0 == uid || (uid_t) 5100 == uid)
-		return 1;
-	else
-		return 0;
 }
 
 int main(int argc, char *argv[])

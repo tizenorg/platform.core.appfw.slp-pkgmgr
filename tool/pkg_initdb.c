@@ -33,6 +33,7 @@
 #include <pkgmgr_parser.h>
 #include <pkgmgr-info.h>
 
+#include <sys/smack.h>
 /* For multi-user support */
 #include <tzplatform_config.h>
 
@@ -47,7 +48,9 @@
 #define PKG_PARSER_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
 #define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
 #define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
-#define PKG_INFO_DB_LABEL "_"
+#define PKG_INFO_DB_LABEL "*"
+#define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
+
 
 #ifdef _E
 #undef _E
@@ -59,6 +62,10 @@
 #endif
 #define _D(fmt, arg...) fprintf(stderr, "[PKG_INITDB][D][%s,%d] "fmt"\n", __FUNCTION__, __LINE__, ##arg);
 
+#define SET_DEFAULT_LABEL(x) \
+	if(smack_setlabel((x), "*", SMACK_LABEL_ACCESS)) _E("failed chsmack -a \"*\" %s", x) \
+    else  _D("chsmack -a \"*\" %s", x)
+	  
 static int initdb_count_package(void)
 {
 	int total = 0;
@@ -200,10 +207,10 @@ static int initdb_change_perm(const char *db_file)
 	snprintf(journal_file, sizeof(journal_file), "%s%s", db_file, "-journal");
 
 	for (i = 0; files[i]; i++) {
-		ret = chown(files[i], OWNER_ROOT, GROUP_MENU);
+		ret = chown(files[i], GLOBAL_USER, OWNER_ROOT);
 		if (ret == -1) {
 			strerror_r(errno, buf, sizeof(buf));
-			_E("FAIL : chown %s %d.%d, because %s", db_file, OWNER_ROOT, GROUP_MENU, buf);
+			_E("FAIL : chown %s %d.%d, because %s", db_file, GLOBAL_USER, OWNER_ROOT, buf);
 			return -1;
 		}
 
@@ -223,7 +230,9 @@ static int __is_authorized()
 	/* pkg_init db should be called by as root privilege. */
 
 	uid_t uid = getuid();
-	if ((uid_t) 0 == uid)
+	uid_t euid = geteuid();
+	//euid need to be root to allow smack label changes during initialization
+	if ((uid_t) OWNER_ROOT == uid)
 		return 1;
 	else
 		return 0;
@@ -238,12 +247,14 @@ int main(int argc, char *argv[])
 		_E("You are not an authorized user!\n");
 		return -1;
 	} else {
-		const char *argv_rm[] = { "/bin/rm", PACKAGE_INFO_DB_FILE, NULL };
-		initdb_xsystem(argv_rm);
-		const char *argv_rmjn[] = { "/bin/rm", PACKAGE_INFO_DB_FILE_JOURNAL, NULL };
-		initdb_xsystem(argv_rmjn);
+		if(remove(PACKAGE_INFO_DB_FILE))
+			_E(" %s is not removed",PACKAGE_INFO_DB_FILE);
+		if(remove(PACKAGE_INFO_DB_FILE_JOURNAL))
+			_E(" %s is not removed",PACKAGE_INFO_DB_FILE_JOURNAL);
 	}
 
+
+	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
 	/* This is for AIL initializing */
 	ret = setenv("INITDB", "1", 1);
 	_D("INITDB : %d", ret);
@@ -253,7 +264,6 @@ int main(int argc, char *argv[])
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
-
 	ret = initdb_load_directory(SYS_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load opt manifest directory.");
@@ -264,14 +274,13 @@ int main(int argc, char *argv[])
 		_E("cannot chown.");
 		return -1;
 	}
-	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
-	initdb_xsystem(argv_parser);
-	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
-	initdb_xsystem(argv_parserjn);
-	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE, NULL };
-	initdb_xsystem(argv_cert);
-	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
-	initdb_xsystem(argv_certjn);
+
+	setuid(OWNER_ROOT);
+	
+	SET_DEFAULT_LABEL(PKG_PARSER_DB_FILE);
+	SET_DEFAULT_LABEL(PKG_PARSER_DB_FILE_JOURNAL);
+	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE);
+	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE_JOURNAL);
 
 	return 0;
 }
