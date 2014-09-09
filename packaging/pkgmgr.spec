@@ -122,7 +122,7 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 update-mime-database /usr/share/mime
 
 # Create tizenglobalapp user needed for global installation
-%{_sbindir}/useradd -d %TZ_SYS_RW_APP -m %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g users
+%{_sbindir}/useradd -d %TZ_SYS_RW_APP -m %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g root
 #mkdir -p %TZ_SYS_RW_APP/.config/xwalk-service/applications
 #cd %TZ_SYS_RW_APP/
 #ln -s .config/xwalk-service/applications/
@@ -146,7 +146,7 @@ update-mime-database /usr/share/mime
 %dir %{_sysconfdir}/opt/upgrade
 %{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
 %{_bindir}/pkgcmd
-%{_bindir}/pkg_initdb
+%attr(06755,root,root) %{_bindir}/pkg_initdb
 %{_bindir}/pkg_getsize
 %{_bindir}/pkginfo
 %{_bindir}/pkgmgr-install

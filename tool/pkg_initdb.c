@@ -47,7 +47,7 @@
 #define PKG_PARSER_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
 #define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
 #define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
-#define PKG_INFO_DB_LABEL "_"
+#define PKG_INFO_DB_LABEL "*"
 
 #ifdef _E
 #undef _E
@@ -223,7 +223,9 @@ static int __is_authorized()
 	/* pkg_init db should be called by as root privilege. */
 
 	uid_t uid = getuid();
-	if ((uid_t) 0 == uid)
+	uid_t euid = geteuid();
+	//euid need to be root to allow smack label changes during initialization
+	if (((uid_t) GLOBAL_USER == uid) && (euid == OWNER_ROOT) )
 		return 1;
 	else
 		return 0;
