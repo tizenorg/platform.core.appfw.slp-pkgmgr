@@ -31,6 +31,7 @@ BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
 Requires:  pwdutils
+Requires:  		libcap-tools
 
 %description
 Packager Manager client library package for packaging
@@ -123,6 +124,8 @@ update-mime-database /usr/share/mime
 
 # Create tizenglobalapp user needed for global installation
 %{_sbindir}/useradd -d %TZ_SYS_RW_APP -m %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g root
+setcap cap_sys_admin=ep %{_bindir}/pkg_initdb
+
 #mkdir -p %TZ_SYS_RW_APP/.config/xwalk-service/applications
 #cd %TZ_SYS_RW_APP/
 #ln -s .config/xwalk-service/applications/

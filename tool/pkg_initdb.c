@@ -48,6 +48,7 @@
 #define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
 #define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
 #define PKG_INFO_DB_LABEL "*"
+#define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
 #ifdef _E
 #undef _E
@@ -200,10 +201,10 @@ static int initdb_change_perm(const char *db_file)
 	snprintf(journal_file, sizeof(journal_file), "%s%s", db_file, "-journal");
 
 	for (i = 0; files[i]; i++) {
-		ret = chown(files[i], OWNER_ROOT, GROUP_MENU);
+		ret = chown(files[i], GLOBAL_USER, OWNER_ROOT);
 		if (ret == -1) {
 			strerror_r(errno, buf, sizeof(buf));
-			_E("FAIL : chown %s %d.%d, because %s", db_file, OWNER_ROOT, GROUP_MENU, buf);
+			_E("FAIL : chown %s %d.%d, because %s", db_file, GLOBAL_USER, OWNER_ROOT, buf);
 			return -1;
 		}
 
@@ -225,7 +226,7 @@ static int __is_authorized()
 	uid_t uid = getuid();
 	uid_t euid = geteuid();
 	//euid need to be root to allow smack label changes during initialization
-	if (((uid_t) GLOBAL_USER == uid) && (euid == OWNER_ROOT) )
+	if ((uid_t) OWNER_ROOT == uid)
 		return 1;
 	else
 		return 0;
@@ -246,6 +247,8 @@ int main(int argc, char *argv[])
 		initdb_xsystem(argv_rmjn);
 	}
 
+
+	setuid(GLOBAL_USER);
 	/* This is for AIL initializing */
 	ret = setenv("INITDB", "1", 1);
 	_D("INITDB : %d", ret);
@@ -255,7 +258,6 @@ int main(int argc, char *argv[])
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
-
 	ret = initdb_load_directory(SYS_MANIFEST_DIRECTORY);
 	if (ret == -1) {
 		_E("cannot load opt manifest directory.");
