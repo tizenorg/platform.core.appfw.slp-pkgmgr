@@ -33,6 +33,7 @@
 #include <pkgmgr_parser.h>
 #include <pkgmgr-info.h>
 
+#include <sys/smack.h>
 /* For multi-user support */
 #include <tzplatform_config.h>
 
@@ -50,6 +51,7 @@
 #define PKG_INFO_DB_LABEL "*"
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
+
 #ifdef _E
 #undef _E
 #endif
@@ -60,6 +62,10 @@
 #endif
 #define _D(fmt, arg...) fprintf(stderr, "[PKG_INITDB][D][%s,%d] "fmt"\n", __FUNCTION__, __LINE__, ##arg);
 
+#define SET_DEFAULT_LABEL(x) \
+	if(smack_setlabel((x), "*", SMACK_LABEL_ACCESS)) _E("failed chsmack -a \"*\" %s", x) \
+    else  _D("chsmack -a \"*\" %s", x)
+	  
 static int initdb_count_package(void)
 {
 	int total = 0;
@@ -241,14 +247,14 @@ int main(int argc, char *argv[])
 		_E("You are not an authorized user!\n");
 		return -1;
 	} else {
-		const char *argv_rm[] = { "/bin/rm", PACKAGE_INFO_DB_FILE, NULL };
-		initdb_xsystem(argv_rm);
-		const char *argv_rmjn[] = { "/bin/rm", PACKAGE_INFO_DB_FILE_JOURNAL, NULL };
-		initdb_xsystem(argv_rmjn);
+		if(remove(PACKAGE_INFO_DB_FILE))
+			_E(" %s is not removed",PACKAGE_INFO_DB_FILE);
+		if(remove(PACKAGE_INFO_DB_FILE_JOURNAL))
+			_E(" %s is not removed",PACKAGE_INFO_DB_FILE_JOURNAL);
 	}
 
 
-	setuid(GLOBAL_USER);
+	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
 	/* This is for AIL initializing */
 	ret = setenv("INITDB", "1", 1);
 	_D("INITDB : %d", ret);
@@ -268,14 +274,13 @@ int main(int argc, char *argv[])
 		_E("cannot chown.");
 		return -1;
 	}
-	const char *argv_parser[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE, NULL };
-	initdb_xsystem(argv_parser);
-	const char *argv_parserjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_PARSER_DB_FILE_JOURNAL, NULL };
-	initdb_xsystem(argv_parserjn);
-	const char *argv_cert[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE, NULL };
-	initdb_xsystem(argv_cert);
-	const char *argv_certjn[] = { "/usr/bin/chsmack", "-a", PKG_INFO_DB_LABEL, PKG_CERT_DB_FILE_JOURNAL, NULL };
-	initdb_xsystem(argv_certjn);
+
+	setuid(OWNER_ROOT);
+	
+	SET_DEFAULT_LABEL(PKG_PARSER_DB_FILE);
+	SET_DEFAULT_LABEL(PKG_PARSER_DB_FILE_JOURNAL);
+	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE);
+	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE_JOURNAL);
 
 	return 0;
 }

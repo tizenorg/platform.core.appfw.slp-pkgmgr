@@ -5,6 +5,13 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${TEST_CFLAGS}")
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 
 INCLUDE(FindPkgConfig)
+
+pkg_check_modules(pkgs_initdb REQUIRED libsmack ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config)
+FOREACH(flag ${pkgs_initdb_CFLAGS})
+	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
+ENDFOREACH(flag)
+
+
 pkg_check_modules(pkgs_test REQUIRED ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config)
 FOREACH(flag ${pkgs_test_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -37,7 +44,7 @@ add_executable(pkg_getsize
 target_link_libraries(pkg_getsize pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_getsize DESTINATION bin)
 add_executable(pkg_initdb pkg_initdb.c)
-target_link_libraries(pkg_initdb ${pkgs_test_LDFLAGS})
+target_link_libraries(pkg_initdb ${pkgs_initdb_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
 
 add_executable(pkgmgr-install pkgmgr-install.c)
