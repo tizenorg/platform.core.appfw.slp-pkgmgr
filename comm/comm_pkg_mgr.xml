@@ -10,6 +10,7 @@
 			<arg type="s" name="pkgid" direction="in" />
 			<arg type="s" name="args" direction="in" />
 			<arg type="s" name="cookie" direction="in" />
+			<arg type="i" name="uid" direction="in" />
 			<arg type="i" name="ret" direction="out" />
 		</method>
 	</interface>

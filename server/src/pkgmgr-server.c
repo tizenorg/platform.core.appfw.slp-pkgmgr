@@ -1049,6 +1049,22 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	strncpy(item->args, args, sizeof(item->args) - 1);
 	strncpy(item->cookie, cookie, sizeof(item->cookie) - 1);
 	item->uid = uid;
+	/* uid equals to GLOBALUSER means that the installation or action is made at Global level.
+	 * At this time, we are not able to check the credentials of this dbus message (due to gdbus API to implement the pkgmgr-server)
+	 * So we cannot check if the user that makes request has permisssion to do it.
+	 * Note theses CAPI could be used by deamon (user is root or system user) or web/native API framework (user id is one of regular users)
+	 * In consequence a bug is filed : 
+	 * 
+	 * Logic has to be implmemented:
+	 * RUID means the id of the user that make the request (retreived from credential of the message)
+	 * UID is the uid in argument of the request
+	 * 
+	 * if RUID == UID & UID is regular user == TRUE ==> Granted
+	 * if UID == GLOBAL_USER & RUID is ADMIN == TRUE ==> Granted
+	 * if RUID == (ROOT or System USER) & UID is Regular USER ==> Granted
+	 * if UID != Regular USER & UID != GLOBAL USER  == TRUE ==> NOT GRANTED
+	 * if RUID == Regular USER & UID != RUID == True ==> NOT GRANTED
+	 *  */
 	if (sig_reg == 0) {
 		struct sigaction act;
 

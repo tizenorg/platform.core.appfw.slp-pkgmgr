@@ -351,7 +351,9 @@ int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type, const char *pkgid,
 			    const char *optional_file, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data);
-
+int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
+				  const char *optional_file, pkgmgr_mode mode,
+			      pkgmgr_handler event_cb, void *data, uid_t uid);
 /**
  * @brief	This API uninstalls package.
  *
@@ -616,6 +618,7 @@ int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_type, 
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data);
+int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data, uid_t uid);
 
 /**
  * @brief	This API provides package list
