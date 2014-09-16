@@ -1521,20 +1521,20 @@ user_ctx* getUserContext(uid_t uid)
 		}
 		// Build environment context
 		len = snprintf(NULL,0, "HOME=%s", pwd->pw_dir);
-		env[0] = (char*)malloc((len+1)* sizeof(char));
+		env[0] = (char*)malloc((len + 1)* sizeof(char));
 		if(env[0] == NULL) {
 			ret = -1;
 			break;
 		}
-		snprintf(env[0],len, "HOME=%s", pwd->pw_dir);
+		sprintf(env[0], "HOME=%s", pwd->pw_dir);
 		len = snprintf(NULL,0, "USER=%s", pwd->pw_name);
-		env[1] = (char*)malloc((len+1)* sizeof(char));
+		env[1] = (char*)malloc((len + 1)* sizeof(char));
 		if(env[1] == NULL) {
 			ret = -1;
 			break;
 		}
 		
-		snprintf(env[1],len, "USER=%s", pwd->pw_name);
+		sprintf(env[1], "USER=%s", pwd->pw_name);
 		env[2] = NULL;
 	} while (0);
 	
