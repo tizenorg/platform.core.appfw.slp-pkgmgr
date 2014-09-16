@@ -1423,7 +1423,7 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 
 	caller_pkgid = __get_caller_pkgid(uid);
 	if (caller_pkgid == NULL)
-		_LOGE("caller dont have pkgid..\n");
+		_LOGD("caller dont have pkgid..\n");
 
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");

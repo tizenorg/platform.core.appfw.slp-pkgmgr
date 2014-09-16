@@ -528,34 +528,18 @@ static int __process_request(uid_t uid)
 			mode = PM_QUIET;
 		if (data.des_path[0] == '\0')
 		{
-			if(uid != GLOBAL_USER)
-			{
-				ret =
-					pkgmgr_client_usr_install(pc, data.pkg_type, NULL,
-							data.pkg_path, NULL, mode,
-							__return_cb, pc, uid);
-			}else
-			{
-				ret =
-			    pkgmgr_client_install(pc, data.pkg_type, NULL,
-						  data.pkg_path, NULL, mode,
-						  __return_cb, pc);
-			}
+			ret =
+				pkgmgr_client_usr_install(pc, data.pkg_type, NULL,
+						data.pkg_path, NULL, mode,
+						__return_cb, pc, uid);
 		}else{
-			if(uid != GLOBAL_USER)
-			{
-				ret =
-					pkgmgr_client_usr_install(pc, data.pkg_type,
-							data.des_path, data.pkg_path,
-							NULL, mode, __return_cb, pc, uid);
-			}else
-			{
-				ret =
-					pkgmgr_client_install(pc, data.pkg_type,
-							data.des_path, data.pkg_path,
-							NULL, mode, __return_cb, pc);
-			}
-		}if (ret < 0){
+			ret =
+				pkgmgr_client_usr_install(pc, data.pkg_type,
+						data.des_path, data.pkg_path,
+						NULL, mode, __return_cb, pc, uid);
+
+		}
+		if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			if (access(data.pkg_path, F_OK) != 0)
 				data.result = PKGCMD_ERR_PACKAGE_NOT_FOUND;
