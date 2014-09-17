@@ -1437,7 +1437,7 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	retv_if(pkgid == NULL, PKGMGR_R_EINVAL);
 
 	pkgmgr_pkginfo_h handle;
-	ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+	ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle); 
 
 	/*check package id	*/
 	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_pkginfo fail");
