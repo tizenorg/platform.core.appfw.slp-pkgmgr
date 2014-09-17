@@ -833,8 +833,7 @@ static int __process_request(uid_t uid)
 				printf(" = USER APPS =\n");
 				ret = pkgmgr_pkginfo_get_usr_list(__pkgmgr_list_cb, NULL, uid);
 				if (ret == -1) {
-					printf("Failed to get usr package list\n");
-					break;
+					printf("No User application Found\n");
 				}
 			}
 			printf(" = SYSTEM APPS =\n");
@@ -858,9 +857,8 @@ static int __process_request(uid_t uid)
 			if (uid != GLOBAL_USER) {
 				printf(" = USER APPS =\n");
 				if (pkgmgrinfo_pkginfo_usr_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL,uid) != PMINFO_R_OK) {
-					printf("Failed to get package filter list\n");
+					printf("No User application Found\n");
 					pkgmgrinfo_pkginfo_filter_destroy(handle);
-				break;
 				}
 			}
 			printf(" = SYSTEM APPS =\n");
