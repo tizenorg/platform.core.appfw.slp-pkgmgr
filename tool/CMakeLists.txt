@@ -47,6 +47,10 @@ add_executable(pkg_initdb pkg_initdb.c)
 target_link_libraries(pkg_initdb ${pkgs_initdb_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
 
+add_executable(pkg_initdb_user pkg_initdb_user.c)
+target_link_libraries(pkg_initdb_user ${pkgs_initdb_LDFLAGS})
+INSTALL(TARGETS pkg_initdb_user DESTINATION bin)
+
 add_executable(pkgmgr-install pkgmgr-install.c)
 target_link_libraries(pkgmgr-install pkgmgr-client pkgmgr-info ${toolpkgs_LDFLAGS})
 install(TARGETS pkgmgr-install DESTINATION bin)
