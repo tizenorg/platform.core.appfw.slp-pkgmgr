@@ -2223,6 +2223,11 @@ int main(int argc, char *argv[])
 		printf("Locale is %s\n", locale);
 
 
+	if(getuid() == OWNER_ROOT) {
+		printf("User is Root! : Only tizenglobalapp or regular user are allowed\n");
+		return -1;
+	}
+	
 	free(locale);
 	locale = NULL;
 	if (argc == 2) {
