@@ -150,6 +150,7 @@ update-mime-database /usr/share/mime
 %{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
 %{_bindir}/pkgcmd
 %attr(06755,root,root) %{_bindir}/pkg_initdb
+%attr(755,root,root) %{_bindir}/pkg_initdb_user
 %{_bindir}/pkg_getsize
 %{_bindir}/pkginfo
 %{_bindir}/pkgmgr-install
