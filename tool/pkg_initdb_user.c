@@ -40,17 +40,6 @@
 #define OWNER_ROOT 0
 #define GROUP_MENU 6010
 #define BUFSZE 1024
-#define SYS_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RW_PACKAGES)
-#define PACKAGE_INFO_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
-#define PACKAGE_INFO_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
-
-#define PKG_PARSER_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
-#define PKG_PARSER_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
-#define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
-#define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
-#define PKG_INFO_DB_LABEL "*"
-#define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
-
 
 #ifdef _E
 #undef _E
