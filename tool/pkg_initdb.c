@@ -44,8 +44,7 @@
 #define PACKAGE_INFO_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
 #define PACKAGE_INFO_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
 
-#define PKG_PARSER_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
-#define PKG_PARSER_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
+
 #define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
 #define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
 #define PKG_INFO_DB_LABEL "*"
@@ -277,8 +276,8 @@ int main(int argc, char *argv[])
 
 	setuid(OWNER_ROOT);
 	
-	SET_DEFAULT_LABEL(PKG_PARSER_DB_FILE);
-	SET_DEFAULT_LABEL(PKG_PARSER_DB_FILE_JOURNAL);
+	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE);
+	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE_JOURNAL);
 	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE);
 	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE_JOURNAL);
 
