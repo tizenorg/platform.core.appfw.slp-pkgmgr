@@ -35,6 +35,7 @@
 #include "pkgmgr-dbinfo.h"
 #include "pkgmgr_installer.h"
 
+#define OWNER_ROOT 0
 
 static void __print_usage();
 static int __get_pkg_info(char *pkgid, uid_t uid);
