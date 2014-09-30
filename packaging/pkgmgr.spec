@@ -14,6 +14,7 @@ Source1004: %{name}-server.manifest
 Source1005: %{name}-installer.manifest
 Source1006: %{name}-installer-devel.manifest
 Source1007: %{name}-types-devel.manifest
+
 BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
@@ -31,8 +32,7 @@ BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
 BuildRequires:  libsmack
-Requires:  pwdutils
-Requires:  		libcap-tools
+BuildRequires:  fdupes
 
 %description
 Packager Manager client library package for packaging
@@ -100,7 +100,7 @@ cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURC
     -DX11_SUPPORT=On
 %endif
 
-make %{?jobs:-j%jobs}
+%__make %{?_smp_mflags}
 
 %install
 %make_install
@@ -110,18 +110,20 @@ rm -f %{buildroot}%{_libdir}/libpkgmgr_parser_lib_sample.so
 
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backend
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backendlib
-mkdir -p %{buildroot}/etc/opt/upgrade
+mkdir -p %{buildroot}%{_sysconfdir}/opt/upgrade
 
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 
 %find_lang package-manager
+
+%fdupes %{buildroot}
 
 %post
 /sbin/ldconfig
 
 # For pkgmgr-install:
 # Update mime database to support package mime types
-update-mime-database /usr/share/mime
+update-mime-database %{_datadir}/mime
 
 %post -n pkgmgr-server -p /sbin/ldconfig
 
