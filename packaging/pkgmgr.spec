@@ -122,6 +122,7 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 # For pkgmgr-install:
 # Update mime database to support package mime types
 update-mime-database /usr/share/mime
+chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 
 %post -n pkgmgr-server -p /sbin/ldconfig
 
@@ -146,8 +147,8 @@ update-mime-database /usr/share/mime
 %{_bindir}/pkg_getsize
 %{_bindir}/pkginfo
 %{_bindir}/pkgmgr-install
-%dir %{_datadir}/packages
-%{_datadir}/packages/org.tizen.pkgmgr-install.xml
+%attr(-,tizenglobalapp,root) %dir %{TZ_SYS_RW_PACKAGES}
+%attr(-,tizenglobalapp,root) %{TZ_SYS_RW_PACKAGES}/org.tizen.pkgmgr-install.xml
 %{_datadir}/mime/packages/mime.wac.xml
 %{_datadir}/mime/packages/mime.tpk.xml
 %exclude %{_includedir}/pkgmgr/comm_client.h
