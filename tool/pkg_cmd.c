@@ -1133,6 +1133,10 @@ int main(int argc, char *argv[])
 		}
 	}
 	uid_t uid = getuid();
+	if(uid == OWNER_ROOT) {
+		printf("Current User is Root! : Only regular users are allowed\n");
+		return -1;
+	}
 	if(data.global == 1) {
 		uid = GLOBAL_USER;
 	}
