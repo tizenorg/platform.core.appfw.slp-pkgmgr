@@ -1490,8 +1490,44 @@ static int __pkgcmd_app_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 	return 0;
 }
 
+void free_user_context(user_ctx* ctx)
+{
 
-user_ctx* getUserContext(uid_t uid)
+	char **env = NULL;
+	int i = 0;
+	if (!ctx)
+		return;
+	env = ctx->env;
+	//env variable ends by NULL element
+	while (env[i]) {
+		free(env[i]);
+		i++;
+	}
+	free(env);
+	env = NULL;
+	free(ctx);
+}
+
+int set_environement(user_ctx* ctx)
+{
+	int i = 0;
+	int res = 0;
+	char **env = NULL;
+	if (!ctx)
+		return;
+	setgid(ctx->gid);
+	setuid(ctx->uid);
+	env = ctx->env;
+	//env variable ends by NULL element
+	while (env[i]) {
+		if( putenv(env[i]) != 0 )
+			res = -1;
+		i++;
+	}
+	return res;
+}
+
+user_ctx* get_user_context(uid_t uid)
 {
 	/* we can use getpwnam because this is used only after a
 	 * fork and just before an execv
@@ -1665,7 +1701,7 @@ pop:
 			}
 
 			/* Execute backend !!! */
-			user_context = getUserContext(item->uid);
+			user_context = get_user_context(item->uid);
 			if(user_context) {
 				setgid(user_context->gid);
 				setuid(item->uid);
@@ -1733,6 +1769,17 @@ pop:
 			gchar **argvp;
 			GError *gerr = NULL;
 			char *label = NULL;
+			user_ctx* user_context = get_user_context(item->uid);
+			if(!user_context) {
+				DBG("Failed to getenv for the user : %d", item->uid);
+				exit(1);
+			}
+			if(set_environement(user_context)){
+				DBG("Failed to set env for the user : %d", item->uid);
+				exit(1);
+			}
+			free_user_context(user_context);
+
 			ret_parse = g_shell_parse_argv(item->args,
 						       &argcp, &argvp, &gerr);
 			if (FALSE == ret_parse) {
@@ -1756,20 +1803,21 @@ pop:
 					}
 				}
 
-				ret = pkgmgrinfo_appinfo_set_state_enabled(item->pkgid, val);
+				ret = pkgmgrinfo_appinfo_set_usr_state_enabled(item->pkgid, val, item->uid);
 				if (ret != PMINFO_R_OK) {
 					perror("fail to activate/deactivte package");
 					exit(1);
 				}
 
 				if (label) {
-					ret = pkgmgrinfo_appinfo_set_default_label(item->pkgid, label);
+					ret = pkgmgrinfo_appinfo_set_usr_default_label(item->pkgid, label, item->uid);
 					if (ret != PMINFO_R_OK) {
 						perror("fail to activate/deactivte package");
 						exit(1);
 					}
 
-					ret = ail_desktop_appinfo_modify_str(item->pkgid,
+					ret = ail_desktop_appinfo_modify_usr_str(item->pkgid,
+								item->uid,
 								AIL_PROP_NAME_STR,
 								label, FALSE);
 					if (ret != AIL_ERROR_OK) {
@@ -1779,7 +1827,8 @@ pop:
 					free(label);
 				}
 
-				ret = ail_desktop_appinfo_modify_bool(item->pkgid,
+				ret = ail_desktop_appinfo_modify_usr_bool(item->pkgid,
+							item->uid,
 							AIL_PROP_X_SLP_ENABLED_BOOL,
 							val, TRUE);
 				if (ret != AIL_ERROR_OK) {
@@ -1798,14 +1847,14 @@ pop:
 
 				if (val) {
 					pkgmgrinfo_pkginfo_h handle;
-					ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
+					ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(item->pkgid, item->uid, &handle);
 					if (ret < 0) {
-						ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+						ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest,item->uid, NULL);
 						if (ret < 0) {
 							DBGE("insert in db failed\n");
 						}
 
-						ret = ail_desktop_add(item->pkgid);
+						ret = ail_usr_desktop_add(item->pkgid, item->uid);
 						if (ret != AIL_ERROR_OK) {
 							DBGE("fail to ail_desktop_add");
 						}
@@ -1813,13 +1862,14 @@ pop:
 						pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 					}
 
-					ret = pkgmgrinfo_appinfo_set_state_enabled(item->pkgid, val);
+					ret = pkgmgrinfo_appinfo_set_usr_state_enabled(item->pkgid, val, item->uid);
 					if (ret != PMINFO_R_OK) {
 						perror("fail to activate/deactivte package");
 						exit(1);
 					}
 
-					ret = ail_desktop_appinfo_modify_bool(item->pkgid,
+					ret = ail_desktop_appinfo_modify_usr_bool(item->pkgid,
+								item->uid,
 								AIL_PROP_X_SLP_ENABLED_BOOL,
 								val, TRUE);
 					if (ret != AIL_ERROR_OK) {
@@ -1827,8 +1877,8 @@ pop:
 						exit(1);
 					}
 				}
-				else
-					ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
+				else 
+					ret = pkgmgr_parser_parse_usr_manifest_for_uninstallation(manifest, item->uid, NULL);
 
 				if (ret < 0) {
 					DBGE("insert in db failed\n");
@@ -1887,6 +1937,17 @@ pop:
 			gint argcp;
 			gchar **argvp;
 			GError *gerr = NULL;
+			user_ctx* user_context = get_user_context(item->uid);
+			if(!user_context) {
+				DBG("Failed to getenv for the user : %d", item->uid);
+				exit(1);
+			}
+			if(set_environement(user_context)){
+				DBG("Failed to set env for the user : %d", item->uid);
+				exit(1);
+			}
+			free_user_context(user_context);
+
 			ret_parse = g_shell_parse_argv(item->args,
 						       &argcp, &argvp, &gerr);
 			if (FALSE == ret_parse) {
@@ -1980,6 +2041,17 @@ pop:
 			gint argcp;
 			gchar **argvp;
 			GError *gerr = NULL;
+			user_ctx* user_context = get_user_context(item->uid);
+			if(!user_context) {
+				DBG("Failed to getenv for the user : %d", item->uid);
+				exit(1);
+			}
+			if(set_environement(user_context)){
+				DBG("Failed to set env for the user : %d", item->uid);
+				exit(1);
+			}
+			free_user_context(user_context);
+
 			ret_parse = g_shell_parse_argv(item->args,
 						       &argcp, &argvp, &gerr);
 			if (FALSE == ret_parse) {
@@ -2054,23 +2126,22 @@ pop:
 		switch ((ptr + x)->pid) {
 		case 0:	/* child */
 			DBG("child run parse argv()");
-
 			pkgmgrinfo_pkginfo_h handle;
-			ret = pkgmgrinfo_pkginfo_get_pkginfo(item->pkgid, &handle);
+			ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(item->pkgid, item->uid, &handle);
 			if (ret < 0) {
 				DBG("Failed to get handle\n");
 				exit(1);
 			}
 
 			if (item->req_type == COMM_REQ_KILL_APP) {
-				ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "kill");
+				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "kill", item->uid);
 				if (ret < 0) {
 					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
 					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 					exit(1);
 				}
 			} else if (item->req_type == COMM_REQ_CHECK_APP) {
-				ret = pkgmgrinfo_appinfo_get_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "check");
+				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "check", item->uid);
 				if (ret < 0) {
 					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
 					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
