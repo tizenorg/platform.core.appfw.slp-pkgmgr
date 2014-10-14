@@ -30,7 +30,7 @@ IF(X11_SUPPORT)
     ADD_DEFINITIONS("-DHAVE_X11")
     pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-parser pkgmgr-info iniparser libtzplatform-config)
 ELSE()
-    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-wayland ail ecore-file pkgmgr-parser pkgmgr-info iniparser libtzplatform-config)
+    pkg_check_modules(pkgs REQUIRED security-server dlog evas ecore appcore-efl ecore-wayland ail ecore-file pkgmgr-parser pkgmgr-info iniparser libtzplatform-config notification)
 ENDIF(X11_SUPPORT)
 
 FOREACH(flag ${pkgs_CFLAGS})

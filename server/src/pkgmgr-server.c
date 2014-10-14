@@ -40,7 +40,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #else
-// #include <notification.h>
+#include <notification.h>
 #endif
 #include <Ecore.h>
 #include <Ecore_File.h>
@@ -963,10 +963,118 @@ int create_elm_popup(struct appdata *ad)
 	return 0;
 }
 #else
-int create_notification_popup(struct appdata *ad)
-{
-  DBG("start of create_notification_popup()\n");
 
+const char*
+error_to_string(notification_error_e error)
+{
+    if (error == NOTIFICATION_ERROR_INVALID_DATA)
+        return "NOTIFICATION_ERROR_INVALID_DATA";
+    if (error == NOTIFICATION_ERROR_NO_MEMORY)
+        return "NOTIFICATION_ERROR_NO_MEMORY";
+    if (error == NOTIFICATION_ERROR_FROM_DB)
+        return "NOTIFICATION_ERROR_FROM_DB";
+    if (error == NOTIFICATION_ERROR_ALREADY_EXIST_ID)
+        return "NOTIFICATION_ERROR_ALREADY_EXIST_ID";
+    if (error == NOTIFICATION_ERROR_FROM_DBUS)
+        return "NOTIFICATION_ERROR_FROM_DBUS";
+    if (error == NOTIFICATION_ERROR_NOT_EXIST_ID)
+        return "NOTIFICATION_ERROR_NOT_EXIST_ID";
+    if (error == NOTIFICATION_ERROR_IO)
+        return "NOTIFICATION_ERROR_IO";
+    if (error == NOTIFICATION_ERROR_SERVICE_NOT_READY)
+        return "NOTIFICATION_ERROR_SERVICE_NOT_READY";
+    if (error == NOTIFICATION_ERROR_NONE)
+        return "NOTIFICATION_ERROR_NONE";
+
+    return "UNHANDLED ERROR";
+}
+
+static int create_notification_popup(struct appdata *ad)
+{
+	DBG("start of create_notification_popup()\n");
+
+	drawing_popup = 1;
+	int ret;
+
+    notification_h noti;
+    notification_error_e err = NOTIFICATION_ERROR_NONE;
+
+	char sentence[MAX_PKG_ARGS_LEN] = { '\0' };
+	char *pkgid = NULL;
+	char app_name[MAX_PKG_NAME_LEN] = { '\0' };
+
+	/* Sentence of popup */
+	pkgid = strrchr(ad->item->pkgid, '/') == NULL ?
+	    ad->item->pkgid : strrchr(ad->item->pkgid, '/') + 1;
+
+	DBG("operation type: %s for pkgid: %s", ad->op_type);
+
+	if (ad->op_type == OPERATION_INSTALL) {
+		snprintf(sentence, sizeof(sentence) - 1, _("Install?"));
+
+	} else if (ad->op_type == OPERATION_UNINSTALL) {
+		char *label = NULL;
+		pkgmgrinfo_pkginfo_h handle;
+		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+		if (ret < 0){
+			drawing_popup = 0;
+			return -1;
+		}
+		ret = pkgmgrinfo_pkginfo_get_label(handle, &label);
+		if (ret < 0){
+			drawing_popup = 0;
+			return -1;
+		}
+
+		snprintf(app_name, sizeof(app_name) - 1, label);
+		ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+		if (ret < 0){
+			drawing_popup = 0;
+			return -1;
+		}
+
+		pkgid = app_name;
+
+		snprintf(sentence, sizeof(sentence) - 1, _("Uninstall?"));
+
+	} else if (ad->op_type == OPERATION_REINSTALL) {
+		snprintf(sentence, sizeof(sentence) - 1, _("Reinstall?"));
+
+	} else
+		snprintf(sentence, sizeof(sentence) - 1, _("Invalid request"));
+
+	noti = notification_new(NOTIFICATION_TYPE_NOTI, NOTIFICATION_GROUP_ID_NONE,
+			NOTIFICATION_PRIV_ID_NONE);
+	if (noti == NULL) {
+		ERR("Failed to create notification: %s", error_to_string(err));
+		return -1;
+	}
+
+	ret = notification_set_pkgname(noti, "slp-pkgmgr");
+	if (ret != NOTIFICATION_ERROR_NONE) {
+		ERR("Unable to set pkgname: %s", error_to_string(err));
+		return -1;
+	}
+
+	ret = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "slp-pkgmgr",
+			NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (ret != NOTIFICATION_ERROR_NONE) {
+		ERR("Unable to set notification title: %s", error_to_string(err));
+		return -1;
+	}
+
+	ret = notification_set_text( noti, NOTIFICATION_TEXT_TYPE_CONTENT, sentence,
+			NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (ret != NOTIFICATION_ERROR_NONE) {
+		ERR("Unable to set notification content: %s", error_to_string(err));
+		return -1;
+	}
+
+	ret = notification_insert(noti, NULL);
+    if (ret != NOTIFICATION_ERROR_NONE) {
+        ERR("Unable to insert notification: %s\n", error_to_string(err));
+        return -1;
+    }
 }
 #endif // HAVE_X11
 
