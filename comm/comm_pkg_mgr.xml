@@ -13,5 +13,9 @@
 			<arg type="i" name="uid" direction="in" />
 			<arg type="i" name="ret" direction="out" />
 		</method>
+		<method name="Reply">
+			<arg type="s" name="req_id" direction="in" />
+			<arg type="i" name="ret" direction="in" />
+		</method>
 	</interface>
 </node>

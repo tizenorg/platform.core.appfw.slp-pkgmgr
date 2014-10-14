@@ -77,6 +77,8 @@ GCallback pkgmgr_request(PkgMgrObject *obj, const gchar *req_id,
 			 const gchar *pkgid, const gchar *args,
 			 const gchar *cookie, uid_t uid, gint *ret, GError *err);
 
+GCallback pkgmgr_reply(PkgMgrObject *obj, const gchar *req_id,
+			 gint ret, GError *err);
 /* Include stub header */
 #include "comm_pkg_mgr_server_dbus_bindings.h"
 
@@ -167,7 +169,7 @@ pkgmgr_request(PkgMgrObject *obj,
 	       const gchar *args,
 	       const gchar *cookie, uid_t uid, gint *ret, GError *err)
 {
-	dbg("Called");
+	ERR("Called");
 	*ret = COMM_RET_OK;	/* TODO: fix this! */
 
 	/* TODO: Add business logic 
@@ -175,12 +177,12 @@ pkgmgr_request(PkgMgrObject *obj,
 	 * */
 
 	if (obj->req_cb) {
-		dbg("Call request callback(obj, %lu, %s, %d, %s, %s, %s, *ret)",
+		ERR("Call request callback(obj, %lu, %s, %d, %s, %s, %s, *ret)",
 		    uid, req_id, req_type, pkg_type, pkgid, args);
 		obj->req_cb(obj->req_cb_data, uid, req_id, req_type, pkg_type,
 			    pkgid, args, cookie, ret);
 	} else {
-		dbg("Attempt to call request callback,"
+		ERR("Attempt to call request callback,"
 		" but request callback is not set. Do nothing.\n"
 		"Use pkg_mgr_set_request_callback()"
 		" to register your callback.");
@@ -189,6 +191,13 @@ pkgmgr_request(PkgMgrObject *obj,
 	return (GCallback) TRUE;
 }
 
+GCallback pkgmgr_reply(PkgMgrObject *obj, const gchar *req_id,
+gint ret, GError *err)
+{
+         ERR("Called");
+
+  return (GCallback) TRUE;
+}
 /* Other APIs
  */
 
