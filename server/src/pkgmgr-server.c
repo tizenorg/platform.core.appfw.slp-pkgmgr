@@ -20,6 +20,7 @@
  *
  */
 
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,13 +33,16 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <signal.h>
-#include <Elementary.h>
 #include <appcore-efl.h>
 #ifdef HAVE_X11
 #include <Ecore_X.h>
+#include <Elementary.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#else
+// #include <notification.h>
 #endif
+#include <Ecore.h>
 #include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
@@ -152,8 +156,10 @@ typedef enum {
 }pkgmgr_svc_app_component;
 
 struct appdata {
+#ifdef HAVE_X11
 	Evas_Object *win;
 	Evas_Object *notify;
+#endif
 	pm_dbus_msg *item;
 	OPERATION_TYPE op_type;
 };
@@ -175,9 +181,13 @@ static void __set_backend_free(int position);
 static int __is_backend_mode_quiet(int position);
 static void __set_backend_mode(int position);
 static void __unset_backend_mode(int position);
+#ifdef HAVE_X11
 static void response_cb1(void *data, Evas_Object *notify, void *event_info);
 static void response_cb2(void *data, Evas_Object *notify, void *event_info);
-static int create_popup(struct appdata *ad);
+static int create_elm_popup(struct appdata *ad);
+#else
+static int create_notification_popup(struct appdata *ad);
+#endif
 static void sighandler(int signo);
 static int __get_position_from_pkg_type(char *pkgtype);
 static int __is_efl_tpk_app(char *pkgpath);
@@ -549,6 +559,8 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 	return ECORE_CALLBACK_RENEW;
 }
 
+
+#ifdef HAVE_X11
 static
 void response_cb1(void *data, Evas_Object *notify, void *event_info)
 {
@@ -691,7 +703,6 @@ static char *__get_exe_path(const char *pkgid)
 }
 #endif
 
-#ifdef HAVE_X11
 static int __X_rotate_disable_focus(Display *dpy, Window win)
 {
 	XWMHints *hints;
@@ -812,12 +823,12 @@ static Eina_Bool __X_rotate_cb(void *data, int type, void *event)
 
 	return ECORE_CALLBACK_RENEW;
 }
-#endif // HAVE_X11
+
 
 static
-int create_popup(struct appdata *ad)
+int create_elm_popup(struct appdata *ad)
 {
-	DBG("start of create_popup()\n");
+	DBG("start of create_elm_popup()\n");
 
 	drawing_popup = 1;
 
@@ -846,7 +857,6 @@ int create_popup(struct appdata *ad)
 	int count;
     int ret;
 
-#ifdef HAVE_X11
 	ecore_x_window_geometry_get(ecore_x_window_root_get(
 					    ecore_x_window_focus_get()),
 				    &x, &y, &w, &h);
@@ -869,7 +879,6 @@ int create_popup(struct appdata *ad)
 
 	ecore_event_handler_add(ECORE_X_EVENT_CLIENT_MESSAGE,
 				__X_rotate_cb, ad->win);
-#endif // HAVE_X11
 
 	double s;
 	s = w / DESKTOP_W;
@@ -950,9 +959,16 @@ int create_popup(struct appdata *ad)
 
 	evas_object_show(ad->notify);
 
-	DBG("end of create_popup()\n");
+	DBG("end of create_elm_popup()\n");
 	return 0;
 }
+#else
+int create_notification_popup(struct appdata *ad)
+{
+  DBG("start of create_notification_popup()\n");
+
+}
+#endif // HAVE_X11
 
 gboolean send_fail_signal(void *data)
 {
@@ -1137,7 +1153,11 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 				else
 					ad->op_type = OPERATION_MAX;
 
-				err = create_popup(ad);
+#ifdef HAVE_X11
+				err = create_elm_popup(ad);
+#else
+				err = create_notification_popup(ad);
+#endif
 				if (err != 0) {
 					*ret = COMM_RET_ERROR;
 					DBG("create popup failed\n");
