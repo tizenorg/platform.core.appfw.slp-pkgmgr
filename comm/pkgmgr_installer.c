@@ -22,6 +22,10 @@
 
 
 
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <getopt.h>
 
 
 #include "pkgmgr_installer.h"
@@ -32,9 +36,6 @@
 #include "comm_status_broadcast_server.h"
 #include "error_report.h"
 
-#include <unistd.h>
-#include <string.h>
-#include <getopt.h>
 #include <db-util.h>
 #include <pkgmgr-info.h>
 

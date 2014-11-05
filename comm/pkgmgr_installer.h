@@ -38,11 +38,6 @@
 extern "C" {
 #endif
 
-#include <stdlib.h>
-#include <getopt.h>
-#include <dlog.h>
-
-
 
 /**
  * pkgmgr_installer is an opaque type for an object
