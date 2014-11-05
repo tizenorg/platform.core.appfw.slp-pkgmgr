@@ -34,6 +34,8 @@
 #include "comm_client.h"
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
+#include <unistd.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <dirent.h>
