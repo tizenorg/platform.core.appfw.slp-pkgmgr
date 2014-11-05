@@ -43,6 +43,23 @@ add_executable(pkg_getsize
                 pkg_getsize.c)
 target_link_libraries(pkg_getsize pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_getsize DESTINATION bin)
+
+add_executable(pkg_createdb pkg_createdb.c)
+target_link_libraries(pkg_createdb ${pkgs_initdb_LDFLAGS})
+INSTALL(TARGETS pkg_createdb DESTINATION bin)
+
+add_executable(pkg_createdb_user pkg_createdb_user.c)
+target_link_libraries(pkg_createdb_user ${pkgs_initdb_LDFLAGS})
+INSTALL(TARGETS pkg_createdb_user DESTINATION bin)
+
+add_executable(pkg_syncdb pkg_syncdb.c)
+target_link_libraries(pkg_syncdb ${pkgs_initdb_LDFLAGS})
+INSTALL(TARGETS pkg_syncdb DESTINATION bin)
+
+add_executable(pkg_syncdb_user pkg_syncdb_user.c)
+target_link_libraries(pkg_syncdb_user ${pkgs_initdb_LDFLAGS})
+INSTALL(TARGETS pkg_syncdb_user DESTINATION bin)
+
 add_executable(pkg_initdb pkg_initdb.c)
 target_link_libraries(pkg_initdb ${pkgs_initdb_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
