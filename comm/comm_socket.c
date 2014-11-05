@@ -69,7 +69,7 @@ static int _get_new_socket(void)
 static void _set_sockaddr_un(struct sockaddr_un *saddr, const char *sock_path)
 {
 	saddr->sun_family = AF_UNIX;
-	snprintf(saddr->sun_path, UNIX_PATH_MAX, sock_path);
+	strncpy(saddr->sun_path, sock_path, UNIX_PATH_MAX);
 }
 
 static const char *_create_server_sock_path(void)
