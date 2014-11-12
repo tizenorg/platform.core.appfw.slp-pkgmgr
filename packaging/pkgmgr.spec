@@ -145,6 +145,11 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %dir %{_sysconfdir}/opt/upgrade
 %{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
 %{_bindir}/pkgcmd
+%attr(06755,root,root) %{_bindir}/pkg_createdb
+%attr(755,root,root) %{_bindir}/pkg_createdb_user
+%attr(06755,root,root) %{_bindir}/pkg_syncdb
+%attr(755,root,root) %{_bindir}/pkg_syncdb_user
+#obsolete tools
 %attr(06755,root,root) %{_bindir}/pkg_initdb
 %attr(755,root,root) %{_bindir}/pkg_initdb_user
 %{_bindir}/pkg_getsize
