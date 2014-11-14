@@ -480,13 +480,14 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data, ui
 	int ret = -1;
 	int size = 0;
 	char *pkgid;
+	pkgmgrinfo_uidinfo_t *uid_info = (pkgmgrinfo_uidinfo_t *) handle;
 
 	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
 	if(ret < 0) {
 		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
 	}
-  if (uid != GLOBAL_USER)
-	  ret = pkgmgr_client_usr_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, uid, NULL, NULL, NULL);
+  if (uid_info->uid != GLOBAL_USER)
+	  ret = pkgmgr_client_usr_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, uid_info->uid, NULL, NULL, NULL);
   else
 	  ret = pkgmgr_client_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, NULL, NULL, NULL);
 	if (ret < 0){
