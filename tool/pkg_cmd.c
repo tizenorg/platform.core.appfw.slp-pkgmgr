@@ -448,6 +448,7 @@ static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	char *pkg_type = NULL;
 	char *pkg_version = NULL;
 	char *pkg_label = NULL;
+	char *icon_path = NULL;
 
 	ret = pkgmgr_pkginfo_get_pkgid(handle, &pkgid);
 	if (ret == -1) {
@@ -469,9 +470,22 @@ static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 		printf("Failed to get pkgmgr_pkginfo_get_label\n");
 		return ret;
 	}
-
-	printf("pkg_type [%s]\tpkgid [%s]\tname [%s]\tversion [%s]\n", pkg_type, pkgid, pkg_label, pkg_version);
-
+	pkgmgrinfo_pkginfo_get_icon(handle, &icon_path);
+	static print_user_app = 0;
+	static print_sys_app = 0;
+	if (strncmp(tzplatform_getenv(TZ_USER_ICONS), icon_path, (size_t)sizeof(tzplatform_getenv(TZ_USER_ICONS))) == 0) {
+		if (print_user_app == 0) {
+			printf("= USER APPS =\n");
+			print_user_app = 1;
+		}
+		printf("pkg_type [%s]\tpkgid [%s]\tname [%s]\tversion [%s]\n", pkg_type, pkgid, pkg_label, pkg_version);
+	} else {
+		if (print_sys_app == 0) {
+			printf("= SYSTEM APPS = \n");
+			print_sys_app = 1;
+		}
+			printf("pkg_type [%s]\tpkgid [%s]\tname [%s]\tversion [%s]\n", pkg_type, pkgid, pkg_label, pkg_version);
+		}
 	return ret;
 }
 
@@ -831,17 +845,13 @@ static int __process_request(uid_t uid)
 		if (data.pkg_type[0] == '\0') {
 			ret = 0;
 			if (uid != GLOBAL_USER) {
-				printf(" = USER APPS =\n");
 				ret = pkgmgr_pkginfo_get_usr_list(__pkgmgr_list_cb, NULL, uid);
-				if (ret == -1) {
-					printf("No User application Found\n");
+			} else {
+				ret = pkgmgr_pkginfo_get_list(__pkgmgr_list_cb, NULL);
 				}
-			}
-			printf(" = SYSTEM APPS =\n");
-			ret = pkgmgr_pkginfo_get_list(__pkgmgr_list_cb, NULL);
-			if (ret == -1)
-				printf("Failed to get package list\n");
-			break;
+				if (ret == -1)
+					printf("no packages found\n");
+				break;
 		} else {
 			pkgmgrinfo_pkginfo_filter_h handle;
 			ret = pkgmgrinfo_pkginfo_filter_create(&handle);
@@ -856,18 +866,13 @@ static int __process_request(uid_t uid)
 				break;
 			}
 			if (uid != GLOBAL_USER) {
-				printf(" = USER APPS =\n");
-				if (pkgmgrinfo_pkginfo_usr_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL,uid) != PMINFO_R_OK) {
-					printf("No User application Found\n");
-					pkgmgrinfo_pkginfo_filter_destroy(handle);
-				}
+				ret = pkgmgrinfo_pkginfo_usr_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL, uid);
+			} else {
+				ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL);
 			}
-			printf(" = SYSTEM APPS =\n");
-			ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkgmgr_list_cb, NULL);
-			if (ret != PMINFO_R_OK)
-				printf("Failed to get package filter list\n");
-
-			pkgmgrinfo_pkginfo_filter_destroy(handle);
+				if (ret != PMINFO_R_OK)
+					printf("no package filter list\n");
+					pkgmgrinfo_pkginfo_filter_destroy(handle);
 			break;
 		}
 
