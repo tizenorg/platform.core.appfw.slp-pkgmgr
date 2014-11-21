@@ -28,6 +28,7 @@ BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(appcore-efl)
 BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(iniparser)
+BuildRequires:  pkgconfig(notification)
 BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser

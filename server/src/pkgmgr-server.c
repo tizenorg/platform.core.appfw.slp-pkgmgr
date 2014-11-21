@@ -51,6 +51,9 @@
 /* For multi-user support */
 #include <tzplatform_config.h>
 
+/* For notification popups */
+#include <notification.h>
+
 #include "pkgmgr_installer.h"
 #include "comm_pkg_mgr_server.h"
 #include "pkgmgr-server.h"
@@ -552,6 +555,7 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 static
 void response_cb1(void *data, Evas_Object *notify, void *event_info)
 {
+printf("RESPONSE_CB1\n");
 	struct appdata *ad = (struct appdata *)data;
 	int p = 0;
 	int ret = 0;
@@ -599,6 +603,7 @@ void response_cb1(void *data, Evas_Object *notify, void *event_info)
 static
 void response_cb2(void *data, Evas_Object *notify, void *event_info)
 {
+printf("RESPONSE_CB2\n");
 	int p = 0;
 	struct appdata *ad = (struct appdata *)data;
 
@@ -817,6 +822,7 @@ static Eina_Bool __X_rotate_cb(void *data, int type, void *event)
 static
 int create_popup(struct appdata *ad)
 {
+printf("CREATE_POPUP\n");
 	DBG("start of create_popup()\n");
 
 	drawing_popup = 1;
@@ -825,6 +831,14 @@ int create_popup(struct appdata *ad)
 	char *pkgid = NULL;
 	char app_name[MAX_PKG_NAME_LEN] = { '\0' };
 
+	notification_h noti = notification_create(NOTIFICATION_TYPE_NOTI);
+
+	notification_set_text (noti, NOTIFICATION_TEXT_TYPE_TITLE,
+			       "test",
+			       NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+
+
+/*
 	ad->win = elm_win_add(NULL, PACKAGE, ELM_WIN_DIALOG_BASIC);
 	if (!ad->win) {
 		DBG("Failed to create a new window\n");
@@ -844,8 +858,10 @@ int create_popup(struct appdata *ad)
 	int y;
 	unsigned char *prop_data = NULL;
 	int count;
+*/
     int ret;
 
+/*
 #ifdef HAVE_X11
 	ecore_x_window_geometry_get(ecore_x_window_root_get(
 					    ecore_x_window_focus_get()),
@@ -884,7 +900,7 @@ int create_popup(struct appdata *ad)
 		drawing_popup = 0;
 		return -1;
 	}
-
+*/
 	/* Sentence of popup */
 	pkgid = strrchr(ad->item->pkgid, '/') == NULL ?
 	    ad->item->pkgid : strrchr(ad->item->pkgid, '/') + 1;
@@ -897,15 +913,17 @@ int create_popup(struct appdata *ad)
 		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 		if (ret < 0){
 			drawing_popup = 0;
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
+			notification_delete(noti);
+			//evas_object_del(ad->notify);
+			//evas_object_del(ad->win);
 			return -1;
 		}
 		ret = pkgmgrinfo_pkginfo_get_label(handle, &label);
 		if (ret < 0){
 			drawing_popup = 0;
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
+			notification_delete(noti);
+			//evas_object_del(ad->notify);
+			//evas_object_del(ad->win);
 			return -1;
 		}
 
@@ -913,8 +931,9 @@ int create_popup(struct appdata *ad)
 		ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 		if (ret < 0){
 			drawing_popup = 0;
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
+			notification_delete(noti);
+			//evas_object_del(ad->notify);
+			//evas_object_del(ad->win);
 			return -1;
 		}
 
@@ -926,29 +945,48 @@ int create_popup(struct appdata *ad)
 	} else
 		snprintf(sentence, sizeof(sentence) - 1, _("Invalid request"));
 
-	elm_object_part_text_set(ad->notify, "title,text", pkgid);
-	evas_object_size_hint_weight_set(ad->notify, EVAS_HINT_EXPAND,
-					 EVAS_HINT_EXPAND);
+	//elm_object_part_text_set(ad->notify, "title,text", pkgid);
+	//evas_object_size_hint_weight_set(ad->notify, EVAS_HINT_EXPAND,
+	//				 EVAS_HINT_EXPAND);
 
-	evas_object_show(ad->notify);
+	//evas_object_show(ad->notify);
 	/***********************************/
 
-	elm_object_text_set(ad->notify, sentence);
+	//elm_object_text_set(ad->notify, sentence);
 
-	Evas_Object *button1 = NULL;
-	Evas_Object *button2 = NULL;
+	notification_set_text(noti, NOTIFICATION_TEXT_TYPE_CONTENT,
+	                      sentence,
+	                      NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
 
-	button1 = elm_button_add(ad->notify);
-	elm_object_text_set(button1, dgettext("sys_string", "IDS_COM_SK_YES"));
-	elm_object_part_content_set(ad->notify, "button1", button1);
-	evas_object_smart_callback_add(button1, "clicked", response_cb1, ad);
+	bundle *b = bundle_create();
+	bundle_add (b, "buttons", "Yes,No");
 
-	button2 = elm_button_add(ad->notify);
-	elm_object_text_set(button2, dgettext("sys_string", "IDS_COM_SK_NO"));
-	elm_object_part_content_set(ad->notify, "button2", button2);
-	evas_object_smart_callback_add(button2, "clicked", response_cb2, ad);
+	notification_set_execute_option (noti, NOTIFICATION_EXECUTE_TYPE_RESPONDING,
+	                                 NULL, NULL, b);
 
-	evas_object_show(ad->notify);
+	notification_insert (noti, NULL);
+
+	int button;
+	notification_wait_response (noti, 0, &button, NULL);
+	if (button == 1)
+		response_cb1(ad, NULL, NULL);
+	else if (button == 2)
+		response_cb2(ad, NULL, NULL);
+
+	//Evas_Object *button1 = NULL;
+	//Evas_Object *button2 = NULL;
+
+	//button1 = elm_button_add(ad->notify);
+	//elm_object_text_set(button1, dgettext("sys_string", "IDS_COM_SK_YES"));
+	//elm_object_part_content_set(ad->notify, "button1", button1);
+	//evas_object_smart_callback_add(button1, "clicked", response_cb1, ad);
+
+	//button2 = elm_button_add(ad->notify);
+	//elm_object_text_set(button2, dgettext("sys_string", "IDS_COM_SK_NO"));
+	//elm_object_part_content_set(ad->notify, "button2", button2);
+	//evas_object_smart_callback_add(button2, "clicked", response_cb2, ad);
+
+	//evas_object_show(ad->notify);
 
 	DBG("end of create_popup()\n");
 	return 0;
