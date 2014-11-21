@@ -2842,6 +2842,13 @@ API int pkgmgr_pkginfo_is_readonly(pkgmgr_pkginfo_h handle, bool *readonly)
 	return ret;
 }
 
+API int pkgmgr_pkginfo_is_for_all_users(pkgmgr_pkginfo_h handle, bool *for_all_users)
+{
+	int ret = 0;
+	ret = pkgmgrinfo_pkginfo_is_for_all_users(handle, for_all_users);
+	return ret;
+}
+
 API int pkgmgr_pkginfo_is_accessible(pkgmgr_pkginfo_h handle, bool *accessible)
 {
 	int ret = 0;

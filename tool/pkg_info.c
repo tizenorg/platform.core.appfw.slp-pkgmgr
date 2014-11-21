@@ -644,6 +644,7 @@ static int __add_pkg_filter(uid_t uid)
 	int val = -1;
 	int count = 0;
 	pkgmgrinfo_pkginfo_filter_h handle;
+
 	ret = pkgmgrinfo_pkginfo_filter_create(&handle);
 	if (ret > 0) {
 		printf("pkginfo filter handle create failed\n");
