@@ -32,13 +32,8 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <signal.h>
-#include <Elementary.h>
 #include <appcore-efl.h>
-#ifdef HAVE_X11
-#include <Ecore_X.h>
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
-#endif
+#include <Ecore.h>
 #include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
@@ -50,6 +45,9 @@
 
 /* For multi-user support */
 #include <tzplatform_config.h>
+
+/* For notification popups */
+#include <notification.h>
 
 #include "pkgmgr_installer.h"
 #include "comm_pkg_mgr_server.h"
@@ -152,8 +150,6 @@ typedef enum {
 }pkgmgr_svc_app_component;
 
 struct appdata {
-	Evas_Object *win;
-	Evas_Object *notify;
 	pm_dbus_msg *item;
 	OPERATION_TYPE op_type;
 };
@@ -175,8 +171,8 @@ static void __set_backend_free(int position);
 static int __is_backend_mode_quiet(int position);
 static void __set_backend_mode(int position);
 static void __unset_backend_mode(int position);
-static void response_cb1(void *data, Evas_Object *notify, void *event_info);
-static void response_cb2(void *data, Evas_Object *notify, void *event_info);
+static void response_cb1(void *data, void *event_info);
+static void response_cb2(void *data, void *event_info);
 static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
 static int __get_position_from_pkg_type(char *pkgtype);
@@ -550,7 +546,7 @@ static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
 }
 
 static
-void response_cb1(void *data, Evas_Object *notify, void *event_info)
+void response_cb1(void *data, void *event_info)
 {
 	struct appdata *ad = (struct appdata *)data;
 	int p = 0;
@@ -568,8 +564,6 @@ void response_cb1(void *data, Evas_Object *notify, void *event_info)
 		DBG("Fail :  Uninstalling... [%s]\n",
 		    ad->item->pkgid);
 		free(ad->item);
-		evas_object_del(ad->notify);
-		evas_object_del(ad->win);
 		drawing_popup = 0;
 
 		return;
@@ -583,8 +577,6 @@ void response_cb1(void *data, Evas_Object *notify, void *event_info)
 
 	/* Free resource */
 	free(ad->item);
-	evas_object_del(ad->notify);
-	evas_object_del(ad->win);
 	/***************/
 	if (ret == 0)
 		g_idle_add(queue_job, NULL);
@@ -597,7 +589,7 @@ void response_cb1(void *data, Evas_Object *notify, void *event_info)
 }
 
 static
-void response_cb2(void *data, Evas_Object *notify, void *event_info)
+void response_cb2(void *data, void *event_info)
 {
 	int p = 0;
 	struct appdata *ad = (struct appdata *)data;
@@ -638,8 +630,6 @@ void response_cb2(void *data, Evas_Object *notify, void *event_info)
 
 	/* Free resource */
 	free(ad->item);
-	evas_object_del(ad->notify);
-	evas_object_del(ad->win);
 	/***************/
 	/* queue_job should be called for every request that is pushed
 	into queue. In "NO" case, request is not pushed so no need of
@@ -691,129 +681,6 @@ static char *__get_exe_path(const char *pkgid)
 }
 #endif
 
-#ifdef HAVE_X11
-static int __X_rotate_disable_focus(Display *dpy, Window win)
-{
-	XWMHints *hints;
-
-	hints = XAllocWMHints();
-	if (!hints) return -1;
-
-	hints->flags = InputHint | StateHint;
-	hints->input = 0;
-	hints->initial_state = NormalState;
-
-	XSetWMHints(dpy, win, hints);
-	XFree(hints);
-
-	return 0;
-}
-
-static int __X_rotate_get_window_property(Display *dpy, Window win, Atom atom,
-					  Atom type, unsigned int *val,
-					  unsigned int len)
-{
-	unsigned char *prop_ret;
-	Atom type_ret;
-	unsigned long bytes_after;
-	unsigned long  num_ret;
-	int format_ret;
-	unsigned int i;
-	int num;
-
-	prop_ret = NULL;
-	if (XGetWindowProperty(dpy, win, atom, 0, 0x7fffffff, False,
-			       type, &type_ret, &format_ret, &num_ret,
-			       &bytes_after, &prop_ret) != Success)
-		return -1;
-
-	if (type_ret != type || format_ret != 32)
-		num = -1;
-	else if (num_ret == 0 || !prop_ret)
-		num = 0;
-	else {
-		if (num_ret < len)
-			len = num_ret;
-		for (i = 0; i < len; i++) {
-			val[i] = ((unsigned long *)prop_ret)[i];
-		}
-		num = len;
-	}
-
-	if (prop_ret)
-		XFree(prop_ret);
-
-	return num;
-}
-
-static int __X_rotate_get_rotation(Display *dpy)
-{
-	Window active_win;
-	Window root_win;
-	int rotation = -1;
-	int ret;
-
-
-	Atom atom_active_win;
-	Atom atom_win_rotate_angle;
-
-	root_win = XDefaultRootWindow(dpy);
-
-	atom_active_win = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-	ret = __X_rotate_get_window_property(dpy, root_win, atom_active_win,
-					     XA_WINDOW,
-					     (unsigned int *)&active_win, 1);
-	if (ret < 0)
-		return ret;
-
-	atom_win_rotate_angle =
-		XInternAtom(dpy, "_E_ILLUME_ROTATE_ROOT_ANGLE", False);
-	ret = __X_rotate_get_window_property(dpy, root_win,
-					  atom_win_rotate_angle, XA_CARDINAL,
-					  (unsigned int *)&rotation, 1);
-
-	if (ret != -1)
-		return rotation;
-
-	return -1;
-}
-
-static int __X_rotate_do_rotation(Window win)
-{
-	Display *d;
-	int rotation;
-
-	d = XOpenDisplay(NULL);
-
-	rotation = __X_rotate_get_rotation(d);
-
-	if (rotation == -1) {
-		rotation = 0;
-	}
-
-	if (rotation >= 0)
-		elm_win_rotation_with_resize_set(win, rotation);
-
-	XCloseDisplay(d);
-
-	return 0;
-}
-
-static Eina_Bool __X_rotate_cb(void *data, int type, void *event)
-{
-	Window win = (Window)data;
-	Ecore_X_Event_Client_Message *ev = event;
-
-	if (!event)
-		return ECORE_CALLBACK_RENEW;
-
-	if (ev->message_type == ECORE_X_ATOM_E_ILLUME_ROTATE_ROOT_ANGLE)
-		__X_rotate_do_rotation(win);
-
-	return ECORE_CALLBACK_RENEW;
-}
-#endif // HAVE_X11
-
 static
 int create_popup(struct appdata *ad)
 {
@@ -825,67 +692,19 @@ int create_popup(struct appdata *ad)
 	char *pkgid = NULL;
 	char app_name[MAX_PKG_NAME_LEN] = { '\0' };
 
-	ad->win = elm_win_add(NULL, PACKAGE, ELM_WIN_DIALOG_BASIC);
-	if (!ad->win) {
-		DBG("Failed to create a new window\n");
-		drawing_popup = 0;
-		return -1;
-	}
+	notification_h noti = NULL;
+	notification_error_e err = NOTIFICATION_ERROR_NONE;
 
-	elm_win_alpha_set(ad->win, EINA_TRUE);
-	elm_win_title_set(ad->win, "test");
-	elm_win_borderless_set(ad->win, EINA_TRUE);
-	elm_win_raise(ad->win);
-
-	int rotation = 0;
-	int w;
-	int h;
-	int x;
-	int y;
-	unsigned char *prop_data = NULL;
-	int count;
-    int ret;
-
-#ifdef HAVE_X11
-	ecore_x_window_geometry_get(ecore_x_window_root_get(
-					    ecore_x_window_focus_get()),
-				    &x, &y, &w, &h);
-	ret =
-	    ecore_x_window_prop_property_get(ecore_x_window_root_get
-				     (ecore_x_window_focus_get()),
-				     ECORE_X_ATOM_E_ILLUME_ROTATE_ROOT_ANGLE,
-				     ECORE_X_ATOM_CARDINAL,
-				     32, &prop_data, &count);
-	if (ret && prop_data)
-		memcpy(&rotation, prop_data, sizeof(int));
-	if (prop_data)
-		free(prop_data);
-	evas_object_resize(ad->win, w, h);
-	evas_object_move(ad->win, x, y);
-	if (rotation != -1)
-		elm_win_rotation_with_resize_set(ad->win, rotation);
-
-	__X_rotate_disable_focus(ecore_x_display_get(), ad->win);
-
-	ecore_event_handler_add(ECORE_X_EVENT_CLIENT_MESSAGE,
-				__X_rotate_cb, ad->win);
-#endif // HAVE_X11
-
-	double s;
-	s = w / DESKTOP_W;
-	elm_config_scale_set(s);
-
-	evas_object_show(ad->win);
-
-	ad->notify = elm_popup_add(ad->win);
-	if (!ad->notify) {
-		DBG("failed to create notify object\n");
-		evas_object_del(ad->win);
+	noti = notification_create(NOTIFICATION_TYPE_NOTI);
+	if (!noti) {
+		DBG("Failed to create a popup notification\n");
 		drawing_popup = 0;
 		return -1;
 	}
 
 	/* Sentence of popup */
+	int ret;
+
 	pkgid = strrchr(ad->item->pkgid, '/') == NULL ?
 	    ad->item->pkgid : strrchr(ad->item->pkgid, '/') + 1;
 
@@ -897,15 +716,13 @@ int create_popup(struct appdata *ad)
 		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 		if (ret < 0){
 			drawing_popup = 0;
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
+			notification_delete(noti);
 			return -1;
 		}
 		ret = pkgmgrinfo_pkginfo_get_label(handle, &label);
 		if (ret < 0){
 			drawing_popup = 0;
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
+			notification_delete(noti);
 			return -1;
 		}
 
@@ -913,8 +730,7 @@ int create_popup(struct appdata *ad)
 		ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 		if (ret < 0){
 			drawing_popup = 0;
-			evas_object_del(ad->notify);
-			evas_object_del(ad->win);
+			notification_delete(noti);
 			return -1;
 		}
 
@@ -926,29 +742,95 @@ int create_popup(struct appdata *ad)
 	} else
 		snprintf(sentence, sizeof(sentence) - 1, _("Invalid request"));
 
-	elm_object_part_text_set(ad->notify, "title,text", pkgid);
-	evas_object_size_hint_weight_set(ad->notify, EVAS_HINT_EXPAND,
-					 EVAS_HINT_EXPAND);
-
-	evas_object_show(ad->notify);
 	/***********************************/
 
-	elm_object_text_set(ad->notify, sentence);
+	err = notification_set_text(noti,
+	                            NOTIFICATION_TEXT_TYPE_TITLE, pkgid,
+	                            NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification title\n");
+		drawing_popup = 0;
+		notification_delete(noti);
+		return -1;
+	}
 
-	Evas_Object *button1 = NULL;
-	Evas_Object *button2 = NULL;
+	err = notification_set_text(noti,
+	                            NOTIFICATION_TEXT_TYPE_CONTENT, sentence,
+	                            NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification sentence\n");
+		drawing_popup = 0;
+		notification_delete(noti);
+		return -1;
+	}
 
-	button1 = elm_button_add(ad->notify);
-	elm_object_text_set(button1, dgettext("sys_string", "IDS_COM_SK_YES"));
-	elm_object_part_content_set(ad->notify, "button1", button1);
-	evas_object_smart_callback_add(button1, "clicked", response_cb1, ad);
+	/* Details of popup (timeout, buttons...) */
+	bundle *b = NULL;
 
-	button2 = elm_button_add(ad->notify);
-	elm_object_text_set(button2, dgettext("sys_string", "IDS_COM_SK_NO"));
-	elm_object_part_content_set(ad->notify, "button2", button2);
-	evas_object_smart_callback_add(button2, "clicked", response_cb2, ad);
+	b = bundle_create();
+	if (!b) {
+		DBG("Failed to set popup notification details\n");
+		drawing_popup = 0;
+		notification_delete(noti);
+		return -1;
+	}
 
-	evas_object_show(ad->notify);
+	/* TRANSLATION DOES NOT WORK ; TO FIX ?
+	char *button1_text = dgettext("sys_string", "IDS_COM_SK_YES");
+	char *button2_text = dgettext("sys_string", "IDS_COM_SK_NO");
+	*/
+	char *button1_text = "Yes";
+	char *button2_text = "No";
+	char *buttons_text = malloc(strlen(button1_text) +
+	                            strlen(button2_text) + 2);
+	strcpy(buttons_text, button1_text);
+	strcat(buttons_text, ",");
+	strcat(buttons_text, button2_text);
+
+	bundle_add (b, "timeout", "0");
+	bundle_add (b, "noresize", "1");
+	bundle_add (b, "buttons", buttons_text);
+
+	free(buttons_text);
+
+	err = notification_set_execute_option (noti,
+	                                       NOTIFICATION_EXECUTE_TYPE_RESPONDING,
+	                                       NULL, NULL, b);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification as interactive\n");
+		drawing_popup = 0;
+		bundle_free(b);
+		notification_delete(noti);
+		return -1;
+	}
+
+	/* Show the popup */
+	err = notification_insert (noti, NULL);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification sentence\n");
+		drawing_popup = 0;
+		bundle_free(b);
+		notification_delete(noti);
+		return -1;
+	}
+
+	/* Catch user response */
+	int button;
+
+	err = notification_wait_response (noti, 0, &button, NULL);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to wait for user response, defaulting to 'no'\n");
+		button = 2;
+	}
+
+	if (button == 1) {
+		response_cb1(ad, NULL);
+	} else if (button == 2) {
+		response_cb2(ad, NULL);
+	}
+
+	bundle_free(b);
+	notification_delete(noti);
 
 	DBG("end of create_popup()\n");
 	return 0;
