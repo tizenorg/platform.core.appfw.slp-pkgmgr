@@ -43,6 +43,8 @@ static int __entry_exist(char *backend);
 static int __is_pkg_supported(char *pkgtype);
 
 queue_info_map *start = NULL;
+pthread_mutex_t pm_mutex;
+pthread_cond_t pm_cond;
 int entries = 0;
 int slot = 0;
 int num_of_backends = 0;
@@ -243,6 +245,9 @@ int _pm_queue_init()
 	}
 	free(namelist);
 	num_of_backends = slot;
+	pthread_mutex_init(&pm_mutex, NULL);
+	pthread_cond_init(&pm_cond, NULL);
+
 #ifdef DEBUG_INFO
 	/*Debug info*/
 	printf("Queue Info Map\n");
@@ -256,6 +261,7 @@ int _pm_queue_init()
 		ptr++;
 	}
 #endif
+
 	return 0;
 }
 
@@ -269,12 +275,14 @@ int _pm_queue_push(pm_dbus_msg *item)
 	if (ret == 0)
 		return -1;
 
+	pthread_mutex_lock(&pm_mutex);
 	cur = __get_head_from_pkgtype(item);
 	tmp = cur;
 
 	data = _add_node();
 	if (!data) {		/* fail to allocate mem */
 		fprintf(stderr, "Fail to allocate memory\n");
+		pthread_mutex_unlock(&pm_mutex);
 		return -1;
 	}
 
@@ -299,6 +307,8 @@ int _pm_queue_push(pm_dbus_msg *item)
 
 		tmp->next = data;
 	}
+	pthread_mutex_unlock(&pm_mutex);
+	pthread_cond_signal(&pm_cond);
 	return 0;
 }
 
@@ -308,7 +318,7 @@ pm_dbus_msg *_pm_queue_pop(int position)
 	pm_dbus_msg *ret;
 	pm_queue_data *cur = NULL;
 	pm_queue_data *saveptr = NULL;
-	queue_info_map *ptr = start;
+	queue_info_map *ptr = NULL;
 	int i = 0;
 
 	ret = (pm_dbus_msg *) malloc(sizeof(pm_dbus_msg));
@@ -317,7 +327,8 @@ pm_dbus_msg *_pm_queue_pop(int position)
 		return NULL;
 	}
 	memset(ret, 0x00, sizeof(pm_dbus_msg));
-
+	pthread_mutex_lock(&pm_mutex);
+	ptr = start;
 	for(i = 0; i < entries; i++)
 	{
 		if (ptr->queue_slot == position) {
@@ -354,6 +365,7 @@ pm_dbus_msg *_pm_queue_pop(int position)
 		}
 		ptr++;
 	}
+	pthread_mutex_unlock(&pm_mutex);
 	return ret;
 }
 

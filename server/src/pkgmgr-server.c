@@ -175,6 +175,7 @@ static void response_cb1(void *data, void *event_info);
 static void response_cb2(void *data, void *event_info);
 static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
+static void _wait_backend(pid_t pid);
 static int __get_position_from_pkg_type(char *pkgtype);
 static int __is_efl_tpk_app(char *pkgpath);
 static int __xsystem(const char *argv[]);
@@ -864,6 +865,53 @@ gboolean send_fail_signal(void *data)
 	return FALSE;
 }
 
+static void _wait_backend(pid_t pid)
+{
+	int status;
+	pid_t cpid;
+	int i = 0;
+	backend_info *ptr = NULL;
+	ptr = begin;
+	cpid = waitpid(pid, &status, 0);
+	if (cpid != pid)
+		ERR("WaitBackend Faillure %d",cpid);
+	else if (WIFEXITED(status)) {
+			DBG("child NORMAL exit [%d]\n", cpid);
+			for(i = 0; i < num_of_backends; i++)
+			{
+				if (cpid == (ptr + i)->pid) {
+					__set_backend_free(i);
+					__set_backend_mode(i);
+					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
+					DBG("clear the status of [%d] nb %d \n", cpid, i);
+
+					break;
+				}
+				else
+					DBG("PID of registered backend is  [%d]\n", (ptr + i)->pid);
+
+			}
+		}
+	else if (WIFSIGNALED(status)) {
+			DBG("child SIGNALED exit [%d]\n", cpid);
+			/*get the pkgid and pkgtype to send fail signal*/
+			for(i = 0; i < num_of_backends; i++)
+			{
+				if (cpid == (ptr + i)->pid) {
+					__set_backend_free(i);
+					__set_backend_mode(i);
+					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
+					strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
+					strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
+					strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
+					g_idle_add(send_fail_signal, NULL);
+					break;
+				}
+			}
+		}
+}
+
+
 static void sighandler(int signo)
 {
 	int status;
@@ -882,8 +930,13 @@ static void sighandler(int signo)
 					__set_backend_free(i);
 					__set_backend_mode(i);
 					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
+					DBG("clear the status of [%d] nb %d \n", cpid, i);
+
 					break;
 				}
+				else
+					DBG("PID of registered backend is  [%d]\n", (ptr + i)->pid);
+
 			}
 		}
 		else if (WIFSIGNALED(status)) {
@@ -1008,11 +1061,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 				else if (strstr(args, " -d ")
 					 || strstr(args, " '-d' ")) {
 					ad->op_type = OPERATION_UNINSTALL;
-
-					/* 2011-04-01 
-		   Change the mode temporarily. This should be removed */
-					/*strncat(item->args, " -q",
-						strlen(" -q"));*/
 				} else if (strstr(args, " -r ")
 					|| strstr(args, " '-r' "))
 					ad->op_type = OPERATION_REINSTALL;
@@ -1023,7 +1071,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 				if (err != 0) {
 					*ret = COMM_RET_ERROR;
 					DBG("create popup failed\n");
-					/*queue_job(NULL);*/
 					goto err;
 				} else {
 					*ret = COMM_RET_OK;
@@ -1482,16 +1529,18 @@ gboolean queue_job(void *data)
 	backend_info *ptr = NULL;
 	ptr = begin;
 	int x = 0;
+	int pos = 0;
 	/* Pop a job from queue */
 pop:
-	if (!__is_backend_busy(pos % num_of_backends)) {
-		item = _pm_queue_pop(pos % num_of_backends);
-		pos = (pos + 1) % num_of_backends;
-	}
-	else {
-		pos = (pos + 1) % num_of_backends;
-		goto pop;
-	}
+       if (!__is_backend_busy(pos % num_of_backends)) {
+               item = _pm_queue_pop(pos % num_of_backends);
+               pos = (pos + 1) % num_of_backends;
+       }
+       else {
+               pos = (pos + 1) % num_of_backends;
+               goto pop;
+       }
+
 
 	int ret = 0;
 	char *backend_cmd = NULL;
@@ -1500,7 +1549,8 @@ pop:
 	if ( (item == NULL) || (item->req_type == -1) ) {
 		if(item)
 			free(item);
-		goto pop;
+		DBG("the queue is empty");
+		return FALSE;
 	}
 	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
 	__set_recovery_mode(item->pkgid, item->pkg_type);
@@ -1614,6 +1664,7 @@ pop:
 
 		default:	/* parent */
 			DBG("parent \n");
+			_wait_backend((ptr + x)->pid);
 			_save_queue_status(item, "done");
 			break;
 		}
@@ -1778,6 +1829,7 @@ pop:
 
 		default:	/* parent */
 			DBG("parent exit\n");
+			_wait_backend((ptr + x)->pid);
 			_save_queue_status(item, "done");
 			break;
 		}
@@ -1882,6 +1934,7 @@ pop:
 
 		default:	/* parent */
 			DBG("parent \n");
+			_wait_backend((ptr + x)->pid);
 			_save_queue_status(item, "done");
 			break;
 		}
@@ -1986,6 +2039,7 @@ pop:
 
 		default:	/* parent */
 			DBG("parent \n");
+			_wait_backend((ptr + x)->pid);
 			_save_queue_status(item, "done");
 			break;
 		}
@@ -2044,6 +2098,7 @@ pop:
 
 		default:	/* parent */
 			DBG("parent exit\n");
+			_wait_backend((ptr + x)->pid);
 			_save_queue_status(item, "done");
 			break;
 		}
