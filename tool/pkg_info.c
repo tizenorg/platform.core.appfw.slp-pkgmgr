@@ -56,7 +56,7 @@ static int __get_certinfo_from_db(char *pkgid);
 static int __del_certinfo_from_db(char *pkgid);
 static int __get_integer_input_data(void);
 char *__get_string_input_data(void);
-static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data, uid_t uid);
+static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data);
 static int __app_category_list_cb(const char *category_name, void *user_data);
 static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data);
 static int __app_metadata_list_cb(const char *metadata_name, const char *metadata_value, void *user_data);
@@ -644,6 +644,7 @@ static int __add_pkg_filter(uid_t uid)
 	int val = -1;
 	int count = 0;
 	pkgmgrinfo_pkginfo_filter_h handle;
+
 	ret = pkgmgrinfo_pkginfo_filter_create(&handle);
 	if (ret > 0) {
 		printf("pkginfo filter handle create failed\n");
@@ -1750,7 +1751,7 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 }
 
 
-static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data, uid_t uid)
+static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 {
 	char *test_data = "test data";
 	int ret = -1;
@@ -1760,6 +1761,7 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data, uid_t 
 	bool preload = 0;
 	int installed_time = -1;
 
+	pkgmgrinfo_uidinfo_t *uid_info = (pkgmgrinfo_uidinfo_t *) handle;
 	ret = pkgmgr_pkginfo_get_pkgid(handle, &pkgid);
 	if(ret < 0) {
 		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
@@ -1786,14 +1788,14 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data, uid_t 
 	printf("pkg_type [%s]\tpkgid [%s]\tversion [%s]\tpreload [%d]\tinstalled_time [%d]\n", pkg_type,
 	       pkgid, pkg_version, preload, installed_time);
 
-	if (uid != GLOBAL_USER) {
+	if (uid_info->uid != GLOBAL_USER) {
 		printf("**List of Ui-Apps**\n");
-		ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, app_func, (void *)test_data, uid);
+		ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, app_func, (void *)test_data, uid_info->uid);
 		if (ret < 0) {
 			printf("pkgmgr_get_info_app() failed\n");
 		}
 		printf("**List of Svc-Apps**\n");
-		ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, app_func, (void *)test_data, uid);
+		ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, app_func, (void *)test_data, uid_info->uid);
 		if (ret < 0) {
 			printf("pkgmgr_get_info_app() failed\n");
 		}
