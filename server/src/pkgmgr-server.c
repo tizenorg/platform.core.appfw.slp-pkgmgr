@@ -714,7 +714,8 @@ int create_popup(struct appdata *ad)
 	} else if (ad->op_type == OPERATION_UNINSTALL) {
 		char *label = NULL;
 		pkgmgrinfo_pkginfo_h handle;
-		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
+		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, ad->item->uid, &handle); 
+
 		if (ret < 0){
 			drawing_popup = 0;
 			notification_delete(noti);
