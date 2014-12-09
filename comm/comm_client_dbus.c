@@ -280,11 +280,7 @@ comm_client *comm_client_new(void)
 		ERR("dbus connection is not set, even dbus error isn't raised");
 		goto ERROR_CLEANUP;
 	}
-
-	/* TODO: requesting name for dbus is needed? */
-
-	/* Register my connection to g_main_loop (with default context) */
-	dbus_connection_setup_with_g_main(cc->conn, NULL);
+	dbus_connection_set_exit_on_disconnect(cc->conn,FALSE);
 
 	return cc;
 
@@ -301,27 +297,26 @@ int comm_client_free(comm_client *cc)
 {
 	if (!cc)
 		return -1;
-	if (!(cc->conn) || !dbus_connection_get_is_connected(cc->conn)) {
+	if (!(cc->conn))  {
 		ERR("Invalid dbus connection");
 		return -2;
 	}
-
-	/* Cleanup ADT */
-	/* flush remaining buffer: blocking mode */
-	dbus_connection_flush(cc->conn);
 
 	/* Free signal filter if signal callback is exist */
 	if (cc->sig_cb_data) {
 		dbus_connection_remove_filter(cc->conn,
 					      _on_signal_handle_filter,
 					      cc->sig_cb_data);
-		/* TODO: Is it needed to free cc->sig_cb_data here? */
-		/* _free_sig_cb_data(cc->sig_cb_data); */
+		cc->sig_cb_data = NULL;
 	}
-
+	if (dbus_connection_get_is_connected(cc->conn)) {
+	/* Cleanup ADT */
+	/* flush remaining buffer: blocking mode */
+		dbus_connection_flush(cc->conn);
+	}
 	dbus_connection_close(cc->conn);
 	dbus_connection_unref(cc->conn);
-
+	cc->conn = NULL;
 	free(cc);
 
 	return 0;
