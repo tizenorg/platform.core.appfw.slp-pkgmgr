@@ -884,8 +884,13 @@ static void _wait_backend(pid_t pid)
 					__set_backend_free(i);
 					__set_backend_mode(i);
 					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
-					DBG("clear the status of [%d] nb %d \n", cpid, i);
-
+					ERR(" STATUS = %d \n",(WEXITSTATUS (status)));
+					if (WEXITSTATUS (status) != 0) {
+						strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
+						strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
+						strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
+						g_idle_add(send_fail_signal, NULL);
+					}
 					break;
 				}
 				else
@@ -931,8 +936,13 @@ static void sighandler(int signo)
 					__set_backend_free(i);
 					__set_backend_mode(i);
 					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
-					DBG("clear the status of [%d] nb %d \n", cpid, i);
 
+					if (WEXITSTATUS (status) != 0) {
+						strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
+						strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
+						strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
+						g_idle_add(send_fail_signal, NULL);
+					}
 					break;
 				}
 				else
