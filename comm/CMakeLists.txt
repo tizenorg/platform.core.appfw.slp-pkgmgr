@@ -25,7 +25,7 @@ message(STATUS "version/major : ${VERSION} / ${VERSION_MAJOR}")
 ### Get required CFLAGS, LDFLAGS from pkg-config
 
 include(FindPkgConfig)
-pkg_check_modules(comm_pkgs REQUIRED dbus-1 dbus-glib-1 dlog pkgmgr-info)
+pkg_check_modules(comm_pkgs REQUIRED dbus-1 glib-2.0 dbus-glib-1 gio-2.0 gio-unix-2.0 dlog pkgmgr-info)
 
 foreach(flag ${comm_pkgs_CFLAGS})
 	set(comm_pkgs_CFLAGS_str "${comm_pkgs_CFLAGS_str} ${flag}")
@@ -47,6 +47,12 @@ add_custom_target(comm_pkg_mgr_server_dbus_bindings.h
 	COMMAND dbus-binding-tool --prefix=pkgmgr --mode=glib-server
 			${CMAKE_CURRENT_SOURCE_DIR}/comm_pkg_mgr.xml 
 			--output=${CMAKE_CURRENT_BINARY_DIR}/comm_pkg_mgr_server_dbus_bindings.h
+	)
+
+#GDBUS specific code
+add_custom_command(OUTPUT comm_pkg_mgr_client_gdbus_generated.c comm_pkg_mgr_client_gdbus_generated.h
+	COMMAND gdbus-codegen --generate-c-code comm_pkg_mgr_client_gdbus_generated
+			--interface-prefix pkgmgr ${CMAKE_CURRENT_SOURCE_DIR}/comm_pkg_mgr.xml
 	)
 
 # comm_status_broadcast : status broadcast interface (client - backend process)
@@ -79,14 +85,16 @@ set_source_files_properties(comm_status_broadcast_signal_marshaller.c PROPERTIES
 ## client for apps
 # Send request, get status signal
 add_library(pkgmgr_installer_client SHARED
-		comm_client_dbus.c
+		comm_client_gdbus.c
+		comm_pkg_mgr_client_gdbus_generated.c
 		#${CMAKE_CURRENT_BINARY_DIR}/comm_status_broadcast_signal_marshaller.c
 		)
 set_target_properties(pkgmgr_installer_client PROPERTIES SOVERSION ${VERSION_MAJOR})
 set_target_properties(pkgmgr_installer_client PROPERTIES VERSION ${VERSION})
 set_target_properties(pkgmgr_installer_client PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
 target_link_libraries(pkgmgr_installer_client ${comm_pkgs_LDFLAGS})
-add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_dbus_bindings.h comm_status_broadcast_client_dbus_bindings.h comm_status_broadcast_signal_marshaller.h comm_status_broadcast_signal_marshaller.c)
+#add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_dbus_bindings.h comm_status_broadcast_client_dbus_bindings.h comm_status_broadcast_signal_marshaller.h comm_status_broadcast_signal_marshaller.c)
+add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_gdbus_generated.h comm_pkg_mgr_client_gdbus_generated.c)
 
 ## pkg-mgr server for PMS
 # Get request
