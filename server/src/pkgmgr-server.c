@@ -819,7 +819,7 @@ int create_popup(struct appdata *ad)
 	/* Catch user response */
 	int button;
 
-	err = notification_wait_response (noti, 0, &button, NULL);
+	err = notification_wait_response (noti, 10, &button, NULL);
 	if (err != NOTIFICATION_ERROR_NONE) {
 		DBG("Failed to wait for user response, defaulting to 'no'\n");
 		button = 2;
