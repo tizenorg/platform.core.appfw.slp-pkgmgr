@@ -94,12 +94,7 @@ Package Manager client types develpoment package for packaging
 cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURCE1006} %{SOURCE1007} .
 
 %build
-%cmake . \
-%if %{with wayland}
-    -DX11_SUPPORT=Off
-%else
-    -DX11_SUPPORT=On
-%endif
+%cmake .
 
 %__make %{?_smp_mflags}
 

@@ -18,7 +18,7 @@ FOREACH(flag ${pkgs_test_CFLAGS})
 ENDFOREACH(flag)
 
 pkg_check_modules(toolpkgs REQUIRED appcore-efl dlog bundle glib-2.0 pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config)
-FOREACH(flag ${libpkgs_CFLAGS})
+FOREACH(flag ${toolpkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 

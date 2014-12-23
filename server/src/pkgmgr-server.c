@@ -32,7 +32,6 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <signal.h>
-#include <appcore-efl.h>
 #include <Ecore.h>
 #include <Ecore_File.h>
 #include <ail.h>
@@ -92,7 +91,6 @@ FILE *___log = NULL;
 #define NO_MATCHING_FILE 11
 
 static int backend_flag = 0;	/* 0 means that backend process is not running */
-static int drawing_popup = 0;	/* 0 means that pkgmgr-server has no popup now */
 
 typedef struct  {
 	char **env;
@@ -149,19 +147,6 @@ typedef enum {
 	PMSVC_SVC_APP
 }pkgmgr_svc_app_component;
 
-struct appdata {
-	pm_dbus_msg *item;
-	OPERATION_TYPE op_type;
-};
-
-struct pm_desktop_notifier_t {
-	int ifd;
-	Ecore_Fd_Handler *handler;
-};
-typedef struct pm_desktop_notifier_t pm_desktop_notifier;
-
-pm_desktop_notifier desktop_notifier;
-pm_inotify_paths paths[DESKTOP_FILE_DIRS_NUM];
 static int __check_backend_status_for_exit();
 static int __check_queue_status_for_exit();
 static int __check_backend_mode();
@@ -171,9 +156,6 @@ static void __set_backend_free(int position);
 static int __is_backend_mode_quiet(int position);
 static void __set_backend_mode(int position);
 static void __unset_backend_mode(int position);
-static void response_cb1(void *data, void *event_info);
-static void response_cb2(void *data, void *event_info);
-static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
 static void _wait_backend(pid_t pid);
 static int __get_position_from_pkg_type(char *pkgtype);
@@ -183,7 +165,6 @@ static int __xsystem(const char *argv[]);
 gboolean queue_job(void *data);
 gboolean send_fail_signal(void *data);
 gboolean exit_server(void *data);
-static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler);
 
 /* To check whether a particular backend is free/busy*/
 static int __is_backend_busy(int position)
@@ -435,214 +416,6 @@ err:
         return ret;
 }
 
-
-static Eina_Bool __directory_notify(void *data, Ecore_Fd_Handler *fd_handler)
-{
-	ail_db_update = 0;
-	char *buf = NULL;
-	ssize_t read_size = 0;
-	ssize_t len = 0;
-	ssize_t i = 0;
-	int fd = -1;
-
-	fd = ecore_main_fd_handler_fd_get(fd_handler);
-	DBG("ifd [%d]\n", fd);
-
-	if (ioctl(fd, FIONREAD, &read_size) < 0) {
-		DBG("Failed to get byte size\n");
-		ail_db_update = 1;
-		return ECORE_CALLBACK_CANCEL;
-	}
-
-	if (read_size <= 0) {
-		DBG("Buffer is not ready!!!\n");
-		ail_db_update = 1;
-		return ECORE_CALLBACK_RENEW;
-	}
-
-	buf = calloc(1, read_size+1);
-	if (!buf) {
-		DBG("Failed to allocate memory for event handling\n");
-		ail_db_update = 1;
-		return ECORE_CALLBACK_RENEW;
-	}
-
-	len = read(fd, buf, read_size);
-	if (len < 0) {
-		free(buf);
-		/*Stop monitoring about this invalid file descriptor */
-		ail_db_update = 1;
-		return ECORE_CALLBACK_CANCEL;
-	}
-
-	buf[len] = 0;
-
-	while (i < len) {
-		struct inotify_event *event = (struct inotify_event*) &buf[i];
-		char *str_potksed = "potksed.";
-		char *cut;
-		char *package = NULL;
-		ssize_t idx;
-		int nev_name;
-
-		/* 1. check the extension of a file */
-		nev_name = strlen(event->name) - 1;
-		for (idx = 0; nev_name >= 0 && str_potksed[idx]; idx++) {
-			if (event->name[nev_name] != str_potksed[idx]) {
-				break;
-			}
-			nev_name --;
-		}
-
-		if (str_potksed[idx] != '\0') {
-			DBG("This is not a desktop file : %s\n", event->name);
-			i += sizeof(struct inotify_event) + event->len;
-			continue;
-		}
-
-		package = strdup(event->name);
-		if (package == NULL)
-			continue;
-
-		cut = strstr(package, ".desktop");
-		if (cut)
-			*cut = '\0';
-		DBG("Package : %s\n", package);
-
-		/* add & update */
-		if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO) {
-			ail_appinfo_h ai = NULL;
-			ail_error_e ret;
-
-			ret = ail_package_get_appinfo(package, &ai);
-			if (ai)
-				ail_package_destroy_appinfo(ai);
-
-			if (AIL_ERROR_NO_DATA == ret) {
-				if (ail_desktop_add(package) < 0) {
-					DBG("Failed to add a new package (%s)\n", event->name);
-				}
-			} else if (AIL_ERROR_OK == ret) {
-				if (ail_desktop_update(package) < 0) {
-					DBG("Failed to add a new package (%s)\n", event->name);
-				}
-			} else;
-			/* delete */
-		} else if (event->mask & IN_DELETE) {
-			if (ail_desktop_remove(package) < 0)
-				DBG("Failed to remove a package (%s)\n",
-				    event->name);
-		} else {
-			DBG("this event is not dealt with inotify\n");
-		}
-
-		free(package);
-
-		i += sizeof(struct inotify_event) + event->len;
-	}
-
-	free(buf);
-	ail_db_update = 1;
-	return ECORE_CALLBACK_RENEW;
-}
-
-static
-void response_cb1(void *data, void *event_info)
-{
-	struct appdata *ad = (struct appdata *)data;
-	int p = 0;
-	int ret = 0;
-	DBG("start of response_cb()\n");
-
-	/* YES  */
-	DBG("Uninstalling... [%s]\n", ad->item->pkgid);
-
-	if (strlen(ad->item->pkgid) == 0) {
-		DBG("package_name is empty\n");
-	}
-
-	if (strlen(ad->item->pkg_type) == 0) {
-		DBG("Fail :  Uninstalling... [%s]\n",
-		    ad->item->pkgid);
-		free(ad->item);
-		drawing_popup = 0;
-
-		return;
-	}
-
-	DBG("pkg_type = [%s]\n", ad->item->pkg_type);
-
-	ret = _pm_queue_push(ad->item);
-	p = __get_position_from_pkg_type(ad->item->pkg_type);
-	__unset_backend_mode(p);
-
-	/* Free resource */
-	free(ad->item);
-	/***************/
-	if (ret == 0)
-		g_idle_add(queue_job, NULL);
-
-	DBG("end of response_cb()\n");
-
-	drawing_popup = 0;
-
-	return;
-}
-
-static
-void response_cb2(void *data, void *event_info)
-{
-	int p = 0;
-	struct appdata *ad = (struct appdata *)data;
-
-	DBG("start of response_cb()\n");
-
-	/* NO  */
-	pkgmgr_installer *pi;
-	gboolean ret_parse;
-	gint argcp;
-	gchar **argvp;
-	GError *gerr = NULL;
-
-	pi = pkgmgr_installer_new();
-	if (!pi) {
-		DBG("Failure in creating the pkgmgr_installer object");
-		return;
-	}
-
-	ret_parse = g_shell_parse_argv(ad->item->args,
-				       &argcp, &argvp, &gerr);
-	if (FALSE == ret_parse) {
-		DBG("Failed to split args: %s", ad->item->args);
-		DBG("messsage: %s", gerr->message);
-		pkgmgr_installer_free(pi);
-		return;
-	}
-
-	pkgmgr_installer_receive_request(pi, argcp, argvp);
-
-	pkgmgr_installer_send_signal(pi, ad->item->pkg_type,
-				     ad->item->pkgid, "end",
-				     "cancel");
-
-	pkgmgr_installer_free(pi);
-	p = __get_position_from_pkg_type(ad->item->pkg_type);
-        __set_backend_mode(p);
-
-	/* Free resource */
-	free(ad->item);
-	/***************/
-	/* queue_job should be called for every request that is pushed
-	into queue. In "NO" case, request is not pushed so no need of
-	calling queue_job*/
-
-	DBG("end of response_cb()\n");
-
-	drawing_popup = 0;
-
-	return;
-}
-
 #if 0
 static char *__get_exe_path(const char *pkgid)
 {
@@ -681,162 +454,6 @@ static char *__get_exe_path(const char *pkgid)
 	return exe_path;
 }
 #endif
-
-static
-int create_popup(struct appdata *ad)
-{
-	DBG("start of create_popup()\n");
-
-	drawing_popup = 1;
-
-	char sentence[MAX_PKG_ARGS_LEN] = { '\0' };
-	char *pkgid = NULL;
-	char app_name[MAX_PKG_NAME_LEN] = { '\0' };
-
-	notification_h noti = NULL;
-	notification_error_e err = NOTIFICATION_ERROR_NONE;
-
-	noti = notification_create(NOTIFICATION_TYPE_NOTI);
-	if (!noti) {
-		DBG("Failed to create a popup notification\n");
-		drawing_popup = 0;
-		return -1;
-	}
-
-	/* Sentence of popup */
-	int ret;
-
-	pkgid = strrchr(ad->item->pkgid, '/') == NULL ?
-	    ad->item->pkgid : strrchr(ad->item->pkgid, '/') + 1;
-
-	if (ad->op_type == OPERATION_INSTALL) {
-		snprintf(sentence, sizeof(sentence) - 1, _("Install?"));
-	} else if (ad->op_type == OPERATION_UNINSTALL) {
-		char *label = NULL;
-		pkgmgrinfo_pkginfo_h handle;
-		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, ad->item->uid, &handle); 
-
-		if (ret < 0){
-			drawing_popup = 0;
-			notification_delete(noti);
-			return -1;
-		}
-		ret = pkgmgrinfo_pkginfo_get_label(handle, &label);
-		if (ret < 0){
-			drawing_popup = 0;
-			notification_delete(noti);
-			return -1;
-		}
-
-		snprintf(app_name, sizeof(app_name) - 1, label);
-		ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-		if (ret < 0){
-			drawing_popup = 0;
-			notification_delete(noti);
-			return -1;
-		}
-
-		pkgid = app_name;
-
-		snprintf(sentence, sizeof(sentence) - 1, _("Uninstall?"));
-	} else if (ad->op_type == OPERATION_REINSTALL) {
-		snprintf(sentence, sizeof(sentence) - 1, _("Reinstall?"));
-	} else
-		snprintf(sentence, sizeof(sentence) - 1, _("Invalid request"));
-
-	/***********************************/
-
-	err = notification_set_text(noti,
-	                            NOTIFICATION_TEXT_TYPE_TITLE, pkgid,
-	                            NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
-	if (err != NOTIFICATION_ERROR_NONE) {
-		DBG("Failed to set popup notification title\n");
-		drawing_popup = 0;
-		notification_delete(noti);
-		return -1;
-	}
-
-	err = notification_set_text(noti,
-	                            NOTIFICATION_TEXT_TYPE_CONTENT, sentence,
-	                            NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
-	if (err != NOTIFICATION_ERROR_NONE) {
-		DBG("Failed to set popup notification sentence\n");
-		drawing_popup = 0;
-		notification_delete(noti);
-		return -1;
-	}
-
-	/* Details of popup (timeout, buttons...) */
-	bundle *b = NULL;
-
-	b = bundle_create();
-	if (!b) {
-		DBG("Failed to set popup notification details\n");
-		drawing_popup = 0;
-		notification_delete(noti);
-		return -1;
-	}
-
-	/* TRANSLATION DOES NOT WORK ; TO FIX ?
-	char *button1_text = dgettext("sys_string", "IDS_COM_SK_YES");
-	char *button2_text = dgettext("sys_string", "IDS_COM_SK_NO");
-	*/
-	char *button1_text = "Yes";
-	char *button2_text = "No";
-	char *buttons_text = malloc(strlen(button1_text) +
-	                            strlen(button2_text) + 2);
-	strcpy(buttons_text, button1_text);
-	strcat(buttons_text, ",");
-	strcat(buttons_text, button2_text);
-
-	bundle_add (b, "timeout", "0");
-	bundle_add (b, "noresize", "1");
-	bundle_add (b, "buttons", buttons_text);
-
-	free(buttons_text);
-
-	err = notification_set_execute_option (noti,
-	                                       NOTIFICATION_EXECUTE_TYPE_RESPONDING,
-	                                       NULL, NULL, b);
-	if (err != NOTIFICATION_ERROR_NONE) {
-		DBG("Failed to set popup notification as interactive\n");
-		drawing_popup = 0;
-		bundle_free(b);
-		notification_delete(noti);
-		return -1;
-	}
-
-	/* Show the popup */
-	err = notification_insert (noti, NULL);
-	if (err != NOTIFICATION_ERROR_NONE) {
-		DBG("Failed to set popup notification sentence\n");
-		drawing_popup = 0;
-		bundle_free(b);
-		notification_delete(noti);
-		return -1;
-	}
-
-	/* Catch user response */
-	int button;
-
-	err = notification_wait_response (noti, 10, &button, NULL);
-	if (err != NOTIFICATION_ERROR_NONE) {
-		DBG("Failed to wait for user response, defaulting to 'no'\n");
-		button = 2;
-	}
-
-	if (button == 1) {
-		response_cb1(ad, NULL);
-	} else if (button == 2) {
-		response_cb2(ad, NULL);
-	}
-
-	bundle_free(b);
-	notification_delete(noti);
-
-	DBG("end of create_popup()\n");
-	return 0;
-}
 
 gboolean send_fail_signal(void *data)
 {
@@ -983,8 +600,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s]",
 	    req_id, req_type, pkg_type, pkgid, args, cookie);
 
-	struct appdata *ad = (struct appdata *)cb_data;
-
 	pm_dbus_msg *item = calloc(1, sizeof(pm_dbus_msg));
 	memset(item, 0x00, sizeof(pm_dbus_msg));
 
@@ -1028,10 +643,7 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		sig_reg = 1;
 	}
 
-	DBG("req_type=(%d) drawing_popup=(%d) backend_flag=(%d)\n", req_type,
-	    drawing_popup, backend_flag);
-
-	char *quiet = NULL;
+	DBG("req_type=(%d) backend_flag=(%d)\n", req_type, backend_flag);
 
 	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:
@@ -1043,57 +655,15 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 			goto err;
 		}
 
-		/* -q option should be located at the end of command !! */
-		if (((quiet = strstr(args, " -q")) &&
-		     (quiet[strlen(quiet)] == '\0')) ||
-		    ((quiet = strstr(args, " '-q'")) &&
-		     (quiet[strlen(quiet)] == '\0'))) {
-			/* quiet mode */
-			err = _pm_queue_push(item);
-			p = __get_position_from_pkg_type(item->pkg_type);
-			__set_backend_mode(p);
-			/* Free resource */
-			free(item);
-			if (err == 0)
-				g_idle_add(queue_job, NULL);
-			*ret = COMM_RET_OK;
-		} else {
-			/* non quiet mode */
-			p = __get_position_from_pkg_type(item->pkg_type);
-			if (drawing_popup == 0 &&
-				!__is_backend_busy(p) &&
-				__check_backend_mode()) {
-				/* if there is no popup */
-				ad->item = item;
-
-				if (strstr(args, " -i ")
-				    || strstr(args, " '-i' "))
-					ad->op_type = OPERATION_INSTALL;
-				else if (strstr(args, " -d ")
-					 || strstr(args, " '-d' ")) {
-					ad->op_type = OPERATION_UNINSTALL;
-				} else if (strstr(args, " -r ")
-					|| strstr(args, " '-r' "))
-					ad->op_type = OPERATION_REINSTALL;
-				else
-					ad->op_type = OPERATION_MAX;
-
-				err = create_popup(ad);
-				if (err != 0) {
-					*ret = COMM_RET_ERROR;
-					DBG("create popup failed\n");
-					goto err;
-				} else {
-					*ret = COMM_RET_OK;
-				}
-			} else {
-					DBG("info drawing_popup:%d, __is_backend_busy(p):%d, __check_backend_mode():%d\n",
-					drawing_popup, __is_backend_busy(p), __check_backend_mode());
-				/* if popup is already being drawn */
-				*ret = COMM_RET_ERROR;
-				goto err;
-			}
-		}
+		/* quiet mode */
+		err = _pm_queue_push(item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		__set_backend_mode(p);
+		/* Free resource */
+		free(item);
+		if (err == 0)
+			g_idle_add(queue_job, NULL);
+		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_ACTIVATOR:
 		/* In case of activate, there is no popup */
@@ -1145,8 +715,7 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CANCEL:
-		ad->item = item;
-		_pm_queue_delete(ad->item);
+		_pm_queue_delete(item);
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__unset_backend_mode(p);
 		free(item);
@@ -1288,10 +857,9 @@ gboolean exit_server(void *data)
 {
 	DBG("exit_server Start\n");
 	if (__check_backend_status_for_exit() &&
-                __check_queue_status_for_exit() &&
-			drawing_popup == 0) {
+                __check_queue_status_for_exit()) {
                         if (!getenv("PMS_STANDALONE") && ail_db_update) {
-                                ecore_main_loop_quit();
+                                g_main_loop_quit(mainloop);
                                 return FALSE;
                         }
         }
@@ -2197,194 +1765,6 @@ char *_get_backend_cmd(char *type)
 	return NULL;		/* cannot find proper command */
 }
 
-void _pm_desktop_file_monitor_init()
-{
-	int wd = 0;
-	int i = 0;
-	int ret = 0;
-
-	desktop_notifier.ifd = inotify_init();
-	if (desktop_notifier.ifd == -1) {
-		DBG("inotify_init error: %s\n", strerror(errno));
-		return;
-	}
-
-	ret = _pm_desktop_file_dir_search(paths, DESKTOP_FILE_DIRS_NUM);
-	if (ret) {
-		DBG("desktop file dir search failed\n");
-		return;
-	}
-
-	for (i = 0; i < DESKTOP_FILE_DIRS_NUM && paths[i].path; i++) {
-		DBG("Configuration file for desktop file monitoring [%s] is added\n", paths[i].path);
-		if (access(paths[i].path, R_OK) != 0) {
-			ecore_file_mkpath(paths[i].path);
-			if (chmod(paths[i].path, 0777) == -1) {
-				DBG("cannot chmod %s\n", paths[i].path);
-			}
-		}
-
-		wd = inotify_add_watch(desktop_notifier.ifd, paths[i].path,
-				       IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE);
-		if (wd == -1) {
-			DBG("inotify_add_watch error: %s\n", strerror(errno));
-			close(desktop_notifier.ifd);
-			return;
-		}
-
-		paths[i].wd = wd;
-	}
-
-	desktop_notifier.handler =
-	    ecore_main_fd_handler_add(desktop_notifier.ifd, ECORE_FD_READ,
-				      __directory_notify, NULL, NULL, NULL);
-	if (!desktop_notifier.handler) {
-		/* TODO: Handle me.. EXCEPTION!! */
-		DBG("cannot add handler for inotify\n");
-	}
-}
-
-void _pm_desktop_file_monitor_fini()
-{
-	register int i;
-
-	if (desktop_notifier.handler) {
-		ecore_main_fd_handler_del(desktop_notifier.handler);
-		desktop_notifier.handler = NULL;
-	}
-
-	for (i = 0; i < DESKTOP_FILE_DIRS_NUM; i++) {
-		if (paths[i].wd) {
-			if (inotify_rm_watch(desktop_notifier.ifd, paths[i].wd)
-			    < 0) {
-				DBG("inotify remove watch failed\n");
-			}
-			paths[i].wd = 0;
-		}
-	}
-
-	if (desktop_notifier.ifd) {
-		close(desktop_notifier.ifd);
-		desktop_notifier.ifd = -1;
-	}
-}
-
-
-int _pm_desktop_file_dir_search(pm_inotify_paths *paths, int number)
-{
-	char *buf = NULL;
-	char *noti_dir = NULL;
-	char *saveptr = NULL;
-	int len = 0;
-	int i = 0;
-	int fd = -1;
-	int read_size = 0;
-
-	fd = open(DESKTOP_FILE_DIRS, O_RDONLY);
-	if (fd < 0) {
-		DBG("Failed to open %s\n", DESKTOP_FILE_DIRS);
-		return -EFAULT;
-	}
-
-	if (ioctl(fd, FIONREAD, &read_size) < 0) {
-		DBG("Failed to get a size of %s file.\n", DESKTOP_FILE_DIRS);
-		close(fd);
-		return -EFAULT;
-	}
-
-	if (read_size <= 0) {
-		DBG("Buffer is not ready.\n");
-		close(fd);
-		return -EFAULT;
-	}
-
-	buf = calloc(1, read_size+1);
-	if (!buf) {
-		DBG("Failed to allocate heap.\n");
-		close(fd);
-		return -EFAULT;
-	}
-
-	len = read(fd, buf, read_size);
-	if (len < 0) {
-		DBG("Failed to read.\n");
-		close(fd);
-		free(buf);
-		return -EFAULT;
-	}
-
-	buf[len] = 0;
-
-	noti_dir = strtok_r(buf, "\n", &saveptr);
-	if (!noti_dir) {
-		DBG("Failed to strtok for %s.\n", buf);
-		close(fd);
-		free(buf);
-		return -EFAULT;
-	}
-
-	do {
-		char *begin;
-
-		begin = noti_dir;
-		while (*begin != 0) {
-			if (isspace(*begin))
-				begin++;
-			else
-				break;
-		}
-		if (*begin == '#' || *begin == 0) {
-			noti_dir = strtok_r(NULL, "\n", &saveptr);
-			continue;
-		}
-
-		paths[i].path = strdup(begin);
-		noti_dir = strtok_r(NULL, "\n", &saveptr);
-		i++;
-	} while (number > i && noti_dir);
-
-	paths[i].path = NULL;
-	close(fd);
-	free(buf);
-
-	return EXIT_SUCCESS;
-}
-
-/**< Called before main loop */
-int app_create(void *user_data)
-{
-	/* printf("called app_create\n"); */
-	return 0;
-}
-
-/**< Called after main loop */
-int app_terminate(void *user_data)
-{
-	/* printf("called app_terminate\n"); */
-	return 0;
-}
-
-/**< Called when every window goes back */
-int app_pause(void *user_data)
-{
-	/* printf("called app_pause\n"); */
-	return 0;
-}
-
-/**< Called when any window comes on top */
-int app_resume(void *user_data)
-{
-	/* printf("called app_resume\n"); */
-	return 0;
-}
-
-/**< Called at the first idler*/
-int app_reset(bundle *b, void *user_data)
-{
-	/* printf("called app_reset\n"); */
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
 	FILE *fp_status = NULL;
@@ -2404,8 +1784,6 @@ int main(int argc, char *argv[])
     // existing value
     setenv("DISPLAY", ":0", 0);
 #endif
-
-	ecore_init();
 
 	DBG("server start");
 
@@ -2473,36 +1851,23 @@ int main(int argc, char *argv[])
 	memset(ptr, '\0', num_of_backends * sizeof(backend_info));
 	begin = ptr;
 
-	/* init internationalization */
-	r = appcore_set_i18n(PACKAGE, LOCALEDIR);
-	if (r)
-		return -1;
-
 	g_type_init();
 	mainloop = g_main_loop_new(NULL, FALSE);
-	ecore_main_loop_glib_integrate();
-
-	struct appdata ad;
-	struct appcore_ops ops;
-	ops.create = app_create;
-	ops.terminate = app_terminate;
-	ops.pause = app_pause;
-	ops.resume = app_resume;
-	ops.reset = app_reset;
-	ops.data = &ad;
+	if (!mainloop) {
+		ERR("g_main_loop_new failed");
+		return -1;
+	}
 
 	DBG("Main loop is created.");
 
 	PkgMgrObject *pkg_mgr;
 	pkg_mgr = g_object_new(PKG_MGR_TYPE_OBJECT, NULL);
-	pkg_mgr_set_request_callback(pkg_mgr, req_cb, &ad);
+	pkg_mgr_set_request_callback(pkg_mgr, req_cb, NULL);
 	DBG("pkg_mgr object is created, and request callback is registered.");
 
-/*      g_main_loop_run(mainloop); */
-	appcore_efl_main(PACKAGE, &argc, &argv, &ops);
+	g_main_loop_run(mainloop);
 
 	DBG("Quit main loop.");
-/*	_pm_desktop_file_monitor_fini(); */
 	_pm_queue_final();
 	/*Free backend info */
 	if (begin) {

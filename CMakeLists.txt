@@ -24,14 +24,7 @@ set(CMAKE_SKIP_BUILD_RPATH true)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/comm )
 
 INCLUDE(FindPkgConfig)
-
-OPTION(X11_SUPPORT "Enable X support" ON)
-IF(X11_SUPPORT)
-    ADD_DEFINITIONS("-DHAVE_X11")
-    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-x ail ecore-file pkgmgr-parser pkgmgr-info iniparser libtzplatform-config notification)
-ELSE()
-    pkg_check_modules(pkgs REQUIRED security-server dlog elementary evas ecore appcore-efl ecore-wayland ail ecore-file pkgmgr-parser pkgmgr-info iniparser libtzplatform-config notification)
-ENDIF(X11_SUPPORT)
+pkg_check_modules(pkgs REQUIRED security-server dlog ecore ail ecore-file pkgmgr-parser pkgmgr-info iniparser libtzplatform-config notification)
 
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

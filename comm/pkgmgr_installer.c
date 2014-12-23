@@ -54,12 +54,10 @@
 /* ADT */
 struct pkgmgr_installer {
 	int request_type;
-	int quiet;
 	int move_type;
 	char *pkgmgr_info;
 	char *session_id;
 	char *license_path;
-	char *quiet_socket_path;
 	char *optional_data;
 	char *caller_pkgid;
 
@@ -127,7 +125,6 @@ API pkgmgr_installer *pkgmgr_installer_new(void)
 		return ERR_PTR(-ENOMEM);
 
 	pi->request_type = PKGMGR_REQ_INVALID;
-	pi->quiet = 0;
 
 	return pi;
 }
@@ -250,17 +247,6 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->move_type = atoi(optarg);
 			break;
 
-		case 'q':	/* quiet mode */
-			/* if(mode) { r = -EINVAL; goto RET; }
-			   mode = 'q'; */
-			pi->quiet = 1;
-			/* pi->quiet_socket_path = strndup(optarg, MAX_STRLEN);
-			   maximum 255 bytes
-			   return
-			*/
-
-			break;
-
 		case 'p': /* caller pkgid*/
 			if (pi->caller_pkgid)
 				free(pi->caller_pkgid);
@@ -293,8 +279,6 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 
 		}
 	}
-
-	/* quiet mode : get options from socket (to be impelemented) */
 
 	/* normal mode : get options from argv */
 
@@ -334,8 +318,7 @@ API const char *pkgmgr_installer_get_optional_data(pkgmgr_installer *pi)
 
 API int pkgmgr_installer_is_quiet(pkgmgr_installer *pi)
 {
-	CHK_PI_RET(PKGMGR_REQ_INVALID);
-	return pi->quiet;
+	return 1;
 }
 
 API int pkgmgr_installer_get_move_type(pkgmgr_installer *pi)
