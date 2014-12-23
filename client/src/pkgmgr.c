@@ -941,8 +941,6 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 	argv[argcnt++] = strdup("-t");
 	/* argv[6] */
 	argv[argcnt++] = strdup(buf);
-	/* argv[7] */
-	argv[argcnt++] = strdup("-q");
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
@@ -1213,11 +1211,6 @@ API int pkgmgr_client_usr_install(pkgmgr_client * pc, const char *pkg_type,
 		argv[argcnt++] = strdup(caller_pkgid);
 	}
 
-
-/* argv[6] -q option should be located at the end of command !! */
-	if (mode == PM_QUIET)
-		argv[argcnt++] = strdup("-q");
-
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
 		temp = g_shell_quote(argv[i]);
@@ -1346,10 +1339,6 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type, co
 		argv[argcnt++] = strdup("-o");
 		argv[argcnt++] = strdup(optional_file);
 	}
-
-	/* argv[5] -q option should be located at the end of command !! */
-	if (mode == PM_QUIET)
-		argv[argcnt++] = strdup("-q");
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
@@ -1501,9 +1490,6 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		argv[argcnt++] = strdup("-p");
 		argv[argcnt++] = caller_pkgid;
 	}
-	/* argv[5] -q option should be located at the end of command !! */
-	if (mode == PM_QUIET)
-		argv[argcnt++] = strdup("-q");
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
@@ -1624,9 +1610,6 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 	argv[argcnt++] = strdup("-t");
 	/* argv[6] */
 	argv[argcnt++] = strdup(buf);
-	/* argv[7] -q option should be located at the end of command !! */
-	if (mode == PM_QUIET)
-		argv[argcnt++] = strdup("-q");
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
@@ -1779,9 +1762,6 @@ API int pkgmgr_client_move_usr_pkg(pkgmgr_client *pc, const char *pkg_type,
 	argv[argcnt++] = strdup("-t");
 	/* argv[6] */
 	argv[argcnt++] = strdup(buf);
-	/* argv[5] -q option should be located at the end of command !! */
-	if (mode == PM_QUIET)
-		argv[argcnt++] = strdup("-q");
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
@@ -2156,9 +2136,6 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_typ
 	argv[argcnt++] = strdup("-c");
 	/* argv[4] */
 	argv[argcnt++] = strdup(appid);
-	/* argv[5] -q option should be located at the end of command !! */
-	if (mode == PM_QUIET)
-		argv[argcnt++] = strdup("-q");
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
