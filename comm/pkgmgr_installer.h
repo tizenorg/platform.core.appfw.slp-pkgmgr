@@ -21,8 +21,7 @@
  */
 
 
-
-
+#include <sys/types.h>
 
 #ifndef __PKGMGR_INSTALLER_H__
 #define __PKGMGR_INSTALLER_H__
@@ -530,7 +529,7 @@ int pkgmgr_installer_set_cert_value(pkgmgr_instcertinfo_h handle, pkgmgr_instcer
  * @param[in]	handle				pointer to cert info handle
  * @return	0 if success, error code(<0) if fail\n
 */
-int pkgmgr_installer_save_certinfo(const char *pkgid, pkgmgr_instcertinfo_h handle);
+int pkgmgr_installer_save_certinfo(const char *pkgid, pkgmgr_instcertinfo_h handle, uid_t uid);
 
 /**
  * @brief	This API destroys cert info handle freeing all resources.

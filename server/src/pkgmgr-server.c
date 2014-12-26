@@ -29,6 +29,8 @@
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <dirent.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <signal.h>

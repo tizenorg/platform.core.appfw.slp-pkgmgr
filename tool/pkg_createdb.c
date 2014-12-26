@@ -209,6 +209,24 @@
 						"REFERENCES package_app_info(app_id) " \
 						"ON DELETE CASCADE)"
 
+#define QUERY_CREATE_TABLE_CERT "create table if not exists package_cert_index_info " \
+						"(cert_info text not null, " \
+						"cert_id integer, " \
+						"cert_ref_count integer, " \
+						"PRIMARY KEY(cert_id)); " \
+						"create table if not exists package_cert_info " \
+						"(package text not null, " \
+						"author_root_cert integer, " \
+						"author_im_cert integer, " \
+						"author_signer_cert integer, " \
+						"dist_root_cert integer, " \
+						"dist_im_cert integer, " \
+						"dist_signer_cert integer, " \
+						"dist2_root_cert integer, " \
+						"dist2_im_cert integer, " \
+						"dist2_signer_cert integer, " \
+						"PRIMARY KEY(package)) "
+
 #ifdef _E
 #undef _E
 #endif
@@ -315,6 +333,10 @@ int main(int argc, char *argv[])
 			_E(" %s is not removed",PACKAGE_INFO_DB_FILE);
 		if(remove(PACKAGE_INFO_DB_FILE_JOURNAL))
 			_E(" %s is not removed",PACKAGE_INFO_DB_FILE_JOURNAL);
+		if(remove(PKG_CERT_DB_FILE))
+			_E(" %s is not removed",PKG_CERT_DB_FILE);
+		if(remove(PKG_CERT_DB_FILE_JOURNAL))
+			_E(" %s is not removed",PKG_CERT_DB_FILE_JOURNAL);
 	}
 
 	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
@@ -323,7 +345,13 @@ int main(int argc, char *argv[])
 	_D("INITDB : %d", ret);
 
 	ret = __createdb_tables(&parser_db, PACKAGE_INFO_DB_FILE, QUERY_CREATE_TABLE_PARSER);
-	_D("create DB  %s", getUserPkgParserDBPathUID(GLOBAL_USER));
+	_D("create DB  %s", PACKAGE_INFO_DB_FILE);
+	if (ret) {
+		_D("Parser DB creation Failed\n");
+		return -1;
+	}
+	ret = __createdb_tables(&cert_db, PKG_CERT_DB_FILE, QUERY_CREATE_TABLE_CERT);
+	_D("create DB  %s", PKG_CERT_DB_FILE);
 	if (ret) {
 		_D("Parser DB creation Failed\n");
 		return -1;

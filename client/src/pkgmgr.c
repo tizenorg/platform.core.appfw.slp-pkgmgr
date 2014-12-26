@@ -3026,10 +3026,10 @@ API int pkgmgr_pkginfo_create_certinfo(pkgmgr_certinfo_h *handle)
 	return ret;
 }
 
-API int pkgmgr_pkginfo_load_certinfo(const char *pkgid, pkgmgr_certinfo_h handle)
+API int pkgmgr_pkginfo_load_certinfo(const char *pkgid, pkgmgr_certinfo_h handle, uid_t uid)
 {
 	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_load_certinfo(pkgid, handle);
+	ret = pkgmgrinfo_pkginfo_load_certinfo(pkgid, handle, uid);
 	return ret;
 }
 
