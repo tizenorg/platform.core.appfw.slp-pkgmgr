@@ -20,10 +20,6 @@
  *
  */
 
-
-
-
-
 #ifndef __COMM_CONFIG_H__
 #define __COMM_CONFIG_H__
 
@@ -33,42 +29,6 @@
 /* API export macro */
 #ifndef API
 #define API __attribute__ ((visibility("default")))
-#endif
-
-/* Debug message macro */
-#define USE_DLOG 1		/* Use dlog! */
-
-#ifndef NDEBUG
-#ifdef USE_DLOG
-#undef LOG_TAG
-#ifndef LOG_TAG
-#define LOG_TAG "PKGMGR"
-#endif				/* LOG_TAG */
-#include <dlog.h>
-
-#define dbg(fmt, arg...) LOGD(fmt, ##arg)
-#define ERR(fmt, arg...) LOGE(fmt, ##arg)
-
-#else
-#include <stdio.h>
-#include <sys/types.h>
-#include <unistd.h>
-#define dbg(fmtstr, args...) \
-	do {
-		fprintf(stdout, "[%d:comm]%s:%d:%s(): " \
-		fmtstr "\n", getpid(),\
-		basename(__FILE__), __LINE__, __func__, ##args);\
-	} while (0)
-
-#define ERR(fmtstr, args...) \
-	do {
-		fprintf(stderr, "[%d:comm]%s:%d:%s(): " \
-		fmtstr "\n", getpid(),\
-		basename(__FILE__), __LINE__, __func__, ##args);\
-	} while (0)
-#endif				/* USE_DLOG */
-#else
-#define dbg(fmtstr, args...)
 #endif
 
 /* from comm_pkg_mgr.xml

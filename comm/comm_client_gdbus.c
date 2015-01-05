@@ -34,6 +34,7 @@
 #include "comm_config.h"
 #include "comm_client.h"
 #include "comm_pkg_mgr_client_gdbus_generated.h"
+#include "comm_debug.h"
 
 /*******************
  * ADT description
@@ -139,7 +140,7 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE) &&
 		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE) &&
 		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE)) {
-		dbg("Interface name did not match. Drop the message");
+		DBG("Interface name did not match. Drop the message");
 		return;
 	}
 	if (signal_name && strcmp(signal_name, COMM_STATUS_BROADCAST_SIGNAL_STATUS) &&
@@ -148,7 +149,7 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_UPGRADE) &&
 		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_MOVE) &&
 		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS)) {
-		dbg("Signal name did not match. Drop the message");
+		DBG("Signal name did not match. Drop the message");
 		return;
 	}
 	/* Values to be received by signal */
@@ -175,9 +176,9 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 	if (sig_cb_data && sig_cb_data->cb) {
 		sig_cb_data->cb(sig_cb_data->cb_data, req_id,
 				pkg_type, pkgid, key, val);
-		dbg("callback function is end");
+		DBG("callback function is end");
 	}
-	dbg("Handled signal. Exit function");
+	DBG("Handled signal. Exit function");
 	return;
 }
 

@@ -20,10 +20,6 @@
  *
  */
 
-
-
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -248,14 +244,14 @@ int _pm_queue_init()
 
 #ifdef DEBUG_INFO
 	/*Debug info*/
-	printf("Queue Info Map\n");
-	printf("Number of Backends is %d\n", num_of_backends);
-	printf("Number of Entries is %d\n", entries);
-	printf("Backend\tType\tSlot\tHead\n");
+	DBG("Queue Info Map");
+	DBG("Number of Backends is %d", num_of_backends);
+	DBG("Number of Entries is %d", entries);
+	DBG("Backend\tType\tSlot\tHead");
 	ptr = start;
 	for(n = 0; n < entries; n++)
 	{
-		printf("%s\t%s\t%d\t%p\n", ptr->backend, ptr->pkgtype, ptr->queue_slot, ptr->head);
+		DBG("%s\t%s\t%d\t%p", ptr->backend, ptr->pkgtype, ptr->queue_slot, ptr->head);
 		ptr++;
 	}
 #endif
@@ -278,8 +274,8 @@ int _pm_queue_push(pm_dbus_msg *item)
 	tmp = cur;
 
 	data = _add_node();
-	if (!data) {		/* fail to allocate mem */
-		fprintf(stderr, "Fail to allocate memory\n");
+	if (!data) { /* fail to allocate mem */
+		ERR("Fail to allocate memory\n");
 		pthread_mutex_unlock(&pm_mutex);
 		return -1;
 	}
@@ -320,7 +316,7 @@ pm_dbus_msg *_pm_queue_pop(int position)
 
 	ret = (pm_dbus_msg *) malloc(sizeof(pm_dbus_msg));
 	if (!ret) {
-		fprintf(stderr, "Mem alloc error\n");
+		ERR("Mem alloc error");
 		return NULL;
 	}
 	memset(ret, 0x00, sizeof(pm_dbus_msg));
@@ -400,8 +396,8 @@ void _pm_queue_final()
 
 	c = 0;
 	while(c < num_of_backends) {
-		if (!head[c]) {		/* in case of head is NULL */
-			fprintf(stderr, "queue is NULL\n");
+		if (!head[c]) { /* in case of head is NULL */
+			ERR("queue is NULL");
 			c = c + 1;
 			continue;
 		}
@@ -439,15 +435,15 @@ pm_queue_data *_add_node()
 	pm_queue_data *newnode = NULL;
 
 	newnode = (pm_queue_data *) malloc(sizeof(pm_queue_data));
-	if (!newnode) {		/* if NULL */
-		fprintf(stderr, "Mem alloc error\n");
+	if (!newnode) { /* if NULL */
+		ERR("Mem alloc error");
 		return NULL;
 	}
 	memset(newnode, 0x00, sizeof(pm_queue_data));
 
 	newnode->msg = (pm_dbus_msg *) malloc(sizeof(pm_dbus_msg));
 	if (!newnode->msg) {
-		fprintf(stderr, "Mem alloc error\n");
+		ERR("Mem alloc error");
 		free(newnode);
 		return NULL;
 	}
@@ -483,7 +479,7 @@ void _save_queue_status(pm_dbus_msg *item, char *status)
 
 	fp_status = fopen(STATUS_FILE, "w");	/* overwrite always */
 	if (!fp_status) {
-		fprintf(stderr, "Can't open status file:%s\n", STATUS_FILE);
+		ERR("Can't open status file:%s", STATUS_FILE);
 		return;
 	}
 
