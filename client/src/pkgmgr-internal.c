@@ -88,7 +88,7 @@ char *_get_backend_path(const char *input_path)
 		strncpy(pkg_path, input_path, PKG_STRING_LEN_MAX - 1);
 	}
 
-	_LOGD("pkg_path[%s]\n", pkg_path);
+	DBG("pkg_path[%s]\n", pkg_path);
 
 	fp = fopen(PKG_CONF_PATH, "r");
 	if (fp == NULL) {
@@ -103,10 +103,10 @@ char *_get_backend_path(const char *input_path)
 		_app_str_trim(buffer);
 
 		if ((path = strstr(buffer, PKG_BACKEND)) != NULL) {
-			_LOGD("[%s]\n", buffer);
-			_LOGD("[%s]\n", path);
+			DBG("[%s]\n", buffer);
+			DBG("[%s]\n", path);
 			path = path + strlen(PKG_BACKEND);
-			_LOGD("[%s]\n", path);
+			DBG("[%s]\n", path);
 
 			break;
 		}
@@ -134,7 +134,7 @@ char *_get_backend_path(const char *input_path)
 	snprintf(installer_path, PKG_STRING_LEN_MAX - 1, 
 					"%s%s", backend_path, type);
 
-	_LOGD("installer_path[%s]\n", installer_path);
+	DBG("installer_path[%s]\n", installer_path);
 
 	if (access(installer_path, F_OK) != 0)
 		return NULL;
@@ -149,7 +149,7 @@ char *_get_backend_path_with_type(const char *type)
 	char installer_path[PKG_STRING_LEN_MAX] = { '\0', };
 	char backend_path[PKG_STRING_LEN_MAX] = { '\0', };
 
-	_LOGD("type[%s]\n", type);
+	DBG("type[%s]\n", type);
 
 	fp = fopen(PKG_CONF_PATH, "r");
 	if (fp == NULL) {
@@ -164,10 +164,10 @@ char *_get_backend_path_with_type(const char *type)
 		_app_str_trim(buffer);
 
 		if ((path = strstr(buffer, PKG_BACKEND)) != NULL) {
-			_LOGD("[%s]\n", buffer);
-			_LOGD("[%s]\n", path);
+			DBG("[%s]\n", buffer);
+			DBG("[%s]\n", path);
 			path = path + strlen(PKG_BACKEND);
-			_LOGD("[%s]\n", path);
+			DBG("[%s]\n", path);
 
 			break;
 		}
@@ -188,12 +188,12 @@ char *_get_backend_path_with_type(const char *type)
 
 	snprintf(installer_path, PKG_STRING_LEN_MAX - 1, 
 					"%s%s", backend_path, type);
-	_LOGD("installer_path[%s]\n", installer_path);
+	DBG("installer_path[%s]\n", installer_path);
 
 	if (access(installer_path, F_OK) != 0) {
 		char extlist[256] = { '\0', };
 		_get_mime_extension(type, extlist, sizeof(extlist));
-		_LOGD("extlist[%s]\n", extlist);
+		DBG("extlist[%s]\n", extlist);
 
 		if (strlen(extlist) == 0)
 			return NULL;
@@ -352,25 +352,25 @@ pkg_plugin_set *_pkg_plugin_load_library(const char *pkg_type,
 	bool(*on_load) (pkg_plugin_set *plugin);
 
 	if (library_path == NULL) {
-		_LOGE("pkg library path = [%s] \n", library_path);
+		ERR("pkg library path = [%s] \n", library_path);
 		return NULL;
 	}
 
 	if ((library_handle = dlopen(library_path, RTLD_LAZY)) == NULL) {
-		_LOGE("dlopen is failed library_path[%s]\n", library_path);
+		ERR("dlopen is failed library_path[%s]\n", library_path);
 		return NULL;
 	}
 
 	if ((on_load = dlsym(library_handle, "pkg_plugin_on_load")) == NULL || 
 	    dlerror() != NULL) {
-		_LOGE("can not find symbol \n");
+		ERR("can not find symbol \n");
 		dlclose(library_handle);
 		return NULL;
 	}
 
 	for (i = 0; plugin_set_list[i]; i++) {
 		if (strcmp(plugin_set_list[i]->pkg_type, pkg_type) == 0) {
-			_LOGD("already loaded [%s] is done well \n",
+			DBG("already loaded [%s] is done well \n",
 			      library_path);
 			goto END;
 		}
@@ -378,7 +378,7 @@ pkg_plugin_set *_pkg_plugin_load_library(const char *pkg_type,
 
 	plugin_set_list[i] = (pkg_plugin_set *) malloc(sizeof(pkg_plugin_set));
 	if (plugin_set_list[i] == NULL) {
-		_LOGE("malloc of the plugin_set_list element is failed \n");
+		ERR("malloc of the plugin_set_list element is failed \n");
 		dlclose(library_handle);
 		return NULL;
 	}
@@ -386,7 +386,7 @@ pkg_plugin_set *_pkg_plugin_load_library(const char *pkg_type,
 	memset(plugin_set_list[i], 0x0, sizeof(pkg_plugin_set));
 
 	if (on_load(plugin_set_list[i]) != 0) {
-		_LOGE("on_load is failed \n");
+		ERR("on_load is failed \n");
 
 		dlclose(library_handle);
 
@@ -400,7 +400,7 @@ pkg_plugin_set *_pkg_plugin_load_library(const char *pkg_type,
 	strncpy(plugin_set_list[i]->pkg_type, pkg_type,
 		PKG_TYPE_STRING_LEN_MAX - 1);
 
-	_LOGD("load library [%s] is done well \n", library_path);
+	DBG("load library [%s] is done well \n", library_path);
 
  END:
 	return plugin_set_list[i];
@@ -413,13 +413,13 @@ int _pkg_plugin_get_library_path(const char *pkg_type, char *library_path)
 	char buffer[1024] = { 0 };
 
 	if (pkg_type == NULL || library_path == NULL) {
-		_LOGE("invalid argument\n");
+		ERR("invalid argument\n");
 		return -1;
 	}
 
 	fp = fopen(PKG_CONF_PATH, "r");
 	if (fp == NULL) {
-		_LOGE("no matching backendlib\n");
+		ERR("no matching backendlib\n");
 		return PKGMGR_R_ERROR;
 	}
 
@@ -431,10 +431,10 @@ int _pkg_plugin_get_library_path(const char *pkg_type, char *library_path)
 		_app_str_trim(buffer);
 
 		if ((path = strstr(buffer, PKG_BACKENDLIB)) != NULL) {
-			_LOGD("[%s]\n", buffer);
-			_LOGD("[%s]\n", path);
+			DBG("[%s]\n", buffer);
+			DBG("[%s]\n", path);
 			path = path + strlen(PKG_BACKENDLIB);
-			_LOGD("[%s]\n", path);
+			DBG("[%s]\n", path);
 
 			break;
 		}
@@ -446,7 +446,7 @@ int _pkg_plugin_get_library_path(const char *pkg_type, char *library_path)
 		fclose(fp);
 
 	if (path == NULL) {
-		_LOGE("no matching backendlib\n");
+		ERR("no matching backendlib\n");
 		return PKGMGR_R_ERROR;
 	}
 
@@ -462,7 +462,7 @@ pkg_plugin_set *_package_manager_load_library(const char *pkg_type)
 	pkg_plugin_set *plugin_set = NULL;
 
 	if (pkg_type == NULL) {
-		_LOGE("can not load library - pkg_type is null\n");
+		ERR("can not load library - pkg_type is null\n");
 		return NULL;
 	}
 
@@ -470,11 +470,11 @@ pkg_plugin_set *_package_manager_load_library(const char *pkg_type)
 	    PKGMGR_R_OK) {
 		plugin_set = _pkg_plugin_load_library(pkg_type, package_path);
 		if (plugin_set == NULL) {
-			_LOGE("can not load library \n");
+			ERR("can not load library \n");
 			return NULL;
 		}
 	} else {
-		_LOGE("can not find path \n");
+		ERR("can not find path \n");
 		return NULL;
 	}
 

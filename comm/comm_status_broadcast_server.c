@@ -89,7 +89,7 @@ static void __status_broadcast_object_finalize(GObject *self);
 static void
 __status_broadcast_object_class_init(StatusBroadcastObjectClass *klass)
 {
-	dbg("called");
+	DBG("called");
 
 	g_assert(NULL != klass);
 
@@ -108,12 +108,12 @@ __status_broadcast_object_class_init(StatusBroadcastObjectClass *klass)
 	dbus_g_object_type_install_info(STATUS_BROADCAST_TYPE_OBJECT,
 				&dbus_glib_status_broadcast_object_info);
 
-	dbg("done");
+	DBG("done");
 }
 
 static void __status_broadcast_object_init(StatusBroadcastObject *obj)
 {
-	dbg("called");
+	DBG("called");
 	g_assert(NULL != obj);
 
 	GError *err = NULL;
@@ -121,7 +121,7 @@ static void __status_broadcast_object_init(StatusBroadcastObject *obj)
 	/* Establish dbus session  */
 	obj->bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &err);
 	if (NULL == obj->bus) {
-		dbg("Failed to open connection to dbus: %s", err->message);
+		DBG("Failed to open connection to dbus: %s", err->message);
 		return;
 	}
 
@@ -131,7 +131,7 @@ static void __status_broadcast_object_init(StatusBroadcastObject *obj)
 					  DBUS_SERVICE_DBUS,
 					  DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
 	if (NULL == proxy) {
-		dbg("Failed to get a proxy");
+		DBG("Failed to get a proxy");
 		return;
 	}
 	/* Register service name
@@ -151,16 +151,16 @@ static void __status_broadcast_object_init(StatusBroadcastObject *obj)
 		g_printerr("dbus RequestName RPC failed", err->message, TRUE);
 		return;
 	}
-	dbg("RequestName returns: %d", result);
+	DBG("RequestName returns: %d", result);
 
 	dbus_g_connection_register_g_object(obj->bus,
 					    COMM_STATUS_BROADCAST_DBUS_PATH,
 					    G_OBJECT(obj));
-	dbg("Ready to serve requests");
+	DBG("Ready to serve requests");
 
 	g_object_unref(proxy);
 
-	dbg("done");
+	DBG("done");
 }
 
 static void __status_broadcast_object_finalize(GObject *self)
@@ -183,7 +183,7 @@ status_broadcast_emit_status(StatusBroadcastObject *obj,
 	StatusBroadcastObjectClass *klass;
 	klass = STATUS_BROADCAST_OBJECT_GET_CLASS(obj);
 
-	dbg("Send signal: %s/%s/%s", pkg, key, val);
+	DBG("Send signal: %s/%s/%s", pkg, key, val);
 	g_signal_emit(obj, klass->signal, 0, pkg, key, val);
 
 }

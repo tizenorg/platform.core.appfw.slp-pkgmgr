@@ -85,7 +85,7 @@ static void pkg_mgr_object_init(PkgMgrObject *obj);
 static void pkg_mgr_object_class_init(PkgMgrObjectClass *klass);
 static void pkg_mgr_object_init(PkgMgrObject *obj)
 {
-	dbg("called");
+	DBG("called");
 	g_assert(NULL != obj);
 
 	GError *err = NULL;
@@ -93,7 +93,7 @@ static void pkg_mgr_object_init(PkgMgrObject *obj)
 	/* Establish dbus session  */
 	obj->bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &err);
 	if (NULL == obj->bus) {
-		dbg("Failed to open connection to dbus: %s", err->message);
+		DBG("Failed to open connection to dbus: %s", err->message);
 		return;
 	}
 
@@ -103,7 +103,7 @@ static void pkg_mgr_object_init(PkgMgrObject *obj)
 					  DBUS_SERVICE_DBUS,
 					  DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
 	if (NULL == proxy) {
-		dbg("Failed to get a proxy");
+		DBG("Failed to get a proxy");
 		return;
 	}
 	/* Register service name
@@ -122,28 +122,28 @@ static void pkg_mgr_object_init(PkgMgrObject *obj)
 		g_printerr("dbus RequestName RPC failed %s %d", err->message, TRUE);
 		return;
 	}
-	dbg("RequestName returns: %d", result);
+	DBG("RequestName returns: %d", result);
 
 	dbus_g_connection_register_g_object(obj->bus,
 					    COMM_PKG_MGR_DBUS_PATH,
 					    G_OBJECT(obj));
-	dbg("Ready to serve requests");
+	DBG("Ready to serve requests");
 
 	g_object_unref(proxy);
 
-	dbg("done");
+	DBG("done");
 }
 
 static void pkg_mgr_object_class_init(PkgMgrObjectClass *klass)
 {
-	dbg("called");
+	DBG("called");
 
 	g_assert(NULL != klass);
 
 	dbus_g_object_type_install_info(PKG_MGR_TYPE_OBJECT,
 					&dbus_glib_pkgmgr_object_info);
 
-	dbg("done");
+	DBG("done");
 }
 
 static void pkg_mgr_object_finalize(GObject *self)
@@ -167,7 +167,7 @@ pkgmgr_request(PkgMgrObject *obj,
 	       const gchar *args,
 	       const gchar *cookie, uid_t uid, gint *ret, GError *err)
 {
-	dbg("Called");
+	DBG("Called");
 	*ret = COMM_RET_OK;	/* TODO: fix this! */
 
 	/* TODO: Add business logic 
@@ -175,12 +175,12 @@ pkgmgr_request(PkgMgrObject *obj,
 	 * */
 
 	if (obj->req_cb) {
-		dbg("Call request callback(obj, %lu, %s, %d, %s, %s, %s, *ret)",
+		DBG("Call request callback(obj, %lu, %s, %d, %s, %s, %s, *ret)",
 		    uid, req_id, req_type, pkg_type, pkgid, args);
 		obj->req_cb(obj->req_cb_data, uid, req_id, req_type, pkg_type,
 			    pkgid, args, cookie, ret);
 	} else {
-		dbg("Attempt to call request callback,"
+		DBG("Attempt to call request callback,"
 		" but request callback is not set. Do nothing.\n"
 		"Use pkg_mgr_set_request_callback()"
 		" to register your callback.");

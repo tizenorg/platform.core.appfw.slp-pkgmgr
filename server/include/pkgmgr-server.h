@@ -20,25 +20,27 @@
  *
  */
 
-
-
-
-
 #ifndef _PKGMGR_SERVER_H_
 #define _PKGMGR_SERVER_H_
 
-#define CONF_FILE	"/etc/package-manager/server/.config"
-#define DESKTOP_FILE_DIRS	"/usr/share/install-info/desktop.conf"
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif /* LOG_TAG */
+#define LOG_TAG "PKGMGR_SERVER"
+#include "package-manager-debug.h"
 
-#define PKG_BACKEND	"backend:"
-#define PKG_CONF_PATH	"/etc/package-manager/pkg_path.conf"
+#define CONF_FILE "/etc/package-manager/server/.config"
+#define DESKTOP_FILE_DIRS "/usr/share/install-info/desktop.conf"
 
-#define MAX_REQ_ID_LEN		256
-#define MAX_PKG_TYPE_LEN	128
-#define MAX_PKG_NAME_LEN	256
-#define MAX_PKG_ARGS_LEN	4096
-#define MAX_COOKIE_LEN		32
-#define DESKTOP_FILE_DIRS_NUM		1024
+#define PKG_BACKEND "backend:"
+#define PKG_CONF_PATH "/etc/package-manager/pkg_path.conf"
+
+#define MAX_REQ_ID_LEN 256
+#define MAX_PKG_TYPE_LEN 128
+#define MAX_PKG_NAME_LEN 256
+#define MAX_PKG_ARGS_LEN 4096
+#define MAX_COOKIE_LEN	 32
+#define DESKTOP_FILE_DIRS_NUM 1024
 
 typedef struct {
 	char req_id[MAX_REQ_ID_LEN];
@@ -55,7 +57,7 @@ typedef struct backend_info_t {
 	char pkgtype[MAX_PKG_TYPE_LEN];
 	char pkgid[MAX_PKG_NAME_LEN];
 	char args[MAX_PKG_ARGS_LEN];
-}backend_info;
+} backend_info;
 
 struct pm_inotify_paths_t {
 	int wd;
@@ -68,4 +70,4 @@ void _pm_desktop_file_monitor_init();
 void _pm_desktop_file_monitor_fini();
 int _pm_desktop_file_dir_search(pm_inotify_paths *paths, int number);
 
-#endif				/*  _PKGMGR_SERVER_H_ */
+#endif/*  _PKGMGR_SERVER_H_ */

@@ -180,18 +180,18 @@ API DBusConnection *comm_status_broadcast_server_connect(int status_type)
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
 	if (dbus_error_is_set(&err)) {
-		dbg("Connection error: %s", err.message);
+		DBG("Connection error: %s", err.message);
 		dbus_error_free(&err);
 	}
 	dbus_error_free(&err);
 	if (NULL == conn) {
-		dbg("conn is NULL");
+		DBG("conn is NULL");
 		return NULL;
 	}
 
 	dbus_bus_request_name(conn, __get_prifix(status_type), DBUS_NAME_FLAG_ALLOW_REPLACEMENT, &err);
 	if (dbus_error_is_set(&err)) {
-		dbg("Failed to request name: %s", err.message);
+		DBG("Failed to request name: %s", err.message);
 		dbus_error_free(&err);
 		return NULL;
 	}
@@ -220,13 +220,13 @@ comm_status_broadcast_server_send_signal(int comm_status_type, DBusConnection *c
 	int i;
 
 	if (conn == NULL) {
-		dbg("dbus conn is NULL");
+		DBG("dbus conn is NULL");
 		return;
 	}
 
 	msg = dbus_message_new_signal(__get_path(comm_status_type), __get_interface(comm_status_type), __get_name(comm_status_type));
 	if (NULL == msg) {
-		dbg("msg NULL");
+		DBG("msg NULL");
 		return;
 	}
 
@@ -235,13 +235,13 @@ comm_status_broadcast_server_send_signal(int comm_status_type, DBusConnection *c
 	for (i = 0; i < 5; i++) {
 		if (!dbus_message_iter_append_basic
 		    (&args, DBUS_TYPE_STRING, &(values[i]))) {
-			dbg("dbus_message_iter_append_basic failed:"
+			DBG("dbus_message_iter_append_basic failed:"
 			" Out of memory");
 			return;
 		}
 	}
 	if (!dbus_connection_send(conn, msg, &serial)) {
-		dbg("dbus_connection_send failed: Out of memory");
+		DBG("dbus_connection_send failed: Out of memory");
 		return;
 	}
 	dbus_connection_flush(conn);
