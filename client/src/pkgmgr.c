@@ -48,11 +48,6 @@
 #include "comm_client.h"
 #include "comm_status_broadcast_server.h"
 
-#undef LOG_TAG
-#ifndef LOG_TAG
-#define LOG_TAG "PKGMGR"
-#endif				/* LOG_TAG */
-
 #define PKG_TMP_PATH tzplatform_mkpath(TZ_USER_APP, "tmp")
 
 #define BINSH_NAME	"/bin/sh"
@@ -242,7 +237,7 @@ static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
 
 	cb_info = (req_cb_info *) calloc(1, sizeof(req_cb_info));
 	if (cb_info == NULL) {
-		_LOGD("calloc failed");
+		DBG("calloc failed");
 		return;
 	}
 	cb_info->request_id = request_id;
@@ -271,11 +266,11 @@ static req_cb_info *__find_op_cbinfo(pkgmgr_client_t *pc, const char *req_key)
 	tmp = pc->info.request.rhead;
 
 	if (tmp == NULL) {
-		_LOGE("tmp is NULL");
+		ERR("tmp is NULL");
 		return NULL;
 	}
 
-	_LOGD("tmp->req_key %s, req_key %s", tmp->req_key, req_key);
+	DBG("tmp->req_key %s, req_key %s", tmp->req_key, req_key);
 
 	while (tmp) {
 		if (strncmp(tmp->req_key, req_key, strlen(tmp->req_key)) == 0)
@@ -313,7 +308,7 @@ static void __add_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
 
 	cb_info = (listen_cb_info *) calloc(1, sizeof(listen_cb_info));
 	if (cb_info == NULL) {
-		_LOGD("calloc failed");
+		DBG("calloc failed");
 		return;
 	}
 	cb_info->request_id = request_id;
@@ -342,7 +337,7 @@ static void __operation_callback(void *cb_data, const char *req_id,
 	pkgmgr_client_t *pc;
 	req_cb_info *cb_info;
 
-	_LOGD("__operation_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
+	DBG("__operation_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
 	      "key[%s] val[%s]\n", req_id, pkg_type, pkgid, key, val);
 
 	pc = (pkgmgr_client_t *) cb_data;
@@ -352,19 +347,19 @@ static void __operation_callback(void *cb_data, const char *req_id,
 	if (cb_info == NULL)
 		return;
 
-	_LOGD("__find_op_cbinfo");
+	DBG("__find_op_cbinfo");
 
 	/* call callback */
 	if (cb_info->event_cb) {
 		cb_info->event_cb(cb_info->request_id, pkg_type, pkgid, key,
 				  val, NULL, cb_info->data);
-		_LOGD("event_cb is called");
+		DBG("event_cb is called");
 	}
 
 	/*remove callback for last call 
 	   if (strcmp(key, "end") == 0) {
 	   __remove_op_cbinfo(pc, cb_info);
-	   _LOGD("__remove_op_cbinfo");
+	   DBG("__remove_op_cbinfo");
 	   }
 	 */
 
@@ -378,7 +373,7 @@ static void __status_callback(void *cb_data, const char *req_id,
 	pkgmgr_client_t *pc;
 	listen_cb_info *tmp;
 
-	_LOGD("__status_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
+	DBG("__status_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
 	      "key[%s] val[%s]\n", req_id, pkg_type, pkgid, key, val);
 
 	pc = (pkgmgr_client_t *) cb_data;
@@ -409,7 +404,7 @@ static char *__get_req_key(const char *pkg_path)
 	size = strlen(pkg_path) + strlen(timestr) + 2;
 	str_req_key = (char *)calloc(size, sizeof(char));
 	if (str_req_key == NULL) {
-		_LOGD("calloc failed");
+		DBG("calloc failed");
 		return NULL;
 	}
 	snprintf(str_req_key, size, "%s_%s", pkg_path, timestr);
@@ -426,14 +421,14 @@ static char *__get_type_from_path(const char *pkg_path)
 
 	ret = _get_mime_from_file(pkg_path, mimetype, sizeof(mimetype));
 	if (ret) {
-		_LOGE("_get_mime_from_file() failed - error code[%d]\n",
+		ERR("_get_mime_from_file() failed - error code[%d]\n",
 		      ret);
 		return NULL;
 	}
 
 	ret = _get_mime_extension(mimetype, extlist, sizeof(extlist));
 	if (ret) {
-		_LOGE("_get_mime_extension() failed - error code[%d]\n",
+		ERR("_get_mime_extension() failed - error code[%d]\n",
 		      ret);
 		return NULL;
 	}
@@ -598,11 +593,11 @@ static char *__get_caller_pkgid(uid_t uid)
 	char *caller_pkgid = NULL;
 
 	if (__get_appid_bypid(getpid(), caller_appid, sizeof(caller_appid), uid) < 0) {
-		_LOGE("get appid fail!!!\n");
+		ERR("get appid fail!!!\n");
 		return NULL;
 	}
 	if (__get_pkgid_by_appid(caller_appid, &caller_pkgid) < 0){
-		_LOGE("get pkgid fail!!!\n");
+		ERR("get pkgid fail!!!\n");
 		return NULL;
 	}
 
@@ -717,15 +712,15 @@ static int __sync_process(char *req_key)
 
 		vconf_get_int(VCONFKEY_PKGMGR_STATUS, &result);
 		if (result < 0) {
-			_LOGD("file is not generated yet.... wait\n");
+			DBG("file is not generated yet.... wait\n");
 			usleep(10 * 1000);	/* 10ms sleep*/
 		} else {
-			_LOGD("info_file file is generated, result = %d. \n", result);
+			DBG("info_file file is generated, result = %d. \n", result);
 			break;
 		}
 
 		if (check_cnt > 6000) {	/* 60s time over*/
-			_LOGD("wait time over!!\n");
+			DBG("wait time over!!\n");
 			break;
 		}
 	}
@@ -863,7 +858,7 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 
 	/* get cookie from security-server */
 	cookie = __get_cookie_from_security_server();
@@ -872,11 +867,11 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 	/* request */
 	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_GET_SIZE, pkgtype, pkgid, args, cookie, uid, 1);
 	if (ret < 0)
-		_LOGE("comm_client_request failed, ret=%d\n", ret);
+		ERR("comm_client_request failed, ret=%d\n", ret);
 
 	ret = __sync_process(req_key);
 	if (ret < 0)
-		_LOGE("get size failed, ret=%d\n", ret);
+		ERR("get size failed, ret=%d\n", ret);
 
 catch:
 	for (i = 0; i < argcnt; i++)
@@ -959,7 +954,7 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 
 	/* get cookie from security-server */
 	cookie = __get_cookie_from_security_server();
@@ -968,12 +963,12 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 	/* 6. request */
 	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_MOVER, pkgtype, pkgid, args, cookie,uid, 1);
 	if (ret < 0)
-		_LOGE("comm_client_request failed, ret=%d\n", ret);
+		ERR("comm_client_request failed, ret=%d\n", ret);
 
 	snprintf(info_file, PKG_STRING_LEN_MAX, "app2sd_%s", pkgid);
 	ret = __sync_process(info_file);
 	if (ret != 0)
-		_LOGE("move pkg failed, ret=%d\n", ret);
+		ERR("move pkg failed, ret=%d\n", ret);
 
 catch:
 	for (i = 0; i < argcnt; i++)
@@ -1019,7 +1014,7 @@ static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_
 		ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_CHECK_APP, pkgtype, pkgid, NULL, NULL, uid, 1);
 
 	if (ret < 0)
-		_LOGE("request failed, ret=%d\n", ret);
+		ERR("request failed, ret=%d\n", ret);
 
 	pid  = __sync_process(req_key);
 	* (int *) data = pid;
@@ -1104,7 +1099,7 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 		comm_status_broadcast_server_disconnect(mpc->info.broadcast.bc);
 		ret = 0;
 	} else {
-		_LOGE("Invalid client type\n");
+		ERR("Invalid client type\n");
 		return PKGMGR_R_EINVAL;
 	}
 
@@ -1142,7 +1137,7 @@ API int pkgmgr_client_usr_install(pkgmgr_client * pc, const char *pkg_type,
 
 	caller_pkgid = __get_caller_pkgid(uid);
 	if (caller_pkgid == NULL)
-		_LOGE("caller dont have pkgid..\n");
+		ERR("caller dont have pkgid..\n");
 
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL");
@@ -1174,7 +1169,7 @@ API int pkgmgr_client_usr_install(pkgmgr_client * pc, const char *pkg_type,
 	}
 	if (installer_path == NULL) {
 		free(pkgtype);
-		_LOGE("installer_path is NULL\n");
+		ERR("installer_path is NULL\n");
 		return PKGMGR_R_EINVAL;
 	}
 
@@ -1228,7 +1223,7 @@ API int pkgmgr_client_usr_install(pkgmgr_client * pc, const char *pkg_type,
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 
 	/* get cookie from security-server */
 	cookie = __get_cookie_from_security_server();
@@ -1357,7 +1352,7 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type, co
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 
 	/* get cookie from security-server */
 	cookie = __get_cookie_from_security_server();
@@ -1411,7 +1406,7 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 
 	caller_pkgid = __get_caller_pkgid(uid);
 	if (caller_pkgid == NULL)
-		_LOGD("caller dont have pkgid..\n");
+		DBG("caller dont have pkgid..\n");
 
 	/* Check for NULL value of pc */
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client handle is NULL\n");
@@ -1508,7 +1503,7 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 
 	/* get cookie from security-server */
 	cookie = __get_cookie_from_security_server();
@@ -1531,7 +1526,6 @@ catch:
 		free(cookie);
 
 	pkgmgr_pkginfo_destroy_pkginfo(handle);
-	PKGMGR_END();\
 	return ret;
 }
 
@@ -1559,7 +1553,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 
 	/* Check for NULL value of pc */
 	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
+		DBG("package manager client handle is NULL\n");
 		return PKGMGR_R_EINVAL;
 	}
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
@@ -1619,7 +1613,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 
 	args = (char *)calloc(len, sizeof(char));
 	if (args == NULL) {
-		_LOGD("calloc failed");
+		DBG("calloc failed");
 
 		for (i = 0; i < argcnt; i++)
 			free(argv[i]);
@@ -1634,7 +1628,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 	/******************* end of quote ************************/
 
 	/* 6. request install */
@@ -1642,7 +1636,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 				  COMM_REQ_TO_MOVER, pkgtype, pkgid,
 				  args, cookie, uid, 1);
 	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
+		ERR("request failed, ret=%d\n", ret);
 
 		for (i = 0; i < argcnt; i++)
 			free(argv[i]);
@@ -1780,7 +1774,7 @@ API int pkgmgr_client_move_usr_pkg(pkgmgr_client *pc, const char *pkg_type,
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 
 	/* get cookie from security-server */
 	cookie = __get_cookie_from_security_server();
@@ -1803,7 +1797,6 @@ catch:
 		free(cookie);
 
 	pkgmgr_pkginfo_destroy_pkginfo(handle);
-	PKGMGR_END();\
 	return ret;
 }
 
@@ -2009,7 +2002,7 @@ API int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, c
 		strncat(argsr, args, strlen(args));
 	}
 
-	_LOGD("argsr [%s]\n", argsr);
+	DBG("argsr [%s]\n", argsr);
 	/******************* end of quote ************************/
 
 	/* 3. request activate */
@@ -2091,7 +2084,7 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_typ
 
 	/* Check for NULL value of pc */
 	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
+		DBG("package manager client handle is NULL\n");
 		return PKGMGR_R_EINVAL;
 	}
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
@@ -2145,7 +2138,7 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_typ
 
 	args = (char *)calloc(len, sizeof(char));
 	if (args == NULL) {
-		_LOGD("calloc failed");
+		DBG("calloc failed");
 
 		for (i = 0; i < argcnt; i++)
 			free(argv[i]);
@@ -2160,7 +2153,7 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_typ
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 	/******************* end of quote ************************/
 
 	/* 6. request clear */
@@ -2168,7 +2161,7 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_typ
 				  COMM_REQ_TO_CLEARER, pkgtype, appid,
 				  args, cookie, uid, 1);
 	if (ret < 0) {
-		_LOGE("request failed, ret=%d\n", ret);
+		ERR("request failed, ret=%d\n", ret);
 
 		for (i = 0; i < argcnt; i++)
 			free(argv[i]);
@@ -2268,12 +2261,12 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 {
 	/* Check for NULL value of pc */
 	if (pc == NULL) {
-		_LOGD("package manager client handle is NULL\n");
+		DBG("package manager client handle is NULL\n");
 		return PKGMGR_R_EINVAL;
 	}
 	/* Check for valid arguments. NULL parameter causes DBUS to abort */
 	if (pkgid == NULL || pkg_type == NULL || key == NULL || val == NULL) {
-		_LOGD("Argument supplied is NULL\n");
+		DBG("Argument supplied is NULL\n");
 		return PKGMGR_R_EINVAL;
 	}
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
@@ -2336,7 +2329,7 @@ API int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_ty
 
 		ret = __csc_process(custom_info, (char *)data);
 		if (ret < 0)
-			_LOGE("__csc_process fail \n");
+			ERR("__csc_process fail \n");
 		else
 			ret = PKGMGR_R_OK;
 
@@ -2365,14 +2358,14 @@ API int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_ty
 
 		ret = __check_app_process(service_type, pc, pkgid, uid, data);
 		if (ret < 0)
-			_LOGE("__check_app_process fail \n");
+			ERR("__check_app_process fail \n");
 		else
 			ret = PKGMGR_R_OK;
 
 		break;
 
 	default:
-		_LOGE("Wrong Request\n");
+		ERR("Wrong Request\n");
 		ret = -1;
 		break;
 	}
@@ -2438,7 +2431,7 @@ API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr
 		strncat(args, temp, strlen(temp));
 		g_free(temp);
 	}
-	_LOGD("[args] %s [len] %d\n", args, len);
+	DBG("[args] %s [len] %d\n", args, len);
 
 	/* get cookie from security-server */
 	cookie = __get_cookie_from_security_server();
@@ -2447,7 +2440,7 @@ API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr
 	/* request */
 	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_GET_SIZE, pkgtype, pkgid, args, cookie, uid, 1);
 	if (ret < 0)
-		_LOGE("comm_client_request failed, ret=%d\n", ret);
+		ERR("comm_client_request failed, ret=%d\n", ret);
 
 catch:
 	for (i = 0; i < argcnt; i++)
@@ -2524,7 +2517,7 @@ API int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data, uid_t uid)
 
 	iter_data *udata = calloc(1, sizeof(iter_data));
 	if (udata == NULL) {
-		_LOGE("calloc failed");
+		ERR("calloc failed");
 		ail_filter_destroy(filter);
 
 		return PKGMGR_R_ERROR;
@@ -2572,20 +2565,20 @@ API pkgmgr_info *pkgmgr_info_usr_new(const char *pkg_type, const char *pkgid, ui
 
 	pkg_detail_info = calloc(1, sizeof(package_manager_pkg_detail_info_t));
 	if (pkg_detail_info == NULL) {
-		_LOGE("*** Failed to alloc package_handler_info.\n");
+		ERR("*** Failed to alloc package_handler_info.\n");
 		return NULL;
 	}
 
 	plugin_set = _package_manager_load_library(pkgtype);
 	if (plugin_set == NULL) {
-		_LOGE("*** Failed to load library");
+		ERR("*** Failed to load library");
 		free(pkg_detail_info);
 		return NULL;
 	}
 
 	if (plugin_set->pkg_is_installed) {
 		if (plugin_set->pkg_is_installed(pkgid) != 0) {
-			_LOGE("*** Failed to call pkg_is_installed()");
+			ERR("*** Failed to call pkg_is_installed()");
 			free(pkg_detail_info);
 			return NULL;
 		}
@@ -2593,7 +2586,7 @@ API pkgmgr_info *pkgmgr_info_usr_new(const char *pkg_type, const char *pkgid, ui
 		if (plugin_set->get_pkg_detail_info) {
 			if (plugin_set->get_pkg_detail_info(pkgid,
 							    pkg_detail_info) != 0) {
-				_LOGE("*** Failed to call get_pkg_detail_info()");
+				ERR("*** Failed to call get_pkg_detail_info()");
 				free(pkg_detail_info);
 				return NULL;
 			}
@@ -2624,19 +2617,19 @@ API pkgmgr_info *pkgmgr_info_new_from_file(const char *pkg_type,
 	package_manager_pkg_detail_info_t *pkg_detail_info = NULL;
 	char *pkgtype;
 	if (pkg_path == NULL) {
-		_LOGE("pkg_path is NULL\n");
+		ERR("pkg_path is NULL\n");
 		return NULL;
 	}
 
 	if (strlen(pkg_path) > PKG_URL_STRING_LEN_MAX) {
-		_LOGE("length of pkg_path is too long - %d.\n",
+		ERR("length of pkg_path is too long - %d.\n",
 		      strlen(pkg_path));
 		return NULL;
 	}
 
 	pkg_detail_info = calloc(1, sizeof(package_manager_pkg_detail_info_t));
 	if (pkg_detail_info == NULL) {
-		_LOGE("*** Failed to alloc package_handler_info.\n");
+		ERR("*** Failed to alloc package_handler_info.\n");
 		return NULL;
 	}
 

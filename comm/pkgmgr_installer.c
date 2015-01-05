@@ -34,16 +34,11 @@
 #include "comm_config.h"
 #include "comm_socket.h"
 #include "comm_status_broadcast_server.h"
+#include "comm_debug.h"
 #include "error_report.h"
 
 #include <db-util.h>
 #include <pkgmgr-info.h>
-
-
-#undef LOG_TAG
-#ifndef LOG_TAG
-#define LOG_TAG "PKGMGR_INSTALLER"
-#endif				/* LOG_TAG */
 
 #define MAX_STRLEN 1024
 #define MAX_QUERY_LEN	4096
