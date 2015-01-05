@@ -42,10 +42,6 @@
 #include "package-manager.h"
 #include "pkgmgr_installer.h"
 
-#undef LOG_TAG
-#ifndef LOG_TAG
-#define LOG_TAG "PKGMGR"
-#endif				/* LOG_TAG */
 
 #define MAX_PKG_BUF_LEN	1024
 #define BLOCK_SIZE      4096 /*in bytes*/
@@ -64,7 +60,7 @@ long long __get_dir_size(int dfd)
 
     dir = fdopendir(dfd);
     if (dir == NULL) {
-    	_LOGE("Couldn't open the directory\n");
+    	ERR("Couldn't open the directory\n");
     	close(dfd);
         return 0;
     }
@@ -102,7 +98,7 @@ long long __get_pkg_size(char *path)
 	int dfd;
 	struct stat f_stat;
 	if (path == NULL){
-		_LOGE("path is NULL");
+		ERR("path is NULL");
 		return -1;
 	}
 
@@ -110,7 +106,7 @@ long long __get_pkg_size(char *path)
 		if (!S_ISLNK(f_stat.st_mode)) {
 			dir = opendir(path);
 			if (dir == NULL) {
-				_LOGE("Couldn't open the directory %s \n", path);
+				ERR("Couldn't open the directory %s \n", path);
 				return -1;
 			}
 			dfd = dirfd(dir);
@@ -120,13 +116,13 @@ long long __get_pkg_size(char *path)
 				 size = size + f_stat.st_blocks * 512;
 			}
 			else {
-				_LOGE("Couldn't open the directory\n");
+				ERR("Couldn't open the directory\n");
 				return -1;
 			}
 		}
 	}
 	else {
-		_LOGE("Couldn't lstat the directory %s %d \n", path, errno);
+		ERR("Couldn't lstat the directory %s %d \n", path, errno);
 		return -1;
 	}
 
@@ -244,7 +240,7 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 
 	* (int *) user_data += size;
 
-	_LOGD("pkg=[%s], size=[%d]\n", pkgid, size);
+	DBG("pkg=[%s], size=[%d]\n", pkgid, size);
 
 	return 0;
 }
@@ -269,13 +265,13 @@ int main(int argc, char *argv[])
 		ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, &size);
 	}
 	if (ret < 0)
-		_LOGD("_pkg_getsize fail \n");
+		DBG("_pkg_getsize fail \n");
 	else
-		_LOGD("_pkg_getsize success \n");
+		DBG("_pkg_getsize success \n");
 
 	pi = pkgmgr_installer_new();
 	if (!pi) {
-		_LOGD("Failure in creating the pkgmgr_installer object");
+		DBG("Failure in creating the pkgmgr_installer object");
 	} else {
 		pkgmgr_installer_receive_request(pi, argc, argv);
 		snprintf(buf, MAX_PKG_BUF_LEN - 1, "%d", size);

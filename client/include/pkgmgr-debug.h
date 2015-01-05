@@ -22,86 +22,60 @@
 #ifndef __PKGMGR_DEBUG_H__
 #define __PKGMGR_DEBUG_H__
 
-#include <dlog.h>
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif /* LOG_TAG */
+#define LOG_TAG "PKGMGR"
 
-#define _LOGE(fmt, arg...) LOGE(fmt, ##arg)
-#define _LOGD(fmt, arg...) LOGD(fmt, ##arg)
+#include "package-manager-debug.h"
 
-
-#define COLOR_RED 		"\033[0;31m"
-#define COLOR_BLUE 		"\033[0;34m"
-#define COLOR_END		"\033[0;m"
-
-#define PKGMGR_DEBUG(fmt, ...)\
-	do\
-	{\
-		LOGD("[%s(): %d]" fmt, __FUNCTION__, __LINE__,##__VA_ARGS__);\
+#define ret_if(expr) \
+	do { \
+		if (expr) { \
+			ERR("(%s) ", #expr); \
+			return; \
+		} \
 	} while (0)
 
-#define PKGMGR_DEBUG_ERR(fmt, ...)\
-	do\
-	{\
-		LOGE(COLOR_RED"[%s(): %d]" fmt COLOR_END, __FUNCTION__, __LINE__,##__VA_ARGS__);\
-	}while (0)
-
-#define PKGMGR_BEGIN() \
-	do\
-    {\
-		LOGD(COLOR_BLUE"[%s(): %d] BEGIN >>>>"COLOR_END, __FUNCTION__ ,__LINE__);\
-    } while( 0 )
-
-#define PKGMGR_END() \
-	do\
-    {\
-		LOGD(COLOR_BLUE"[%s(): %d] END <<<<"COLOR_END, __FUNCTION__,__LINE__ );\
-    } \
-    while( 0 )
-
-#define ret_if(expr) do { \
-	if (expr) { \
-		PKGMGR_DEBUG_ERR("(%s) ", #expr); \
-		PKGMGR_END();\
-		return; \
-	} \
-} while (0)
-
-#define retm_if(expr, fmt, arg...) do { \
-	 if (expr) { \
-		 PKGMGR_DEBUG_ERR("(%s) "fmt, #expr, ##arg); \
-		 PKGMGR_END();\
-		 return; \
-	 } \
- } while (0)
-
-#define retv_if(expr, val) do { \
+#define retm_if(expr, fmt, arg...) \
+	do { \
 		if (expr) { \
-			PKGMGR_DEBUG_ERR("(%s) ", #expr); \
-			PKGMGR_END();\
+			ERR("(%s) "fmt, #expr, ##arg); \
+			return; \
+		} \
+	} while (0)
+
+#define retv_if(expr, val) \
+	do { \
+		if (expr) { \
+			ERR("(%s) ", #expr); \
 			return (val); \
 		} \
 	} while (0)
 
-#define retvm_if(expr, val, fmt, arg...) do { \
-	if (expr) { \
-		PKGMGR_DEBUG_ERR("(%s) "fmt, #expr, ##arg); \
-		PKGMGR_END();\
-		return (val); \
-	} \
-} while (0)
+#define retvm_if(expr, val, fmt, arg...) \
+	do { \
+		if (expr) { \
+			ERR("(%s) "fmt, #expr, ##arg); \
+			return (val); \
+		} \
+	} while (0)
 
-#define trym_if(expr, fmt, arg...) do { \
-			 if (expr) { \
-				 PKGMGR_DEBUG_ERR("(%s) "fmt, #expr, ##arg); \
-				 goto catch; \
-			 } \
-		 } while (0)
+#define trym_if(expr, fmt, arg...) \
+	do { \
+		if (expr) { \
+			ERR("(%s) "fmt, #expr, ##arg); \
+			goto catch; \
+		} \
+	} while (0)
 
-#define tryvm_if(expr, val, fmt, arg...) do { \
-			 if (expr) { \
-				 PKGMGR_DEBUG_ERR("(%s) "fmt, #expr, ##arg); \
-				 val; \
-				 goto catch; \
-			 } \
-		 } while (0)
+#define tryvm_if(expr, val, fmt, arg...) \
+	do { \
+		if (expr) { \
+			ERR("(%s) "fmt, #expr, ##arg); \
+			val; \
+			goto catch; \
+		} \
+	} while (0)
 
 #endif  /* __PKGMGR_DEBUG_H__ */

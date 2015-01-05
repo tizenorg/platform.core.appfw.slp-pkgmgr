@@ -29,6 +29,7 @@
 #include "comm_pkg_mgr_client_dbus_bindings.h"
 #include "comm_status_broadcast_client_dbus_bindings.h"
 #include "comm_status_broadcast_signal_marshaller.h"
+#include "comm_debug.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -104,23 +105,23 @@ status_signal_handler(DBusGProxy *proxy,
 {
 	comm_client *cc = (comm_client *) data;
 
-	dbg("Got signal: %s/%s/%s/%s/%s", req_id, pkg_type,
+	DBG("Got signal: %s/%s/%s/%s/%s", req_id, pkg_type,
 				 pkgid, key, val);
 	if (cc->signal_cb) {
 		if (cc->pkgid && pkgid &&
 			0 == strncmp(cc->pkgid, pkgid,
 				     strlen(cc->pkgid))) {
-			dbg("Run signal handler");
+			DBG("Run signal handler");
 			cc->signal_cb(cc->signal_cb_data, req_id, pkg_type,
 				      pkgid, key, val);
 		} else {
-			dbg("pkgid is different. (My pkgid:%s)"
+			DBG("pkgid is different. (My pkgid:%s)"
 			" Though pass signal to user callback.", cc->pkgid);
 			cc->signal_cb(cc->signal_cb_data, req_id, pkg_type,
 				      pkgid, key, val);
 		}
 	} else {
-		dbg("No signal handler is set. Do nothing.");
+		DBG("No signal handler is set. Do nothing.");
 	}
 }
 
@@ -132,7 +133,7 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 	gboolean r;
 	gint ret = COMM_RET_ERROR;
 
-	dbg("got request:%s/%d/%s/%s/%s/%s\n", req_id, req_type, pkg_type,
+	DBG("got request:%s/%d/%s/%s/%s/%s\n", req_id, req_type, pkg_type,
 	    pkgid, args, cookie);
 
 	if (!pkgid)
@@ -152,16 +153,16 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 		}
 		return ret;
 	}
-	dbg("request sent");
+	DBG("request sent");
 
 	if (cc->pkgid) {
-		dbg("freeing pkgid");
+		DBG("freeing pkgid");
 		free(cc->pkgid);
-		dbg("freed pkgid");
+		DBG("freed pkgid");
 	}
 	cc->pkgid = strdup(pkgid);
 
-	dbg("ret:%d", ret);
+	DBG("ret:%d", ret);
 
 	return ret;
 }
@@ -171,7 +172,7 @@ comm_client_set_status_callback(comm_client *cc, status_cb cb, void *cb_data)
 {
 	/* set callback */
 	if (!cc->signal_proxy) {
-		dbg("signal_proxy is NULL. Try to create a proxy for signal.");
+		DBG("signal_proxy is NULL. Try to create a proxy for signal.");
 		cc->signal_proxy = dbus_g_proxy_new_for_name(cc->conn,
 				     COMM_STATUS_BROADCAST_DBUS_SERVICE_PREFIX,
 				     COMM_STATUS_BROADCAST_DBUS_PATH,
@@ -188,7 +189,7 @@ comm_client_set_status_callback(comm_client *cc, status_cb cb, void *cb_data)
 	cc->signal_cb = cb;
 	cc->signal_cb_data = cb_data;
 
-	dbg("Register signal-type marshaller.");
+	DBG("Register signal-type marshaller.");
 	dbus_g_object_register_marshaller(
 	g_cclosure_user_marshal_VOID__STRING_STRING_STRING_STRING_STRING,
 		/* marshaller */
@@ -196,7 +197,7 @@ comm_client_set_status_callback(comm_client *cc, status_cb cb, void *cb_data)
 	G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
 	G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);	/* termination flag */
 
-	dbg("Add signal to proxy.");
+	DBG("Add signal to proxy.");
 	dbus_g_proxy_add_signal(cc->signal_proxy,
 				COMM_STATUS_BROADCAST_SIGNAL_STATUS,
 				G_TYPE_STRING,
@@ -204,7 +205,7 @@ comm_client_set_status_callback(comm_client *cc, status_cb cb, void *cb_data)
 				G_TYPE_STRING,
 				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
 
-	dbg("Connect signal to proxy.");
+	DBG("Connect signal to proxy.");
 
 	dbus_g_proxy_connect_signal(cc->signal_proxy,
 				    COMM_STATUS_BROADCAST_SIGNAL_STATUS,

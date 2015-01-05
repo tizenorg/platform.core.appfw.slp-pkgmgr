@@ -56,40 +56,7 @@
 #include "pm-queue.h"
 #include "comm_config.h"
 
-/* debug output */
-#if defined(NDEBUG)
-#define DBG(fmt, args...)
-#define __SET_DBG_OUTPUT(fp)
-#elif defined(PRINT)
-#include <stdio.h>
-FILE *___log = NULL;
-#define DBG(fmt, args...) \
-	{if (!___log) ___log = stderr; \
-	 fprintf(___log, "[DBG:PMS]%s:%d:%s(): " fmt "\n",\
-	 basename(__FILE__), __LINE__, __func__, ##args); fflush(___log); }
-#define __SET_DBG_OUTPUT(fp) \
-	(___log = fp)
-#else
-#include <dlog.h>
-#undef LOG_TAG
-#define LOG_TAG "PKGMGR_SERVER"
-
-#define DBGE(fmt, arg...) LOGE(fmt,##arg)
-#define DBG(fmt, arg...) LOGD(fmt,##arg)
-#endif
-
-#if !defined(PACKAGE)
-#define PACKAGE "package-manager"
-#endif
-
-#if !defined(LOCALEDIR)
-#define LOCALEDIR "/usr/share/locale"
-#endif
-
 #define PACKAGE_RECOVERY_DIR tzplatform_mkpath(TZ_SYS_RW_PACKAGES, ".recovery/pkgmgr")
-
-#define DESKTOP_W   720.0
-
 #define NO_MATCHING_FILE 11
 
 static int backend_flag = 0;	/* 0 means that backend process is not running */
@@ -535,27 +502,27 @@ static char *__get_exe_path(const char *pkgid)
 
 	ret = ail_package_get_appinfo(pkgid, &handle);
 	if (ret != AIL_ERROR_OK) {
-		DBGE("ail_package_get_appinfo() failed");
+		ERR("ail_package_get_appinfo() failed");
 		return NULL;
 	}
 
 	ret = ail_appinfo_get_str(handle, AIL_PROP_X_SLP_EXE_PATH, &str);
 	if (ret != AIL_ERROR_OK) {
-		DBGE("ail_appinfo_get_str() failed");
+		ERR("ail_appinfo_get_str() failed");
 		ail_package_destroy_appinfo(handle);
 		return NULL;
 	}
 
 	exe_path = strdup(str);
 	if (exe_path == NULL) {
-		DBGE("strdup() failed");
+		ERR("strdup() failed");
 		ail_package_destroy_appinfo(handle);
 		return NULL;
 	}
 
 	ret = ail_package_destroy_appinfo(handle);
 	if (ret != AIL_ERROR_OK) {
-		DBGE("ail_package_destroy_appinfo() failed");
+		ERR("ail_package_destroy_appinfo() failed");
 		free(exe_path);
 		return NULL;
 	}
@@ -1623,7 +1590,7 @@ pop:
 						DBG("activated label %s", label);
 						break;
 					default: /* '?' */
-						DBGE("Incorrect argument %s\n", item->args);
+						ERR("Incorrect argument %s\n", item->args);
 						exit(1);
 					}
 				}
@@ -1661,14 +1628,14 @@ pop:
 					exit(1);
 				}
 			} else { /* in case of package */
-				DBGE("(De)activate PKG[pkgid=%s, val=%d]", item->pkgid, val);
+				ERR("(De)activate PKG[pkgid=%s, val=%d]", item->pkgid, val);
 				char *manifest = NULL;
 				manifest = pkgmgr_parser_get_manifest_file(item->pkgid);
 				if (manifest == NULL) {
-					DBGE("Failed to fetch package manifest file\n");
+					ERR("Failed to fetch package manifest file\n");
 					exit(1);
 				}
-				DBGE("manifest : %s\n", manifest);
+				ERR("manifest : %s\n", manifest);
 
 				if (val) {
 					pkgmgrinfo_pkginfo_h handle;
@@ -1676,12 +1643,12 @@ pop:
 					if (ret < 0) {
 						ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest,item->uid, NULL);
 						if (ret < 0) {
-							DBGE("insert in db failed\n");
+							ERR("insert in db failed\n");
 						}
 
 						ret = ail_usr_desktop_add(item->pkgid, item->uid);
 						if (ret != AIL_ERROR_OK) {
-							DBGE("fail to ail_desktop_add");
+							ERR("fail to ail_desktop_add");
 						}
 					} else {
 						pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
@@ -1706,7 +1673,7 @@ pop:
 					ret = pkgmgr_parser_parse_usr_manifest_for_uninstallation(manifest, item->uid, NULL);
 
 				if (ret < 0) {
-					DBGE("insert in db failed\n");
+					ERR("insert in db failed\n");
 					exit(1);
 				}
 			}
