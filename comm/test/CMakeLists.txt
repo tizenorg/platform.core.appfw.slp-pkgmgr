@@ -19,13 +19,6 @@ add_executable(test_comm_client
 target_link_libraries(test_comm_client pkgmgr_installer_client)
 target_link_libraries(test_comm_client ${test_pkgs_LDFLAGS})
 
-
-add_executable(test_comm_socket
-		test_comm_socket.c)
-target_link_libraries(test_comm_socket comm_socket ${test_pkgs_LDFLAGS})
-set_target_properties(test_comm_socket PROPERTIES SKIP_BUILD_RPATH true)
-
-
 add_executable(test_pkgmgr_installer
 		test_pkgmgr_installer.c)
 target_link_libraries(test_pkgmgr_installer pkgmgr_installer pkgmgr_installer_client ${test_pkgs_LDFLAGS})

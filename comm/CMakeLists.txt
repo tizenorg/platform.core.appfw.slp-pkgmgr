@@ -118,12 +118,6 @@ target_link_libraries(pkgmgr_installer_status_broadcast_server ${comm_pkgs_LDFLA
 add_dependencies(pkgmgr_installer_status_broadcast_server comm_status_broadcast_server_dbus_bindings.h)
 
 
-## comm_socket
-# Internal lib
-add_library(comm_socket STATIC comm_socket.c)
-set_target_properties(comm_socket PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
-#target_link_libraries(comm_socket)
-
 ## pkgmgr_installer object (by youmin.ha)
 # This library is for installer backend
 add_library(pkgmgr_installer SHARED pkgmgr_installer.c)
