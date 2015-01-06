@@ -2087,16 +2087,6 @@ int main(int argc, char *argv[])
 	backend_info *ptr = NULL;
 	int r;
 
-#ifdef HAVE_X11
-    // If DISPLAY is not set then let it default to :0
-    // so we can remove hacks in the service file
-    // to set the env variable (which will blow up wayland)
-    //
-    // Passing overwrite as zero so it will not clobber an
-    // existing value
-    setenv("DISPLAY", ":0", 0);
-#endif
-
 	DBG("server start");
 
 	if (argv[1]) {
