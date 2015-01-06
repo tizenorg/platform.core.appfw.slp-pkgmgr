@@ -1,0 +1,37 @@
+# package manager client library
+
+SET(SRCS src/pkgmgr-internal.c src/pkgmgr.c src/pkgmgr-dbinfo.c)
+
+pkg_check_modules(CLIENT_DEPS REQUIRED
+		dbus-glib-1
+		dlog
+		ail
+		pkgmgr-parser
+		pkgmgr-info
+		iniparser
+		libtzplatform-config
+		security-server)
+FOREACH(CLIENT_FLAGS ${CLIENT_DEPS_CFLAGS})
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CLIENT_FLAGS}")
+ENDFOREACH(CLIENT_FLAGS)
+
+INCLUDE_DIRECTORIES(include)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+
+ADD_LIBRARY(${PKGMGR_CLIENT} SHARED ${SRCS})
+SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES SOVERSION ${VERSION_MAJOR})
+SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES VERSION ${VERSION})
+TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT}
+		pkgmgr_installer_client
+		pkgmgr_installer_status_broadcast_server pkgmgr-info
+		${CLIENT_DEPS_LDFLAGS})
+
+CONFIGURE_FILE(pkgmgr.pc.in pkgmgr.pc @ONLY)
+CONFIGURE_FILE(pkg_path.conf.in pkg_path.conf @ONLY)
+
+INSTALL(TARGETS ${PKGMGR_CLIENT} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/package-manager.h DESTINATION include)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/pkgmgr-dbinfo.h DESTINATION include)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkg_path.conf DESTINATION ${SYSCONFDIR}/package-manager/)

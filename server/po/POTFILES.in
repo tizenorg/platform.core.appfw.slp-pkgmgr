@@ -1,2 +1,2 @@
 # List of source files containing translatable strings.
-server/src/pkgmgr-server.c
+src/pkgmgr-server.c
