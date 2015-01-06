@@ -45,6 +45,7 @@ const struct option long_opts[] = {
 	{ "reinstall", 0, NULL, 'r' },
 	{ "caller-pkgid", 1, NULL, 'p' },
 	{ "smack", 1, NULL, 's' },
+	{ "quiet", 1, NULL, 'q' },
 	{ 0, 0, 0, 0 }	/* sentinel */
 };
 

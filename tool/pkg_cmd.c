@@ -83,6 +83,7 @@ const struct option long_options[] = {
 	{"getsize-type", 1, NULL, 'T'},
 	{"csc", 1, NULL, 'S'},
 	{"global", 0, NULL, 'G'},
+	{"quiet", 0, NULL, 'q'},
 	{"help", 0, NULL, 'h'},
 	{0, 0, 0, 0}		/* sentinel */
 };
@@ -113,6 +114,7 @@ struct pm_tool_args_t {
 	char pkgid[PKG_NAME_STRING_LEN_MAX];
 	char des_path[PKG_NAME_STRING_LEN_MAX];
 	char label[PKG_NAME_STRING_LEN_MAX];
+	int quiet;
 	int global;
 	int type;
 	int result;
@@ -305,17 +307,18 @@ static void __print_usage()
 	printf("-n, --package-name	provide package name\n");
 	printf("-t, --package-type	provide package type\n");
 	printf("-T, --move-type	provide move type [0 : move to internal /1: move to external]\n");
+	printf("-q, --quiet		quiet mode operation\n");
 	printf("-G, --global	Global Mode [Warning user should be privilegied to use this mode] \n");
 	printf("-h, --help	.	print this help\n\n");
 
-	printf("Usage: pkgcmd [options]\n");
-	printf("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-G)\n");
-	printf("pkgcmd -u -n <pkgid> (-G)\n");
+	printf("Usage: pkgcmd [options] (--quiet)\n");
+	printf("pkgcmd -i -t <pkg type> (-d <descriptor path>) -p <pkg path> (-G) (-q)\n");
+	printf("pkgcmd -u -n <pkgid> (-G) (-q)\n");
 	printf("pkgcmd -r -t <pkg type> -n <pkgid> (-G) \n");
 	printf("pkgcmd -l (-t <pkg type>) \n");
-	printf("pkgcmd -s -t <pkg type> -p <pkg path>\n");
-	printf("pkgcmd -s -t <pkg type> -n <pkg name>\n");
-	printf("pkgcmd -m -t <pkg type> -T <move type> -n <pkg name>\n\n");
+	printf("pkgcmd -s -t <pkg type> -p <pkg path> (-q)\n");
+	printf("pkgcmd -s -t <pkg type> -n <pkg name> (-q)\n");
+	printf("pkgcmd -m -t <pkg type> -T <move type> -n <pkg name> (-q)\n\n");
 	printf("pkgcmd -g -T <getsize type> -n <pkgid> \n");
 	printf("pkgcmd -C -n <pkgid> \n");
 	printf("pkgcmd -k -n <pkgid> \n");
@@ -511,7 +514,7 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data, ui
 static int __process_request(uid_t uid)
 {
 	int ret = -1;
-	int mode = PM_QUIET;
+	int mode = PM_DEFAULT;
 	pkgmgr_client *pc = NULL;
 	char buf[1024] = {'\0'};
 	int pid = -1;
@@ -531,6 +534,10 @@ static int __process_request(uid_t uid)
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			break;
 		}
+		if (data.quiet == 0)
+			mode = PM_DEFAULT;
+		else
+			mode = PM_QUIET;
 		if (data.des_path[0] == '\0')
 		{
 			ret =
@@ -569,6 +576,10 @@ static int __process_request(uid_t uid)
 			data.result = PKGCMD_ERR_FATAL_ERROR;
 			break;
 		}
+		if (data.quiet == 0)
+			mode = PM_DEFAULT;
+		else
+			mode = PM_QUIET;
 
 //if global
 		ret = __is_app_installed(data.pkgid, uid);
@@ -606,6 +617,7 @@ static int __process_request(uid_t uid)
 			break;
 		}
 
+		mode = PM_QUIET;
 		ret = pkgmgr_client_usr_reinstall(pc, data.pkg_type, data.pkgid, NULL, mode, __return_cb, pc, uid);
 		if (ret < 0){
 			data.result = PKGCMD_ERR_FATAL_ERROR;
@@ -631,6 +643,10 @@ static int __process_request(uid_t uid)
 			ret = -1;
 			break;
 		}
+		if (data.quiet == 0)
+			mode = PM_DEFAULT;
+		else
+			mode = PM_QUIET;
 		ret = __is_app_installed(data.pkgid, uid);
 		if (ret == -1) {
 			printf("package is not installed\n");
@@ -734,7 +750,11 @@ static int __process_request(uid_t uid)
 			printf("package is not installed\n");
 			break;
 		}
-		ret = pkgmgr_client_usr_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, uid, NULL, NULL, NULL);
+		if (data.quiet == 0)
+			ret = pkgmgr_client_usr_move(pc, data.pkg_type, data.pkgid,  data.type, mode, uid);
+		 else
+			ret = pkgmgr_client_usr_request_service(PM_REQUEST_MOVE, data.type, pc, NULL, data.pkgid, uid, NULL, NULL, NULL);
+
 		printf("pkg[%s] move result = %d\n", data.pkgid, ret);
 
 		if (ret < 0)
@@ -980,6 +1000,7 @@ int main(int argc, char *argv[])
 	memset(data.pkgid, '\0', PKG_NAME_STRING_LEN_MAX);
 	memset(data.pkg_type, '\0', PKG_TYPE_STRING_LEN_MAX);
 	memset(data.label, '\0', PKG_TYPE_STRING_LEN_MAX);
+	data.quiet = 0;
 	data.global = 0; //By default pkg_cmd will manage for the current user 
 	data.result = 0;
 	data.type = -1;
@@ -1097,6 +1118,11 @@ int main(int argc, char *argv[])
 			data.request = HELP_REQ;
 			break;
 
+		case 'q':	/* quiet mode */
+			data.quiet = 1;
+			break;
+
+			/* Otherwise */
 		case '?':	/* Not an option */
 			__print_usage();
 			break;

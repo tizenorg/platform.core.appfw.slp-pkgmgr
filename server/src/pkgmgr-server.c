@@ -91,6 +91,7 @@ FILE *___log = NULL;
 #define NO_MATCHING_FILE 11
 
 static int backend_flag = 0;	/* 0 means that backend process is not running */
+static int drawing_popup = 0;	/* 0 means that pkgmgr-server has no popup now */
 
 typedef struct  {
 	char **env;
@@ -147,6 +148,12 @@ typedef enum {
 	PMSVC_SVC_APP
 }pkgmgr_svc_app_component;
 
+struct appdata {
+	pm_dbus_msg *item;
+	OPERATION_TYPE op_type;
+};
+
+
 static int __check_backend_status_for_exit();
 static int __check_queue_status_for_exit();
 static int __check_backend_mode();
@@ -156,6 +163,9 @@ static void __set_backend_free(int position);
 static int __is_backend_mode_quiet(int position);
 static void __set_backend_mode(int position);
 static void __unset_backend_mode(int position);
+static void response_cb1(void *data, void *event_info);
+static void response_cb2(void *data, void *event_info);
+static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
 static void _wait_backend(pid_t pid);
 static int __get_position_from_pkg_type(char *pkgtype);
@@ -416,6 +426,103 @@ err:
         return ret;
 }
 
+static
+void response_cb1(void *data, void *event_info)
+{
+	struct appdata *ad = (struct appdata *)data;
+	int p = 0;
+	int ret = 0;
+	DBG("start of response_cb()\n");
+
+	/* YES  */
+	DBG("Uninstalling... [%s]\n", ad->item->pkgid);
+
+	if (strlen(ad->item->pkgid) == 0) {
+		DBG("package_name is empty\n");
+	}
+
+	if (strlen(ad->item->pkg_type) == 0) {
+		DBG("Fail :  Uninstalling... [%s]\n",
+		    ad->item->pkgid);
+		free(ad->item);
+		drawing_popup = 0;
+
+		return;
+	}
+
+	DBG("pkg_type = [%s]\n", ad->item->pkg_type);
+
+	ret = _pm_queue_push(ad->item);
+	p = __get_position_from_pkg_type(ad->item->pkg_type);
+	__unset_backend_mode(p);
+
+	/* Free resource */
+	free(ad->item);
+	/***************/
+	if (ret == 0)
+		g_idle_add(queue_job, NULL);
+
+	DBG("end of response_cb()\n");
+
+	drawing_popup = 0;
+
+	return;
+}
+
+static
+void response_cb2(void *data, void *event_info)
+{
+	int p = 0;
+	struct appdata *ad = (struct appdata *)data;
+
+	DBG("start of response_cb()\n");
+
+	/* NO  */
+	pkgmgr_installer *pi;
+	gboolean ret_parse;
+	gint argcp;
+	gchar **argvp;
+	GError *gerr = NULL;
+
+	pi = pkgmgr_installer_new();
+	if (!pi) {
+		DBG("Failure in creating the pkgmgr_installer object");
+		return;
+	}
+
+	ret_parse = g_shell_parse_argv(ad->item->args,
+				       &argcp, &argvp, &gerr);
+	if (FALSE == ret_parse) {
+		DBG("Failed to split args: %s", ad->item->args);
+		DBG("messsage: %s", gerr->message);
+		pkgmgr_installer_free(pi);
+		return;
+	}
+
+	pkgmgr_installer_receive_request(pi, argcp, argvp);
+
+	pkgmgr_installer_send_signal(pi, ad->item->pkg_type,
+				     ad->item->pkgid, "end",
+				     "cancel");
+
+	pkgmgr_installer_free(pi);
+	p = __get_position_from_pkg_type(ad->item->pkg_type);
+        __set_backend_mode(p);
+
+	/* Free resource */
+	free(ad->item);
+	/***************/
+	/* queue_job should be called for every request that is pushed
+	into queue. In "NO" case, request is not pushed so no need of
+	calling queue_job*/
+
+	DBG("end of response_cb()\n");
+
+	drawing_popup = 0;
+
+	return;
+}
+
 #if 0
 static char *__get_exe_path(const char *pkgid)
 {
@@ -454,6 +561,162 @@ static char *__get_exe_path(const char *pkgid)
 	return exe_path;
 }
 #endif
+
+static
+int create_popup(struct appdata *ad)
+{
+	DBG("start of create_popup()\n");
+
+	drawing_popup = 1;
+
+	char sentence[MAX_PKG_ARGS_LEN] = { '\0' };
+	char *pkgid = NULL;
+	char app_name[MAX_PKG_NAME_LEN] = { '\0' };
+
+	notification_h noti = NULL;
+	notification_error_e err = NOTIFICATION_ERROR_NONE;
+
+	noti = notification_create(NOTIFICATION_TYPE_NOTI);
+	if (!noti) {
+		DBG("Failed to create a popup notification\n");
+		drawing_popup = 0;
+		return -1;
+	}
+
+	/* Sentence of popup */
+	int ret;
+
+	pkgid = strrchr(ad->item->pkgid, '/') == NULL ?
+	    ad->item->pkgid : strrchr(ad->item->pkgid, '/') + 1;
+
+	if (ad->op_type == OPERATION_INSTALL) {
+		snprintf(sentence, sizeof(sentence) - 1, "Install?");
+	} else if (ad->op_type == OPERATION_UNINSTALL) {
+		char *label = NULL;
+		pkgmgrinfo_pkginfo_h handle;
+		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, ad->item->uid, &handle); 
+
+		if (ret < 0){
+			drawing_popup = 0;
+			notification_delete(noti);
+			return -1;
+		}
+		ret = pkgmgrinfo_pkginfo_get_label(handle, &label);
+		if (ret < 0){
+			drawing_popup = 0;
+			notification_delete(noti);
+			return -1;
+		}
+
+		snprintf(app_name, sizeof(app_name) - 1, label);
+		ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+		if (ret < 0){
+			drawing_popup = 0;
+			notification_delete(noti);
+			return -1;
+		}
+
+		pkgid = app_name;
+
+		snprintf(sentence, sizeof(sentence) - 1, "Uninstall?");
+	} else if (ad->op_type == OPERATION_REINSTALL) {
+		snprintf(sentence, sizeof(sentence) - 1, "Reinstall?");
+	} else
+		snprintf(sentence, sizeof(sentence) - 1, "Invalid request");
+
+	/***********************************/
+
+	err = notification_set_text(noti,
+	                            NOTIFICATION_TEXT_TYPE_TITLE, pkgid,
+	                            NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification title\n");
+		drawing_popup = 0;
+		notification_delete(noti);
+		return -1;
+	}
+
+	err = notification_set_text(noti,
+	                            NOTIFICATION_TEXT_TYPE_CONTENT, sentence,
+	                            NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification sentence\n");
+		drawing_popup = 0;
+		notification_delete(noti);
+		return -1;
+	}
+
+	/* Details of popup (timeout, buttons...) */
+	bundle *b = NULL;
+
+	b = bundle_create();
+	if (!b) {
+		DBG("Failed to set popup notification details\n");
+		drawing_popup = 0;
+		notification_delete(noti);
+		return -1;
+	}
+
+	/* TRANSLATION DOES NOT WORK ; TO FIX ?
+	char *button1_text = dgettext("sys_string", "IDS_COM_SK_YES");
+	char *button2_text = dgettext("sys_string", "IDS_COM_SK_NO");
+	*/
+	char *button1_text = "Yes";
+	char *button2_text = "No";
+	char *buttons_text = malloc(strlen(button1_text) +
+	                            strlen(button2_text) + 2);
+	strcpy(buttons_text, button1_text);
+	strcat(buttons_text, ",");
+	strcat(buttons_text, button2_text);
+
+	bundle_add (b, "timeout", "0");
+	bundle_add (b, "noresize", "1");
+	bundle_add (b, "buttons", buttons_text);
+
+	free(buttons_text);
+
+	err = notification_set_execute_option (noti,
+	                                       NOTIFICATION_EXECUTE_TYPE_RESPONDING,
+	                                       NULL, NULL, b);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification as interactive\n");
+		drawing_popup = 0;
+		bundle_free(b);
+		notification_delete(noti);
+		return -1;
+	}
+
+	/* Show the popup */
+	err = notification_insert (noti, NULL);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to set popup notification sentence\n");
+		drawing_popup = 0;
+		bundle_free(b);
+		notification_delete(noti);
+		return -1;
+	}
+
+	/* Catch user response */
+	int button;
+
+	err = notification_wait_response (noti, 10, &button, NULL);
+	if (err != NOTIFICATION_ERROR_NONE) {
+		DBG("Failed to wait for user response, defaulting to 'no'\n");
+		button = 2;
+	}
+
+	if (button == 1) {
+		response_cb1(ad, NULL);
+	} else if (button == 2) {
+		response_cb2(ad, NULL);
+	}
+
+	bundle_free(b);
+	notification_delete(noti);
+
+	DBG("end of create_popup()\n");
+	return 0;
+}
 
 gboolean send_fail_signal(void *data)
 {
@@ -600,6 +863,8 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s]",
 	    req_id, req_type, pkg_type, pkgid, args, cookie);
 
+	struct appdata *ad = (struct appdata *)cb_data;
+
 	pm_dbus_msg *item = calloc(1, sizeof(pm_dbus_msg));
 	memset(item, 0x00, sizeof(pm_dbus_msg));
 
@@ -643,7 +908,10 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		sig_reg = 1;
 	}
 
-	DBG("req_type=(%d) backend_flag=(%d)\n", req_type, backend_flag);
+	DBG("req_type=(%d) drawing_popup=(%d) backend_flag=(%d)\n", req_type,
+	    drawing_popup, backend_flag);
+
+	char *quiet = NULL;
 
 	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:
@@ -655,15 +923,57 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 			goto err;
 		}
 
-		/* quiet mode */
-		err = _pm_queue_push(item);
-		p = __get_position_from_pkg_type(item->pkg_type);
-		__set_backend_mode(p);
-		/* Free resource */
-		free(item);
-		if (err == 0)
-			g_idle_add(queue_job, NULL);
-		*ret = COMM_RET_OK;
+		/* -q option should be located at the end of command !! */
+		if (((quiet = strstr(args, " -q")) &&
+		     (quiet[strlen(quiet)] == '\0')) ||
+		    ((quiet = strstr(args, " '-q'")) &&
+		     (quiet[strlen(quiet)] == '\0'))) {
+			/* quiet mode */
+			err = _pm_queue_push(item);
+			p = __get_position_from_pkg_type(item->pkg_type);
+			__set_backend_mode(p);
+			/* Free resource */
+			free(item);
+			if (err == 0)
+				g_idle_add(queue_job, NULL);
+			*ret = COMM_RET_OK;
+		} else {
+			/* non quiet mode */
+			p = __get_position_from_pkg_type(item->pkg_type);
+			if (drawing_popup == 0 &&
+				!__is_backend_busy(p) &&
+				__check_backend_mode()) {
+				/* if there is no popup */
+				ad->item = item;
+
+				if (strstr(args, " -i ")
+				    || strstr(args, " '-i' "))
+					ad->op_type = OPERATION_INSTALL;
+				else if (strstr(args, " -d ")
+					 || strstr(args, " '-d' ")) {
+					ad->op_type = OPERATION_UNINSTALL;
+				} else if (strstr(args, " -r ")
+					|| strstr(args, " '-r' "))
+					ad->op_type = OPERATION_REINSTALL;
+				else
+					ad->op_type = OPERATION_MAX;
+
+				err = create_popup(ad);
+				if (err != 0) {
+					*ret = COMM_RET_ERROR;
+					DBG("create popup failed\n");
+					goto err;
+				} else {
+					*ret = COMM_RET_OK;
+				}
+			} else {
+					DBG("info drawing_popup:%d, __is_backend_busy(p):%d, __check_backend_mode():%d\n",
+					drawing_popup, __is_backend_busy(p), __check_backend_mode());
+				/* if popup is already being drawn */
+				*ret = COMM_RET_ERROR;
+				goto err;
+			}
+		}
 		break;
 	case COMM_REQ_TO_ACTIVATOR:
 		/* In case of activate, there is no popup */
@@ -715,7 +1025,8 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CANCEL:
-		_pm_queue_delete(item);
+		ad->item = item;
+		_pm_queue_delete(ad->item);
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__unset_backend_mode(p);
 		free(item);
@@ -857,9 +1168,10 @@ gboolean exit_server(void *data)
 {
 	DBG("exit_server Start\n");
 	if (__check_backend_status_for_exit() &&
-                __check_queue_status_for_exit()) {
+                __check_queue_status_for_exit() &&
+			drawing_popup == 0) {
                         if (!getenv("PMS_STANDALONE") && ail_db_update) {
-                                g_main_loop_quit(mainloop);
+                                ecore_main_loop_quit();
                                 return FALSE;
                         }
         }
@@ -1839,9 +2151,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	/*Initialize inotify to monitor desktop file updates */
-/*	_pm_desktop_file_monitor_init(); */
-
 	/*Allocate memory for holding pid, pkgtype and pkgid*/
 	ptr = (backend_info*)calloc(num_of_backends, sizeof(backend_info));
 	if (ptr == NULL) {
@@ -1858,14 +2167,17 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	struct appdata ad;
+
 	DBG("Main loop is created.");
 
 	PkgMgrObject *pkg_mgr;
 	pkg_mgr = g_object_new(PKG_MGR_TYPE_OBJECT, NULL);
-	pkg_mgr_set_request_callback(pkg_mgr, req_cb, NULL);
+	pkg_mgr_set_request_callback(pkg_mgr, req_cb, &ad);
 	DBG("pkg_mgr object is created, and request callback is registered.");
 
 	g_main_loop_run(mainloop);
+
 
 	DBG("Quit main loop.");
 	_pm_queue_final();
