@@ -32,8 +32,6 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <signal.h>
-#include <Ecore.h>
-#include <Ecore_File.h>
 #include <ail.h>
 #include <pkgmgr-info.h>
 #include <pkgmgr/pkgmgr_parser.h>
