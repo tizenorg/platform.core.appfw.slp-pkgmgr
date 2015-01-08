@@ -55,6 +55,7 @@
 #include "pkgmgr-server.h"
 #include "pm-queue.h"
 #include "comm_config.h"
+#include "package-manager.h"
 
 #define PACKAGE_RECOVERY_DIR tzplatform_mkpath(TZ_SYS_RW_PACKAGES, ".recovery/pkgmgr")
 #define NO_MATCHING_FILE 11
@@ -1033,6 +1034,23 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		if (err == 0)
 			queue_job(NULL);
 		*ret = COMM_RET_OK;
+		break;
+	case COMM_REQ_CLEAR_CACHE_DIR:
+		/* check caller privilege */
+		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
+		if (cookie_result < 0){
+			LOGE("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
+			*ret = PKGMGR_R_EPRIV;
+			goto err;
+		}
+
+		err = _pm_queue_push(item);
+		p = __get_position_from_pkg_type(item->pkg_type);
+		__set_backend_mode(p);
+
+		if (err == 0)
+			g_idle_add(queue_job, NULL);
+		*ret = PKGMGR_R_OK;
 		break;
 
 	default:

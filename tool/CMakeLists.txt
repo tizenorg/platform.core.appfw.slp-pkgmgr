@@ -60,6 +60,10 @@ add_executable(pkg_syncdb_user pkg_syncdb_user.c)
 target_link_libraries(pkg_syncdb_user ${pkgs_initdb_LDFLAGS})
 INSTALL(TARGETS pkg_syncdb_user DESTINATION bin)
 
+add_executable(pkg_clearcache pkg_clearcache.c)
+target_link_libraries(pkg_clearcache ${pkgs_test_LDFLAGS})
+install(TARGETS pkg_clearcache DESTINATION bin)
+
 add_executable(pkg_initdb pkg_initdb.c)
 target_link_libraries(pkg_initdb ${pkgs_initdb_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
