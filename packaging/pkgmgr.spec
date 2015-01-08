@@ -149,6 +149,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %attr(06755,root,root) %{_bindir}/pkg_initdb
 %attr(755,root,root) %{_bindir}/pkg_initdb_user
 %{_bindir}/pkg_getsize
+%{_bindir}/pkg_clearcache
 %{_bindir}/pkginfo
 %{_bindir}/pkgmgr-install
 %attr(-,tizenglobalapp,root) %dir %{TZ_SYS_RW_PACKAGES}
