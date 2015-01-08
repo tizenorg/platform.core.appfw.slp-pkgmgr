@@ -51,8 +51,8 @@ static int __add_pkg_filter(uid_t uid);
 static int __insert_manifest_in_db(char *manifest, uid_t uid);
 static int __remove_manifest_from_db(char *manifest, uid_t uid);
 static int __set_pkginfo_in_db(char *pkgid, uid_t uid);
-static int __set_certinfo_in_db(char *pkgid);
-static int __get_certinfo_from_db(char *pkgid);
+static int __set_certinfo_in_db(char *pkgid, uid_t uid);
+static int __get_certinfo_from_db(char *pkgid, uid_t uid);
 static int __del_certinfo_from_db(char *pkgid);
 static int __get_integer_input_data(void);
 char *__get_string_input_data(void);
@@ -1050,7 +1050,7 @@ static int __del_certinfo_from_db(char *pkgid)
 	return 0;
 }
 
-static int __get_certinfo_from_db(char *pkgid)
+static int __get_certinfo_from_db(char *pkgid, uid_t uid)
 {
 	if (pkgid == NULL) {
 		printf("pkgid is NULL\n");
@@ -1066,7 +1066,7 @@ static int __get_certinfo_from_db(char *pkgid)
 		printf("pkgmgr_pkginfo_create_certinfo failed\n");
 		return -1;
 	}
-	ret = pkgmgr_pkginfo_load_certinfo(pkgid, handle);
+	ret = pkgmgr_pkginfo_load_certinfo(pkgid, handle, uid);
 	if (ret < 0) {
 		printf("pkgmgr_pkginfo_load_certinfo failed\n");
 		return -1;
@@ -1173,7 +1173,7 @@ static int __compare_app_certinfo_from_db(char *lhs_appid, char *rhs_appid, uid_
 	return 0;
 }
 
-static int __set_certinfo_in_db(char *pkgid)
+static int __set_certinfo_in_db(char *pkgid, uid_t uid)
 {
 	if (pkgid == NULL) {
 		printf("pkgid is NULL\n");
@@ -1204,7 +1204,7 @@ static int __set_certinfo_in_db(char *pkgid)
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
-			ret = pkgmgr_installer_save_certinfo(pkgid, handle);
+			ret = pkgmgr_installer_save_certinfo(pkgid, handle, uid);
 			if (ret < 0) {
 				printf("pkgmgr_installer_save_certinfo failed\n");
 				pkgmgr_installer_destroy_certinfo_set_handle(handle);
@@ -2376,13 +2376,13 @@ int main(int argc, char *argv[])
 			goto end;
 		}
 	} else if (strcmp(argv[1], "--setcert") == 0) {
-		ret = __set_certinfo_in_db(argv[2]);
+		ret = __set_certinfo_in_db(argv[2], getuid());
 		if (ret == -1) {
 			printf("set certinfo in db failed\n");
 			goto end;
 		}
 	} else if (strcmp(argv[1], "--getcert") == 0) {
-		ret = __get_certinfo_from_db(argv[2]);
+		ret = __get_certinfo_from_db(argv[2], getuid());
 		if (ret == -1) {
 			printf("get certinfo from db failed\n");
 			goto end;

@@ -27,7 +27,6 @@
 #include <string.h>
 #include <getopt.h>
 
-
 #include "pkgmgr_installer.h"
 #include "pkgmgr_installer_config.h"
 
@@ -374,10 +373,10 @@ API int pkgmgr_installer_set_cert_value(pkgmgr_instcertinfo_h handle, pkgmgr_ins
 	return ret;
 }
 
-API int pkgmgr_installer_save_certinfo(const char *pkgid, pkgmgr_instcertinfo_h handle)
+API int pkgmgr_installer_save_certinfo(const char *pkgid, pkgmgr_instcertinfo_h handle, uid_t uid)
 {
 	int ret = 0;
-	ret = pkgmgrinfo_save_certinfo(pkgid, handle);
+	ret = pkgmgrinfo_save_certinfo(pkgid, handle, uid);
 	return ret;
 }
 

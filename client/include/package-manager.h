@@ -1162,7 +1162,7 @@ int pkgmgr_pkginfo_create_certinfo(pkgmgr_certinfo_h *handle);
  * @param[in]	pkgid				package ID
  * @return	0 if success, error code(<0) if fail\n
 */
-int pkgmgr_pkginfo_load_certinfo(const char *pkgid, pkgmgr_certinfo_h handle);
+int pkgmgr_pkginfo_load_certinfo(const char *pkgid, pkgmgr_certinfo_h handle, uid_t uid);
 
 /**
  * @brief	This API gets cert value for corresponding cert type.

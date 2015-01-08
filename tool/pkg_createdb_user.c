@@ -198,6 +198,24 @@
 						"REFERENCES package_app_info(app_id) " \
 						"ON DELETE CASCADE)"
 
+#define QUERY_CREATE_TABLE_CERT "create table if not exists package_cert_index_info " \
+						"(cert_info text not null, " \
+						"cert_id integer, " \
+						"cert_ref_count integer, " \
+						"PRIMARY KEY(cert_id)); " \
+						"create table if not exists package_cert_info " \
+						"(package text not null, " \
+						"author_root_cert integer, " \
+						"author_im_cert integer, " \
+						"author_signer_cert integer, " \
+						"dist_root_cert integer, " \
+						"dist_im_cert integer, " \
+						"dist_signer_cert integer, " \
+						"dist2_root_cert integer, " \
+						"dist2_im_cert integer, " \
+						"dist2_signer_cert integer, " \
+						"PRIMARY KEY(package)) "
+
 #ifdef _E
 #undef _E
 #endif
@@ -255,10 +273,7 @@ int main(int argc, char *argv[])
 	int ret;
 	char *journal = NULL;
 	uid_t uid = getuid();
-	sqlite3 *parser_db;
-	sqlite3 *cert_db;
 
-	
 	if (!__is_authorized()) {
 		_E("You are not an authorized user!\n");
 		return -1;
@@ -266,6 +281,11 @@ int main(int argc, char *argv[])
 		if(remove(getUserPkgParserDBPathUID(uid)))
 			_E(" %s is not removed", getUserPkgParserDBPathUID(uid));
 		asprintf(&journal, "%s-journal", getUserPkgParserDBPathUID(uid));
+		if(remove(journal))
+			_E(" %s is not removed", journal);
+		if(remove(getUserPkgCertDBPathUID(uid)))
+			_E(" %s is not removed", getUserPkgCertDBPathUID(uid));
+		asprintf(&journal, "%s-journal", getUserPkgCertDBPathUID(uid));
 		if(remove(journal))
 			_E(" %s is not removed", journal);
 	}
@@ -277,6 +297,12 @@ int main(int argc, char *argv[])
 	_D("create DB  %s", getUserPkgParserDBPathUID(uid));
 	if (ret) {
 		_D("Parser DB creation Failed\n");
+		return -1;
+	}
+	ret = __createdb_user_tables(&cert_db, getUserPkgCertDBPathUID(uid), QUERY_CREATE_TABLE_CERT);
+	_D("create DB  %s", getUserPkgCertDBPathUID(uid));
+	if (ret) {
+		_D("Cert DB creation Failed\n");
 		return -1;
 	}
 
