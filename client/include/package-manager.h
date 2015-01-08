@@ -109,6 +109,7 @@ extern "C" {
 #define PKGMGR_CLIENT_STATUS_MOVE						0x08
 #define PKGMGR_CLIENT_STATUS_CLEAR_DATA					0x10
 #define PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS			0x20
+#define PKGMGR_CLIENT_STATUS_GET_SIZE				0x40
 /** @} */
 
 /* 1 -100 : Package command errors */
@@ -160,10 +161,17 @@ extern "C" {
 #define PKGCMD_ERR_ARGUMENT_INVALID_STR						"ARGUMENT_INVALID"
 #define PKGCMD_ERR_UNKNOWN_STR								"Unknown Error"
 
+#define PKG_SIZE_INFO_TOTAL "__TOTAL__"
+#define PKG_CLEAR_ALL_CACHE "__ALL__"
 /**
  * @brief Return values in pkgmgr. 
  */
 typedef enum _pkgmgr_return_val {
+	PKGMGR_R_ESYSTEM = -9,		/**< Severe system error */
+	PKGMGR_R_EIO = -8,		/**< IO error */
+	PKGMGR_R_ENOMEM = -7,		/**< Out of memory */
+	PKGMGR_R_ENOPKG = -6,		/**< No such package */
+	PKGMGR_R_EPRIV = -5,		/**< Privilege denied */
 	PKGMGR_R_ETIMEOUT = -4,		/**< Timeout */
 	PKGMGR_R_EINVAL = -3,		/**< Invalid argument */
 	PKGMGR_R_ECOMM = -2,		/**< Comunication Error */
@@ -193,6 +201,18 @@ typedef void* pkgmgr_pkginfo_h;
 typedef void* pkgmgr_appinfo_h;
 typedef void* pkgmgr_certinfo_h;
 
+typedef void pkgmgr_client;
+typedef void pkgmgr_info;
+
+typedef struct {
+	long long data_size;
+	long long cache_size;
+	long long app_size;
+	long long ext_data_size;
+	long long ext_cache_size;
+	long long ext_app_size;
+} pkg_size_info_t;
+
 typedef int (*pkgmgr_iter_fn)(const char* pkg_type, const char* pkgid,
 				const char* version, void *data);
 
@@ -209,6 +229,11 @@ typedef int (*pkgmgr_info_app_list_cb ) (const pkgmgr_appinfo_h handle,
 typedef int (*pkgmgr_info_app_category_list_cb ) (const char *category_name,
 							void *user_data);
 
+typedef void (*pkgmgr_pkg_size_info_receive_cb)(pkgmgr_client *pc, const char *pkgid,
+		const pkg_size_info_t *size_info, void *user_data);
+
+typedef void (*pkgmgr_total_pkg_size_info_receive_cb)(pkgmgr_client *pc,
+		const pkg_size_info_t *size_info, void *user_data);
 
 typedef void pkgmgr_client;
 
@@ -275,11 +300,16 @@ typedef enum {
 }pkgmgr_request_service_type;
 
 typedef enum {
-	PM_GET_TOTAL_SIZE= 0,
+	PM_GET_TOTAL_SIZE = 0,
 	PM_GET_DATA_SIZE = 1,
 	PM_GET_ALL_PKGS = 2,
+	PM_GET_SIZE_INFO = 3,
+	PM_GET_TOTAL_AND_DATA = 4,
+	PM_GET_SIZE_FILE = 5,
+	PM_GET_PKG_SIZE_INFO = 6,
+	PM_GET_TOTAL_PKG_SIZE_INFO = 7,
 	PM_GET_MAX
-}pkgmgr_getsize_type;
+} pkgmgr_getsize_type;
 
 /**
  * @brief	This API creates pkgmgr client.
@@ -619,6 +649,68 @@ int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_type, 
 */
 int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data);
 int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data, uid_t uid);
+
+/**
+ * @brief		Gets the package size information.
+ * @details		The package size info is asynchronously obtained by the specified callback function.
+ *
+ * @param[in] pc		The pointer to pkgmgr_client instance
+ * @param[in] pkgid		The package ID
+ * @param[in] result_cb	The asynchronous callback function to get the package size information
+ * @param[in] user_data	User data to be passed to the callback function
+ *
+ * @return 0 on success, otherwise a negative error value
+ * @retval #PKGMGR_R_OK			Successful
+ * @retval #PKGMGR_R_EINVAL		Invalid parameter
+ * @retval #PKGMGR_R_ERROR		Internal error
+ */
+int pkgmgr_client_get_package_size_info(pkgmgr_client *pc, const char *pkgid, pkgmgr_pkg_size_info_receive_cb result_cb, void *user_data);
+int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc, const char *pkgid, pkgmgr_pkg_size_info_receive_cb result_cb, void *user_data, uid_t uid);
+
+/**
+ * @brief		Gets the sum of the entire package size information.
+ * @details		The package size info is asynchronously obtained by the specified callback function.
+ *
+ * @param[in] pc		The pointer to pkgmgr_client instance
+ * @param[in] result_cb	The asynchronous callback function to get the total package size information
+ * @param[in] user_data	User data to be passed to the callback function
+ *
+ * @return 0 on success, otherwise a negative error value
+ * @retval #PKGMGR_R_OK			Successful
+ * @retval #PKGMGR_R_EINVAL		Invalid parameter
+ * @retval #PKGMGR_R_ERROR		Internal error
+ */
+int pkgmgr_client_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_total_pkg_size_info_receive_cb result_cb, void *user_data);
+int pkgmgr_client_usr_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_total_pkg_size_info_receive_cb result_cb, void *user_data, uid_t uid);
+
+/**
+ * @brief	This API removes cache directories
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pkgid			package id
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @retval	PKGMGR_R_ERROR	internal error
+*/
+int pkgmgr_client_clear_cache_dir(const char *pkgid);
+int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid);
+
+/**
+ * @brief	This API removes all cache directories
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @retval	PKGMGR_R_ERROR	internal error
+*/
+int pkgmgr_client_clear_all_cache_dir(void);
+int pkgmgr_client_usr_clear_all_cache_dir(uid_t uid);
 
 /**
  * @brief	This API provides package list
