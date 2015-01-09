@@ -31,7 +31,6 @@
 #include "pkgmgr_installer_config.h"
 
 #include "comm_config.h"
-#include "comm_socket.h"
 #include "comm_status_broadcast_server.h"
 #include "comm_debug.h"
 #include "error_report.h"
