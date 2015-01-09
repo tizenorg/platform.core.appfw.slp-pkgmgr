@@ -30,6 +30,7 @@ BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(iniparser)
 BuildRequires:  pkgconfig(notification)
 BuildRequires:  pkgconfig(libtzplatform-config)
+BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
 BuildRequires:  libsmack
