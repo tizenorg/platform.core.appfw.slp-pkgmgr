@@ -1149,20 +1149,20 @@ static int __check_queue_status_for_exit()
 	}
 	return 1;
 }
+
 gboolean exit_server(void *data)
 {
 	DBG("exit_server Start\n");
 	if (__check_backend_status_for_exit() &&
-                __check_queue_status_for_exit() &&
+			__check_queue_status_for_exit() &&
 			drawing_popup == 0) {
-                        if (!getenv("PMS_STANDALONE") && ail_db_update) {
-                                ecore_main_loop_quit();
-                                return FALSE;
-                        }
-        }
+		if (!getenv("PMS_STANDALONE") && ail_db_update) {
+			g_main_loop_quit(mainloop);
+			return FALSE;
+		}
+	}
 	return TRUE;
 }
-
 
 int __app_func(const pkgmgrinfo_appinfo_h handle, void *user_data)
 {
