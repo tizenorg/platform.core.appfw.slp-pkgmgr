@@ -562,7 +562,7 @@ int create_popup(struct appdata *ad)
 	} else if (ad->op_type == OPERATION_UNINSTALL) {
 		char *label = NULL;
 		pkgmgrinfo_pkginfo_h handle;
-		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, ad->item->uid, &handle); 
+		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, ad->item->uid, &handle);
 
 		if (ret < 0){
 			drawing_popup = 0;
@@ -847,12 +847,12 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	 * At this time, we are not able to check the credentials of this dbus message (due to gdbus API to implement the pkgmgr-server)
 	 * So we cannot check if the user that makes request has permisssion to do it.
 	 * Note theses CAPI could be used by deamon (user is root or system user) or web/native API framework (user id is one of regular users)
-	 * In consequence a bug is filed : 
-	 * 
+	 * In consequence a bug is filed :
+	 *
 	 * Logic has to be implmemented:
 	 * RUID means the id of the user that make the request (retreived from credential of the message)
 	 * UID is the uid in argument of the request
-	 * 
+	 *
 	 * if RUID == UID & UID is regular user == TRUE ==> Granted
 	 * if UID == GLOBAL_USER & RUID is ADMIN == TRUE ==> Granted
 	 * if RUID == (ROOT or System USER) & UID is Regular USER ==> Granted
@@ -1347,7 +1347,7 @@ user_ctx* get_user_context(uid_t uid)
 	pwd = getpwuid(uid);
 	if (!pwd)
 		return NULL;
-	
+
 	do {
 		context_res = (user_ctx *)malloc(sizeof(user_ctx));
 		if (!context_res) {
@@ -1373,11 +1373,11 @@ user_ctx* get_user_context(uid_t uid)
 			ret = -1;
 			break;
 		}
-		
+
 		sprintf(env[1], "USER=%s", pwd->pw_name);
 		env[2] = NULL;
 	} while (0);
-	
+
 	if(ret == -1) {
 		free(context_res);
 		context_res = NULL;
@@ -1396,7 +1396,81 @@ user_ctx* get_user_context(uid_t uid)
 	}
 	return context_res;
 }
-  
+
+static char **__generate_argv(const char *args)
+{
+	/* Create args vector
+	 * req_id + pkgid + args
+	 *
+	 * vector size = # of args +
+	 *(req_id + pkgid + NULL termination = 3)
+	 * Last value must be NULL for execv.
+	 */
+	gboolean ret_parse;
+	gint argcp;
+	gchar **argvp;
+	GError *gerr = NULL;
+	ret_parse = g_shell_parse_argv(args,
+			&argcp, &argvp, &gerr);
+	if (FALSE == ret_parse) {
+		DBG("Failed to split args: %s", args);
+		DBG("messsage: %s", gerr->message);
+		exit(1);
+	}
+
+	/* Setup argument !!! */
+	/*char **args_vector =
+	  calloc(argcp + 4, sizeof(char *)); */
+	char **args_vector = calloc(argcp + 1, sizeof(char *));
+	if (args_vector == NULL) {
+		ERR("Out of memory");
+		exit(1);
+	}
+	/*args_vector[0] = strdup(backend_cmd);
+	  args_vector[1] = strdup(item->req_id);
+	  args_vector[2] = strdup(item->pkgid); */
+	int arg_idx;
+	for (arg_idx = 0; arg_idx < argcp; arg_idx++) {
+		/* args_vector[arg_idx+3] = argvp[arg_idx]; */
+		args_vector[arg_idx] = argvp[arg_idx];
+	}
+
+	/* dbg */
+	/*for(arg_idx = 0; arg_idx < argcp+3; arg_idx++) { */
+	for (arg_idx = 0; arg_idx < argcp + 1; arg_idx++) {
+		DBG(">>>>>> args_vector[%d]=%s",
+				arg_idx, args_vector[arg_idx]);
+	}
+
+	return args_vector;
+}
+
+static void __exec_with_arg_vector(const char *cmd, char **argv, uid_t uid)
+{
+	user_ctx* user_context = get_user_context(uid);
+	if(!user_context) {
+		DBG("Failed to getenv for the user : %d", uid);
+		exit(1);
+	}
+	if(set_environement(user_context)){
+		DBG("Failed to set env for the user : %d", uid);
+		exit(1);
+	}
+	free_user_context(user_context);
+
+	/* Execute backend !!! */
+	int ret = execv(cmd, argv);
+
+	/* Code below: exec failure. Should not be happened! */
+	DBG(">>>>>> OOPS 2!!!");
+
+	/* g_strfreev(args_vector); *//* FIXME: causes error */
+
+	if (ret == -1) {
+		perror("fail to exec");
+		exit(1);
+	}
+}
 
 gboolean queue_job(void *data)
 {
@@ -1431,25 +1505,26 @@ pop:
 	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
 	__set_recovery_mode(item->pkgid, item->pkg_type);
 
-	switch (item->req_type) {
-	case COMM_REQ_TO_INSTALLER:
-		DBG("installer start");
-		_save_queue_status(item, "processing");
-		DBG("saved queue status. Now try fork()");
-		/*save pkg type and pkg name for future*/
-		x = (pos + num_of_backends - 1) % num_of_backends;
-		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
-		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
-		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
-		(ptr + x)->pid = fork();
-		DBG("child forked [%d]\n", (ptr + x)->pid);
+	/* fork */
+	_save_queue_status(item, "processing");
+	DBG("saved queue status. Now try fork()");
+	/*save pkg type and pkg name for future*/
+	x = (pos + num_of_backends - 1) % num_of_backends;
+	strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
+	strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
+	strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
+	(ptr + x)->pid = fork();
+	DBG("child forked [%d] for request type [%d]", (ptr + x)->pid, item->req_type);
 
-		switch ((ptr + x)->pid) {
-		case 0:	/* child */
+	switch ((ptr + x)->pid) {
+	case 0:	/* child */
+		switch (item->req_type) {
+		case COMM_REQ_TO_INSTALLER:
 			DBG("before run _get_backend_cmd()");
-			user_ctx* user_context; 
 			/*Check for efl-tpk app*/
 			backend_cmd = _get_backend_cmd(item->pkg_type);
+			if (backend_cmd == NULL)
+				break;
 
 			if (strcmp(item->pkg_type, "tpk") == 0) {
 				ret = __is_efl_tpk_app(item->pkgid);
@@ -1460,106 +1535,19 @@ pop:
 				}
 			}
 
-			if (NULL == backend_cmd)
-				break;
+			DBG("Try to exec [%s][%s]", item->pkg_type, backend_cmd);
+			fprintf(stdout, "Try to exec [%s][%s]\n", item->pkg_type, backend_cmd);
 
-			DBG("Try to exec [%s][%s]", item->pkg_type,
-			    backend_cmd);
-			fprintf(stdout, "Try to exec [%s][%s]\n",
-				item->pkg_type, backend_cmd);
-
-			/* Create args vector
-			 * req_id + pkgid + args
-			 *
-			 * vector size = # of args +
-			 *(req_id + pkgid + NULL termination = 3)
-			 * Last value must be NULL for execv.
-			 */
-			gboolean ret_parse;
-			gint argcp;
-			gchar **argvp;
-			GError *gerr = NULL;
-			ret_parse = g_shell_parse_argv(item->args,
-						       &argcp, &argvp, &gerr);
-			if (FALSE == ret_parse) {
-				DBG("Failed to split args: %s", item->args);
-				DBG("messsage: %s", gerr->message);
-				exit(1);
-			}
-
-			/* Setup argument !!! */
-			/*char **args_vector =
-			   calloc(argcp + 4, sizeof(char *)); */
-			char **args_vector = calloc(argcp + 1, sizeof(char *));
-			/*args_vector[0] = strdup(backend_cmd);
-			   args_vector[1] = strdup(item->req_id);
-			   args_vector[2] = strdup(item->pkgid); */
-			int arg_idx;
-			for (arg_idx = 0; arg_idx < argcp; arg_idx++) {
-				/* args_vector[arg_idx+3] = argvp[arg_idx]; */
-				args_vector[arg_idx] = argvp[arg_idx];
-			}
-
-			/* dbg */
-			/*for(arg_idx = 0; arg_idx < argcp+3; arg_idx++) { */
-			for (arg_idx = 0; arg_idx < argcp + 1; arg_idx++) {
-				DBG(">>>>>> args_vector[%d]=%s",
-				    arg_idx, args_vector[arg_idx]);
-			}
+			char **args_vector = __generate_argv(item->args);
+			args_vector[0] = backend_cmd;
 
 			/* Execute backend !!! */
-			user_context = get_user_context(item->uid);
-			if(user_context) {
-				setgid(user_context->gid);
-				setuid(item->uid);
-				ret = execve(backend_cmd, args_vector,user_context->env);
-			} else {
-				ret = -1;
-				perror("fail to retreive user context");
-				exit(1);
-			}
-			/* Code below: exec failure. Should not be happened! */
-			DBG(">>>>>> OOPS 2!!!");
-
-			/* g_strfreev(args_vector); *//* FIXME: causes error */
-
-			if (ret == -1) {
-				perror("fail to exec");
-				exit(1);
-			}
-			_save_queue_status(item, "done");
-			if (NULL != backend_cmd)
-				free(backend_cmd);
-			exit(0);	/* exit */
+			__exec_with_arg_vector(backend_cmd, args_vector, item->uid);
+			free(backend_cmd);
 			break;
-
-		case -1:	/* error */
-			fprintf(stderr, "Fail to execute fork()\n");
-			exit(1);
-			break;
-
-		default:	/* parent */
-			DBG("parent \n");
-			_wait_backend((ptr + x)->pid);
-			_save_queue_status(item, "done");
-			break;
-		}
-		break;
-	case COMM_REQ_TO_ACTIVATOR:
-		DBG("activator start");
-		int val = 0;
-		_save_queue_status(item, "processing");
-		DBG("saved queue status. Now try fork()");
-		/*save pkg type and pkg name for future*/
-		x = (pos + num_of_backends - 1) % num_of_backends;
-		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
-		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
-		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
-		(ptr + x)->pid = fork();
-		DBG("child forked [%d]\n", (ptr + x)->pid);
-
-		switch ((ptr + x)->pid) {
-		case 0:	/* child */
+		case COMM_REQ_TO_ACTIVATOR:
+			DBG("activator start");
+			int val = 0;
 			if (item->args[0] == '1')	/* activate */
 				val = 1;
 			else if (item->args[0] == '0')	/* deactivate */
@@ -1693,251 +1681,32 @@ pop:
 					exit(1);
 				}
 			}
-
-			_save_queue_status(item, "done");
-			exit(0);
 			break;
-
-		case -1:	/* error */
-			fprintf(stderr, "Fail to execute fork()\n");
-			exit(1);
-			break;
-
-		default:	/* parent */
-			DBG("parent exit\n");
-			_wait_backend((ptr + x)->pid);
-			_save_queue_status(item, "done");
-			break;
-		}
-		break;
-	case COMM_REQ_TO_MOVER:
-	case COMM_REQ_TO_CLEARER:
-		DBG("cleaner start");
-		_save_queue_status(item, "processing");
-		DBG("saved queue status. Now try fork()");
-		/*save pkg type and pkg name for future*/
-		x = (pos + num_of_backends - 1) % num_of_backends;
-		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
-		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
-		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
-		(ptr + x)->pid = fork();
-		DBG("child forked [%d]\n", (ptr + x)->pid);
-
-		switch ((ptr + x)->pid) {
-		case 0:	/* child */
+		case COMM_REQ_TO_MOVER:
+		case COMM_REQ_TO_CLEARER:
+			DBG("cleaner start");
 			DBG("before run _get_backend_cmd()");
 			backend_cmd = _get_backend_cmd(item->pkg_type);
 			if (NULL == backend_cmd)
 				break;
 
-			DBG("Try to exec [%s][%s]", item->pkg_type,
-			    backend_cmd);
-			fprintf(stdout, "Try to exec [%s][%s]\n",
-				item->pkg_type, backend_cmd);
+			DBG("Try to exec [%s][%s]", item->pkg_type, backend_cmd);
+			fprintf(stdout, "Try to exec [%s][%s]\n", item->pkg_type, backend_cmd);
 
-			/* Create args vector
-			 * req_id + pkgid + args
-			 *
-			 * vector size = # of args +
-			 *(req_id + pkgid + NULL termination = 3)
-			 * Last value must be NULL for execv.
-			 */
-			gboolean ret_parse;
-			gint argcp;
-			gchar **argvp;
-			GError *gerr = NULL;
-			user_ctx* user_context = get_user_context(item->uid);
-			if(!user_context) {
-				DBG("Failed to getenv for the user : %d", item->uid);
-				exit(1);
-			}
-			if(set_environement(user_context)){
-				DBG("Failed to set env for the user : %d", item->uid);
-				exit(1);
-			}
-			free_user_context(user_context);
-
-			ret_parse = g_shell_parse_argv(item->args,
-						       &argcp, &argvp, &gerr);
-			if (FALSE == ret_parse) {
-				DBG("Failed to split args: %s", item->args);
-				DBG("messsage: %s", gerr->message);
-				exit(1);
-			}
-
-			/* Setup argument !!! */
-			/*char **args_vector =
-			   calloc(argcp + 4, sizeof(char *)); */
-			char **args_vector = calloc(argcp + 1, sizeof(char *));
-			/*args_vector[0] = strdup(backend_cmd);
-			   args_vector[1] = strdup(item->req_id);
-			   args_vector[2] = strdup(item->pkgid); */
-			int arg_idx;
-			for (arg_idx = 0; arg_idx < argcp; arg_idx++) {
-				/* args_vector[arg_idx+3] = argvp[arg_idx]; */
-				args_vector[arg_idx] = argvp[arg_idx];
-			}
-
-			/* dbg */
-			/*for(arg_idx = 0; arg_idx < argcp+3; arg_idx++) { */
-			for (arg_idx = 0; arg_idx < argcp + 1; arg_idx++) {
-				DBG(">>>>>> args_vector[%d]=%s",
-				    arg_idx, args_vector[arg_idx]);
-			}
+			char **args_vectors = __generate_argv(item->args);
+			args_vectors[0] = backend_cmd;
 
 			/* Execute backend !!! */
-			ret = execv(backend_cmd, args_vector);
-
-			/* Code below: exec failure. Should not be happened! */
-			DBG(">>>>>> OOPS 2!!!");
-
-			/* g_strfreev(args_vector); *//* FIXME: causes error */
-
-			if (ret == -1) {
-				perror("fail to exec");
-				exit(1);
-			}
-			_save_queue_status(item, "done");
-			if (NULL != backend_cmd)
-				free(backend_cmd);
-			exit(0);
+			__exec_with_arg_vector(backend_cmd, args_vectors, item->uid);
+			free(backend_cmd);
 			break;
-
-		case -1:	/* error */
-			fprintf(stderr, "Fail to execute fork()\n");
-			exit(1);
-			break;
-
-		default:	/* parent */
-			DBG("parent \n");
-			_wait_backend((ptr + x)->pid);
-			_save_queue_status(item, "done");
-			break;
-		}
-		break;
-
-	case COMM_REQ_GET_SIZE:
-		DBG("COMM_REQ_GET_SIZE pkgid = %s\n", item->pkgid);
-		_save_queue_status(item, "processing");
-		DBG("saved queue status. Now try fork()");
-		/*save pkg type and pkg name for future*/
-		x = (pos + num_of_backends - 1) % num_of_backends;
-		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
-		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
-		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
-		(ptr + x)->pid = fork();
-		DBG("child forked [%d]\n", (ptr + x)->pid);
-
-		switch ((ptr + x)->pid) {
-		case 0:	/* child */
+		case COMM_REQ_GET_SIZE:
 			DBG("before run _get_backend_cmd()");
-			backend_cmd = strdup("/usr/bin/pkg_getsize");
-			if (NULL == backend_cmd)
-				break;
-
-			DBG("Try to exec [%s][%s]", item->pkg_type,
-			    backend_cmd);
-			fprintf(stdout, "Try to exec [%s][%s]\n",
-				item->pkg_type, backend_cmd);
-
-			/* Create args vector
-			 * req_id + pkgid + args
-			 *
-			 * vector size = # of args +
-			 *(req_id + pkgid + NULL termination = 3)
-			 * Last value must be NULL for execv.
-			 */
-			gboolean ret_parse;
-			gint argcp;
-			gchar **argvp;
-			GError *gerr = NULL;
-			user_ctx* user_context = get_user_context(item->uid);
-			if(!user_context) {
-				DBG("Failed to getenv for the user : %d", item->uid);
-				exit(1);
-			}
-			if(set_environement(user_context)){
-				DBG("Failed to set env for the user : %d", item->uid);
-				exit(1);
-			}
-			free_user_context(user_context);
-
-			ret_parse = g_shell_parse_argv(item->args,
-						       &argcp, &argvp, &gerr);
-			if (FALSE == ret_parse) {
-				DBG("Failed to split args: %s", item->args);
-				DBG("messsage: %s", gerr->message);
-				exit(1);
-			}
-
-			/* Setup argument !!! */
-			/*char **args_vector =
-			   calloc(argcp + 4, sizeof(char *)); */
-			char **args_vector = calloc(argcp + 1, sizeof(char *));
-			/*args_vector[0] = strdup(backend_cmd);
-			   args_vector[1] = strdup(item->req_id);
-			   args_vector[2] = strdup(item->pkgid); */
-			int arg_idx;
-			for (arg_idx = 0; arg_idx < argcp; arg_idx++) {
-				/* args_vector[arg_idx+3] = argvp[arg_idx]; */
-				args_vector[arg_idx] = argvp[arg_idx];
-			}
-
-			/* dbg */
-			/*for(arg_idx = 0; arg_idx < argcp+3; arg_idx++) { */
-			for (arg_idx = 0; arg_idx < argcp + 1; arg_idx++) {
-				DBG(">>>>>> args_vector[%d]=%s",
-				    arg_idx, args_vector[arg_idx]);
-			}
-
-			/* Execute backend !!! */
-			ret = execv(backend_cmd, args_vector);
-
-			/* Code below: exec failure. Should not be happened! */
-			DBG(">>>>>> OOPS 2!!!");
-
-			/* g_strfreev(args_vector); *//* FIXME: causes error */
-
-			if (ret == -1) {
-				perror("fail to exec");
-				exit(1);
-			}
-			_save_queue_status(item, "done");
-			if (NULL != backend_cmd)
-				free(backend_cmd);
-			exit(0);
+			__exec_with_arg_vector("usr/bin/pkg_getsize", __generate_argv(item->args), item->uid);
 			break;
-
-		case -1:	/* error */
-			fprintf(stderr, "Fail to execute fork()\n");
-			exit(1);
-			break;
-
-		default:	/* parent */
-			DBG("parent \n");
-			_wait_backend((ptr + x)->pid);
-			_save_queue_status(item, "done");
-			break;
-		}
-		break;
-
-	case COMM_REQ_KILL_APP:
-	case COMM_REQ_CHECK_APP:
-		DBG("COMM_REQ_CHECK_APP start");
-		_save_queue_status(item, "processing");
-		DBG("saved queue status. Now try fork()");
-		/*save pkg type and pkg name for future*/
-		x = (pos + num_of_backends - 1) % num_of_backends;
-		strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
-		strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
-		strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
-		(ptr + x)->pid = fork();
-		DBG("child forked [%d]\n", (ptr + x)->pid);
-
-		switch ((ptr + x)->pid) {
-		case 0:	/* child */
-			DBG("child run parse argv()");
-
+		case COMM_REQ_KILL_APP:
+		case COMM_REQ_CHECK_APP:
+			DBG("COMM_REQ_CHECK_APP start");
 			pkgmgrinfo_pkginfo_h handle;
 			ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(item->pkgid, item->uid, &handle);
 			if (ret < 0) {
@@ -1962,25 +1731,21 @@ pop:
 			}
 
 			pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-
-			_save_queue_status(item, "done");
-			exit(0);
-			break;
-
-		case -1:	/* error */
-			fprintf(stderr, "Fail to execute fork()\n");
-			exit(1);
-			break;
-
-		default:	/* parent */
-			DBG("parent exit\n");
-			_wait_backend((ptr + x)->pid);
-			_save_queue_status(item, "done");
 			break;
 		}
+		/* exit child */
+		_save_queue_status(item, "done");
+		exit(0);
 		break;
 
-	default:
+	case -1:
+		fprintf(stderr, "Fail to execute_fork()\n");
+		exit(1);
+
+	default:	/* parent */
+		DBG("parent exit\n");
+		_wait_backend((ptr + x)->pid);
+		_save_queue_status(item, "done");
 		break;
 	}
 
@@ -2076,7 +1841,7 @@ int main(int argc, char *argv[])
 
 	if (argv[1]) {
 		if (strcmp(argv[1], "init") == 0) {
-			/* if current status is "processing", 
+			/* if current status is "processing",
 			   execute related backend with '-r' option */
 			if (!(fp_status = fopen(STATUS_FILE, "r")))
 				return 0;	/*if file is not exist, terminated. */
