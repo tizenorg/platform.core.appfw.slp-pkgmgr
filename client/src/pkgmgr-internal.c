@@ -270,7 +270,7 @@ char *_get_pkg_type_from_desktop_file(const char *pkgid, uid_t uid)
 	char *str;
 	if(uid != GLOBAL_USER)
 	{
-		ret = ail_package_get_usr_appinfo(pkgid, &handle, uid);
+		ret = ail_package_get_usr_appinfo(pkgid, uid, &handle);
 	}else
 	{
 		ret = ail_package_get_appinfo(pkgid, &handle);
