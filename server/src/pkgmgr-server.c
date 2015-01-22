@@ -1482,16 +1482,13 @@ gboolean queue_job(void *data)
 	int pos = 0;
 	/* Pop a job from queue */
 pop:
-       if (!__is_backend_busy(pos % num_of_backends)) {
-               item = _pm_queue_pop(pos % num_of_backends);
-               pos = (pos + 1) % num_of_backends;
-       }
-       else {
-               pos = (pos + 1) % num_of_backends;
-               goto pop;
-       }
-
-
+	if (!__is_backend_busy(pos % num_of_backends)) {
+		item = _pm_queue_pop(pos % num_of_backends);
+		pos = (pos + 1) % num_of_backends;
+	} else {
+		pos = (pos + 1) % num_of_backends;
+		goto pop;
+	}
 	int ret = 0;
 	char *backend_cmd = NULL;
 
@@ -1499,8 +1496,12 @@ pop:
 	if ( (item == NULL) || (item->req_type == -1) ) {
 		if(item)
 			free(item);
-		DBG("the queue is empty");
-		return FALSE;
+		DBG("the queue is empty for backend %d ", (pos + num_of_backends - 1) % num_of_backends);
+
+		if (pos == 0) // all backend messages queue are empty
+			return FALSE;
+		else // check the next backend message queue
+			goto pop;
 	}
 	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
 	__set_recovery_mode(item->pkgid, item->pkg_type);
