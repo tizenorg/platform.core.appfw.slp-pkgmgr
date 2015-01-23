@@ -1500,7 +1500,7 @@ pop:
 		if(item)
 			free(item);
 		DBG("the queue is empty");
-		return FALSE;
+		goto pop;
 	}
 	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
 	__set_recovery_mode(item->pkgid, item->pkg_type);
