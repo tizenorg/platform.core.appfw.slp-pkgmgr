@@ -1474,7 +1474,7 @@ static void __exec_with_arg_vector(const char *cmd, char **argv, uid_t uid)
 
 gboolean queue_job(void *data)
 {
-	/* DBG("queue_job start"); */
+	/* DBG("queue_jobq start"); */
 	pm_dbus_msg *item;
 	backend_info *ptr = NULL;
 	ptr = begin;
@@ -1482,11 +1482,15 @@ gboolean queue_job(void *data)
 	int pos = 0;
 	/* Pop a job from queue */
 pop:
+		DBG("POP");
+
 	if (!__is_backend_busy(pos % num_of_backends)) {
 		item = _pm_queue_pop(pos % num_of_backends);
 		pos = (pos + 1) % num_of_backends;
 	} else {
 		pos = (pos + 1) % num_of_backends;
+		DBG("check message queue()");
+
 		goto pop;
 	}
 	int ret = 0;
@@ -1496,15 +1500,21 @@ pop:
 	if ( (item == NULL) || (item->req_type == -1) ) {
 		if(item)
 			free(item);
-		DBG("the queue is empty for backend %d ", (pos + num_of_backends - 1) % num_of_backends);
+		DBG("the queue is empty for backend %d => pos = %d", (pos + num_of_backends - 1) % num_of_backends, pos);
 
 		if (pos == 0) // all backend messages queue are empty
 			return FALSE;
 		else // check the next backend message queue
 			goto pop;
 	}
+		DBG("GO");
+
 	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
+			DBG("GO1");
+
 	__set_recovery_mode(item->pkgid, item->pkg_type);
+
+		DBG("GO2");
 
 	/* fork */
 	_save_queue_status(item, "processing");

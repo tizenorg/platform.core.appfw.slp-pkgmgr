@@ -333,6 +333,7 @@ pm_dbus_msg *_pm_queue_pop(int position)
 
 	if (!cur) {		/* queue is empty */
 		ret->req_type = -1;
+		pthread_mutex_unlock(&pm_mutex);
 		return ret;
 	}
 
