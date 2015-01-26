@@ -39,7 +39,6 @@ static int __entry_exist(char *backend);
 static int __is_pkg_supported(char *pkgtype);
 
 queue_info_map *start = NULL;
-pthread_mutex_t pm_mutex;
 int entries = 0;
 int slot = 0;
 int num_of_backends = 0;
@@ -240,7 +239,6 @@ int _pm_queue_init()
 	}
 	free(namelist);
 	num_of_backends = slot;
-	pthread_mutex_init(&pm_mutex, NULL);
 
 #ifdef DEBUG_INFO
 	/*Debug info*/
@@ -269,14 +267,12 @@ int _pm_queue_push(pm_dbus_msg *item)
 	if (ret == 0)
 		return -1;
 
-	pthread_mutex_lock(&pm_mutex);
 	cur = __get_head_from_pkgtype(item);
 	tmp = cur;
 
 	data = _add_node();
 	if (!data) { /* fail to allocate mem */
 		ERR("Fail to allocate memory\n");
-		pthread_mutex_unlock(&pm_mutex);
 		return -1;
 	}
 
@@ -301,7 +297,6 @@ int _pm_queue_push(pm_dbus_msg *item)
 
 		tmp->next = data;
 	}
-	pthread_mutex_unlock(&pm_mutex);
 	return 0;
 }
 
@@ -320,7 +315,6 @@ pm_dbus_msg *_pm_queue_pop(int position)
 		return NULL;
 	}
 	memset(ret, 0x00, sizeof(pm_dbus_msg));
-	pthread_mutex_lock(&pm_mutex);
 	ptr = start;
 	for(i = 0; i < entries; i++)
 	{
@@ -333,7 +327,6 @@ pm_dbus_msg *_pm_queue_pop(int position)
 
 	if (!cur) {		/* queue is empty */
 		ret->req_type = -1;
-		pthread_mutex_unlock(&pm_mutex);
 		return ret;
 	}
 
@@ -359,7 +352,6 @@ pm_dbus_msg *_pm_queue_pop(int position)
 		}
 		ptr++;
 	}
-	pthread_mutex_unlock(&pm_mutex);
 	return ret;
 }
 
