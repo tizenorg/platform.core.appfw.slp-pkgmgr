@@ -23,6 +23,8 @@
 #ifndef _PKGMGR_SERVER_H_
 #define _PKGMGR_SERVER_H_
 
+#include <glib.h>
+
 #ifdef LOG_TAG
 #undef LOG_TAG
 #endif /* LOG_TAG */
@@ -57,6 +59,9 @@ typedef struct backend_info_t {
 	char pkgtype[MAX_PKG_TYPE_LEN];
 	char pkgid[MAX_PKG_NAME_LEN];
 	char args[MAX_PKG_ARGS_LEN];
+	int pipe[2];
+	GIOChannel *pipe_io;
+	guint pipe_wid;
 } backend_info;
 
 struct pm_inotify_paths_t {

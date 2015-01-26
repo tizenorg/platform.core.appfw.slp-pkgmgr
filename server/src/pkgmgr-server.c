@@ -121,7 +121,6 @@ struct appdata {
 	OPERATION_TYPE op_type;
 };
 
-
 static int __check_backend_status_for_exit();
 static int __check_queue_status_for_exit();
 static int __check_backend_mode();
@@ -135,13 +134,11 @@ static void response_cb1(void *data, void *event_info);
 static void response_cb2(void *data, void *event_info);
 static int create_popup(struct appdata *ad);
 static void sighandler(int signo);
-static void _wait_backend(pid_t pid);
 static int __get_position_from_pkg_type(char *pkgtype);
 static int __is_efl_tpk_app(char *pkgpath);
 static int __xsystem(const char *argv[]);
 
 gboolean queue_job(void *data);
-gboolean send_fail_signal(void *data);
 gboolean exit_server(void *data);
 
 /* To check whether a particular backend is free/busy*/
@@ -686,7 +683,7 @@ int create_popup(struct appdata *ad)
 	return 0;
 }
 
-gboolean send_fail_signal(void *data)
+static void send_fail_signal(char *pname, char *ptype, char *args)
 {
 	DBG("send_fail_signal start\n");
 	gboolean ret_parse;
@@ -697,7 +694,7 @@ gboolean send_fail_signal(void *data)
 	pi = pkgmgr_installer_new();
 	if (!pi) {
 		DBG("Failure in creating the pkgmgr_installer object");
-		return FALSE;
+		return;
 	}
 	ret_parse = g_shell_parse_argv(args,
 				       &argcp, &argvp, &gerr);
@@ -705,118 +702,140 @@ gboolean send_fail_signal(void *data)
 		DBG("Failed to split args: %s", args);
 		DBG("messsage: %s", gerr->message);
 		pkgmgr_installer_free(pi);
-		return FALSE;
+		return;
 	}
 
 	pkgmgr_installer_receive_request(pi, argcp, argvp);
 	pkgmgr_installer_send_signal(pi, ptype, pname, "end", "fail");
 	pkgmgr_installer_free(pi);
-	return FALSE;
+	return;
 }
 
-static void _wait_backend(pid_t pid)
+static gboolean pipe_io_handler(GIOChannel *io, GIOCondition cond, gpointer data)
 {
+	GError *err = NULL;
+	GIOStatus s;
 	int status;
-	pid_t cpid;
-	int i = 0;
-	backend_info *ptr = NULL;
-	ptr = begin;
-	cpid = waitpid(pid, &status, 0);
-	if (cpid != pid)
-		ERR("WaitBackend Faillure %d",cpid);
-	else if (WIFEXITED(status)) {
-			DBG("child NORMAL exit [%d]\n", cpid);
-			for(i = 0; i < num_of_backends; i++)
-			{
-				if (cpid == (ptr + i)->pid) {
-					__set_backend_free(i);
-					__set_backend_mode(i);
-					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
-					ERR(" STATUS = %d \n",(WEXITSTATUS (status)));
-					if (WEXITSTATUS (status) != 0) {
-						strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
-						strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
-						strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
-						g_idle_add(send_fail_signal, NULL);
-					}
-					break;
-				}
-				else
-					DBG("PID of registered backend is  [%d]\n", (ptr + i)->pid);
+	gsize len;
+	int backend_num;
+	backend_info *ptr = begin;
 
-			}
-		}
-	else if (WIFSIGNALED(status)) {
-			DBG("child SIGNALED exit [%d]\n", cpid);
-			/*get the pkgid and pkgtype to send fail signal*/
-			for(i = 0; i < num_of_backends; i++)
-			{
-				if (cpid == (ptr + i)->pid) {
-					__set_backend_free(i);
-					__set_backend_mode(i);
-					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
-					strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
-					strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
-					strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
-					g_idle_add(send_fail_signal, NULL);
-					break;
-				}
-			}
-		}
+	backend_num = (int) data;
+	ptr = ptr + backend_num;
+
+
+	s = g_io_channel_read_chars(io, (gchar *)&status, sizeof(status), &len, &err);
+	if (s != G_IO_STATUS_NORMAL) {
+		ERR("Signal pipe read failed: %s", err->message);
+		g_error_free(err);
+		return TRUE;
+	}
+
+	__set_backend_free(backend_num);
+	__set_backend_mode(backend_num);
+	__unset_recovery_mode(ptr->pkgid, ptr->pkgtype);
+	if (WIFSIGNALED(status) || WEXITSTATUS(status)) {
+		send_fail_signal(ptr->pkgid, ptr->pkgtype, ptr->args);
+		DBG("backend[%s] exit with error", ptr->pkgtype);
+	} else {
+		DBG("backend[%s] exit", ptr->pkgtype);
+	}
+
+	return TRUE;
 }
 
+static int __create_backend_pipe(void)
+{
+	int i;
+	backend_info *ptr = begin;
+
+	for (i = 0; i < num_of_backends; i++) {
+		if (pipe((ptr + i)->pipe)) {
+			ERR("create pipe failed");
+			return -1;
+		}
+
+		(ptr + i)->pipe_io = g_io_channel_unix_new((ptr + i)->pipe[0]);
+		g_io_channel_set_encoding((ptr + i)->pipe_io, NULL, NULL);
+		g_io_channel_set_buffered((ptr + i)->pipe_io, FALSE);
+		(ptr + i)->pipe_wid = g_io_add_watch((ptr + i)->pipe_io, G_IO_IN, pipe_io_handler, i);
+		DBG("pipe created");
+	}
+
+	return 0;
+}
+
+static int __init_backend_info(void)
+{
+	backend_info *ptr;
+
+	/*Allocate memory for holding pid, pkgtype and pkgid*/
+	ptr = (backend_info*)calloc(num_of_backends, sizeof(backend_info));
+	if (ptr == NULL) {
+		DBG("Malloc Failed\n");
+		return -1;
+	}
+	memset(ptr, '\0', num_of_backends * sizeof(backend_info));
+	begin = ptr;
+
+	if (__create_backend_pipe())
+		return -1;
+
+	return 0;
+}
+
+static void __fini_backend_info(void)
+{
+	int i;
+	backend_info *ptr = begin;
+
+	for (i = 0; i < num_of_backends; i++) {
+		g_source_remove((ptr + i)->pipe_wid);
+		g_io_channel_unref((ptr + i)->pipe_io);
+		close((ptr + i)->pipe[0]);
+		close((ptr + i)->pipe[1]);
+	}
+
+	/*Free backend info */
+	free(begin);
+}
 
 static void sighandler(int signo)
 {
+	int i;
 	int status;
 	pid_t cpid;
-	int i = 0;
-	backend_info *ptr = NULL;
-	ptr = begin;
+	backend_info *ptr = begin;
 
-	while ((cpid = waitpid(-1, &status, WNOHANG)) > 0) {
-		DBG("child exit [%d]\n", cpid);
-		if (WIFEXITED(status)) {
-			DBG("child NORMAL exit [%d]\n", cpid);
-			for(i = 0; i < num_of_backends; i++)
-			{
-				if (cpid == (ptr + i)->pid) {
-					__set_backend_free(i);
-					__set_backend_mode(i);
-					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
+	cpid = waitpid(-1, &status, WNOHANG);
+	for (i = 0; i < num_of_backends; i++) {
+		if (cpid == (ptr + i)->pid)
+			write((ptr + i)->pipe[1], &status, sizeof(status));
+	}
+}
 
-					if (WEXITSTATUS (status) != 0) {
-						strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
-						strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
-						strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
-						g_idle_add(send_fail_signal, NULL);
-					}
-					break;
-				}
-				else
-					DBG("PID of registered backend is  [%d]\n", (ptr + i)->pid);
+static int __register_signal_handler(void)
+{
+	int i;
+	static int sig_reg = 0;
+	struct sigaction act;
 
-			}
-		}
-		else if (WIFSIGNALED(status)) {
-			DBG("child SIGNALED exit [%d]\n", cpid);
-			/*get the pkgid and pkgtype to send fail signal*/
-			for(i = 0; i < num_of_backends; i++)
-			{
-				if (cpid == (ptr + i)->pid) {
-					__set_backend_free(i);
-					__set_backend_mode(i);
-					__unset_recovery_mode((ptr + i)->pkgid, (ptr + i)->pkgtype);
-					strncpy(pname, (ptr + i)->pkgid, MAX_PKG_NAME_LEN-1);
-					strncpy(ptype, (ptr + i)->pkgtype, MAX_PKG_TYPE_LEN-1);
-					strncpy(args, (ptr + i)->args, MAX_PKG_ARGS_LEN-1);
-					g_idle_add(send_fail_signal, NULL);
-					break;
-				}
-			}
-		}
+	if (sig_reg)
+		return 0;
+
+	act.sa_handler = sighandler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_NOCLDSTOP;
+	if (sigaction(SIGCHLD, &act, NULL) < 0) {
+		ERR("signal: SIGCHLD failed\n");
+		return -1;
 	}
 
+	if (g_timeout_add_seconds(2, exit_server, NULL))
+		DBG("g_timeout_add_seconds() Added to Main Loop");
+
+	sig_reg = 1;
+	return 0;
 }
 
 void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
@@ -859,21 +878,11 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	 * if UID != Regular USER & UID != GLOBAL USER  == TRUE ==> NOT GRANTED
 	 * if RUID == Regular USER & UID != RUID == True ==> NOT GRANTED
 	 *  */
-	if (sig_reg == 0) {
-		struct sigaction act;
 
-		act.sa_handler = sighandler;
-		sigemptyset(&act.sa_mask);
-		act.sa_flags = SA_NOCLDSTOP;
-
-		if (sigaction(SIGCHLD, &act, NULL) < 0) {
-			DBG("signal: SIGCHLD failed\n");
-		} else
-			DBG("signal: SIGCHLD succeed\n");
-		if (g_timeout_add_seconds(2, exit_server, NULL))
-			DBG("g_timeout_add_seconds() Added to Main Loop");
-
-		sig_reg = 1;
+	if (__register_signal_handler()) {
+		ERR("failed to register signal handler");
+		*ret = COMM_RET_ERROR;
+		goto err;
 	}
 
 	DBG("req_type=(%d) drawing_popup=(%d) backend_flag=(%d)\n", req_type,
@@ -1489,6 +1498,8 @@ pop:
 		pos = (pos + 1) % num_of_backends;
 		goto pop;
 	}
+
+
 	int ret = 0;
 	char *backend_cmd = NULL;
 
@@ -1745,7 +1756,6 @@ pop:
 
 	default:	/* parent */
 		DBG("parent exit\n");
-		_wait_backend((ptr + x)->pid);
 		_save_queue_status(item, "done");
 		break;
 	}
@@ -1835,7 +1845,6 @@ int main(int argc, char *argv[])
 	pid_t pid;
 	char *backend_cmd = NULL;
 	char *backend_name = NULL;
-	backend_info *ptr = NULL;
 	int r;
 
 	DBG("server start");
@@ -1892,14 +1901,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	/*Allocate memory for holding pid, pkgtype and pkgid*/
-	ptr = (backend_info*)calloc(num_of_backends, sizeof(backend_info));
-	if (ptr == NULL) {
-		DBG("Malloc Failed\n");
+	r = __init_backend_info();
+	if (r) {
+		DBG("backend info init failed");
 		return -1;
 	}
-	memset(ptr, '\0', num_of_backends * sizeof(backend_info));
-	begin = ptr;
 
 	g_type_init();
 	mainloop = g_main_loop_new(NULL, FALSE);
@@ -1922,11 +1928,7 @@ int main(int argc, char *argv[])
 
 	DBG("Quit main loop.");
 	_pm_queue_final();
-	/*Free backend info */
-	if (begin) {
-		free(begin);
-		begin = NULL;
-	}
+	__fini_backend_info();
 
 	DBG("package manager server terminated.");
 
