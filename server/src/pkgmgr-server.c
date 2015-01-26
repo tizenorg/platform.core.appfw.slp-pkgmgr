@@ -92,7 +92,6 @@ extern int num_of_backends;
 backend_info *begin;
 extern queue_info_map *start;
 extern int entries;
-int pos = 0;
 /*To store info in case of backend crash*/
 char pname[MAX_PKG_NAME_LEN] = {'\0'};
 char ptype[MAX_PKG_TYPE_LEN] = {'\0'};
@@ -831,9 +830,6 @@ static int __register_signal_handler(void)
 		return -1;
 	}
 
-	if (g_timeout_add_seconds(2, exit_server, NULL))
-		DBG("g_timeout_add_seconds() Added to Main Loop");
-
 	sig_reg = 1;
 	return 0;
 }
@@ -879,6 +875,8 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	 * if RUID == Regular USER & UID != RUID == True ==> NOT GRANTED
 	 *  */
 
+	g_timeout_add_seconds(2, exit_server, NULL);
+	g_idle_add(queue_job, NULL);
 	if (__register_signal_handler()) {
 		ERR("failed to register signal handler");
 		*ret = COMM_RET_ERROR;
@@ -911,8 +909,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 			__set_backend_mode(p);
 			/* Free resource */
 			free(item);
-			if (err == 0)
-				g_idle_add(queue_job, NULL);
 			*ret = COMM_RET_OK;
 		} else {
 			/* non quiet mode */
@@ -960,9 +956,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		/* Free resource */
 		free(item);
 
-/*		g_idle_add(queue_job, NULL); */
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_CLEARER:
@@ -975,9 +968,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		/* Free resource */
 		free(item);
 
-/*		g_idle_add(queue_job, NULL); */
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_MOVER:
@@ -997,8 +987,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		__unset_backend_mode(p);
 		/* Free resource */
 		free(item);
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CANCEL:
@@ -1023,8 +1011,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		__set_backend_mode(p);
 		/* Free resource */
 		free(item);
-		if (err == 0)
-			g_idle_add(queue_job, NULL);
 		*ret = COMM_RET_OK;
 		break;
 
@@ -1037,9 +1023,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		/* Free resource */
 		free(item);
 
-/*		g_idle_add(queue_job, NULL); */
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CLEAR_CACHE_DIR:
@@ -1055,8 +1038,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);
 
-		if (err == 0)
-			g_idle_add(queue_job, NULL);
 		*ret = PKGMGR_R_OK;
 		break;
 
@@ -1483,45 +1464,40 @@ static void __exec_with_arg_vector(const char *cmd, char **argv, uid_t uid)
 
 gboolean queue_job(void *data)
 {
-	/* DBG("queue_job start"); */
-	pm_dbus_msg *item;
+	pm_dbus_msg *item = NULL;
 	backend_info *ptr = NULL;
 	ptr = begin;
 	int x = 0;
-	int pos = 0;
-	/* Pop a job from queue */
-pop:
-	if (!__is_backend_busy(pos % num_of_backends)) {
-		item = _pm_queue_pop(pos % num_of_backends);
-		pos = (pos + 1) % num_of_backends;
-	} else {
-		pos = (pos + 1) % num_of_backends;
-		goto pop;
-	}
-
-
 	int ret = 0;
 	char *backend_cmd = NULL;
 
-	/* queue is empty and backend process is not running */
-	if ( (item == NULL) || (item->req_type == -1) ) {
-		if(item)
-			free(item);
-		DBG("the queue is empty for backend %d ", (pos + num_of_backends - 1) % num_of_backends);
+	/* Pop a job from queue */
+	for (x = 0; x < num_of_backends; x++) {
+		if (__is_backend_busy(x))
+			continue;
 
-		if (pos == 0) // all backend messages queue are empty
-			return FALSE;
-		else // check the next backend message queue
-			goto pop;
+		item = _pm_queue_pop(x);
+		/* queue is empty and backend process is not running */
+		if ( (item == NULL) || (item->req_type == -1) ) {
+			if(item)
+				free(item);
+			continue;
+		} else {
+			break;
+		}
 	}
-	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
+
+	// all backend messages queue are empty
+	if (x == num_of_backends)
+		return TRUE;
+
+	__set_backend_busy(x);
 	__set_recovery_mode(item->pkgid, item->pkg_type);
 
 	/* fork */
 	_save_queue_status(item, "processing");
 	DBG("saved queue status. Now try fork()");
 	/*save pkg type and pkg name for future*/
-	x = (pos + num_of_backends - 1) % num_of_backends;
 	strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
 	strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
 	strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
@@ -1762,7 +1738,7 @@ pop:
 
 	free(item);
 
-	return FALSE;
+	return TRUE;
 }
 
 #define IS_WHITESPACE(CHAR) \
