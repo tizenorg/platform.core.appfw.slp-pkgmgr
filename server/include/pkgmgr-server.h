@@ -23,6 +23,8 @@
 #ifndef _PKGMGR_SERVER_H_
 #define _PKGMGR_SERVER_H_
 
+#include <glib.h>
+
 #ifdef LOG_TAG
 #undef LOG_TAG
 #endif /* LOG_TAG */
