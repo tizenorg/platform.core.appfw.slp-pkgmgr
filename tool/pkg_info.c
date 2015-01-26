@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <vconf.h>
+//Work around for https://bugs.tizen.org/jira/browse/TC-2399
+#include <ail_vconf.h>
 #include <pkgmgr_parser.h>
 #include <pkgmgr-info.h>
 #include "package-manager.h"
@@ -2216,7 +2218,8 @@ int main(int argc, char *argv[])
 	gettimeofday(&tv, NULL);
 	starttime = tv.tv_sec * 1000l + tv.tv_usec / 1000l;
 
-	locale = vconf_get_str(VCONFKEY_LANGSET);
+	locale = ail_vconf_get_str(VCONFKEY_LANGSET); 
+	//Work around for https://bugs.tizen.org/jira/browse/TC-2399
 	if (locale == NULL) {
 		printf("locale is NULL\n");
 		ret = -1;

@@ -36,6 +36,9 @@ BuildRequires:  pkgmgr-info-parser
 BuildRequires:  libsmack
 BuildRequires:  fdupes
 
+## 	Work around for https://bugs.tizen.org/jira/browse/TC-2399
+BuildRequires:  ail-vconf-devel
+
 %description
 Packager Manager client library package for packaging
 
