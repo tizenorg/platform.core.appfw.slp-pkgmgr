@@ -428,8 +428,8 @@ void response_cb1(void *data, void *event_info)
 	/* Free resource */
 	free(ad->item);
 	/***************/
-	if (ret == 0)
-		g_idle_add(queue_job, NULL);
+	if (ret)
+		ERR("failed to push queue item");
 
 	DBG("end of response_cb()\n");
 
@@ -815,8 +815,8 @@ static int __register_signal_handler(void)
 		return -1;
 	}
 
-	if (g_timeout_add_seconds(2, exit_server, NULL))
-		DBG("g_timeout_add_seconds() Added to Main Loop");
+	g_timeout_add_seconds(2, exit_server, NULL);
+	g_idle_add(queue_job, NULL);
 
 	sig_reg = 1;
 	return 0;
@@ -826,9 +826,8 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	    const char *pkg_type, const char *pkgid, const char *args,
 	    const char *cookie, int *ret)
 {
-	int err = -1;
-	int p = 0;
-	int cookie_result = 0;
+	int p;
+	int cookie_result;
 
 	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s]",
 	    req_id, req_type, pkg_type, pkgid, args, cookie);
@@ -889,13 +888,15 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		    ((quiet = strstr(args, " '-q'")) &&
 		     (quiet[strlen(quiet)] == '\0'))) {
 			/* quiet mode */
-			err = _pm_queue_push(item);
+			if (_pm_queue_push(item)) {
+				ERR("failed to push queue item");
+				*ret = COMM_RET_ERROR;
+				goto err;
+			}
 			p = __get_position_from_pkg_type(item->pkg_type);
 			__set_backend_mode(p);
 			/* Free resource */
 			free(item);
-			if (err == 0)
-				g_idle_add(queue_job, NULL);
 			*ret = COMM_RET_OK;
 		} else {
 			/* non quiet mode */
@@ -918,8 +919,7 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 				else
 					ad->op_type = OPERATION_MAX;
 
-				err = create_popup(ad);
-				if (err != 0) {
+				if (create_popup(ad)) {
 					*ret = COMM_RET_ERROR;
 					DBG("create popup failed\n");
 					goto err;
@@ -937,20 +937,25 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		break;
 	case COMM_REQ_TO_ACTIVATOR:
 		/* In case of activate, there is no popup */
-		err = _pm_queue_push(item);
+		if (_pm_queue_push(item)) {
+			ERR("failed to push queue item");
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);
 		/* Free resource */
 		free(item);
 
-/*		g_idle_add(queue_job, NULL); */
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_CLEARER:
 		/* In case of clearer, there is no popup */
-		err = _pm_queue_push(item);
+		if (_pm_queue_push(item)) {
+			ERR("failed to push queue item");
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
 		p = __get_position_from_pkg_type(item->pkg_type);
 		/*the backend shows the success/failure popup
 		so this request is non quiet*/
@@ -958,9 +963,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		/* Free resource */
 		free(item);
 
-/*		g_idle_add(queue_job, NULL); */
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_MOVER:
@@ -973,15 +975,17 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		}
 
 		/* In case of mover, there is no popup */
-		err = _pm_queue_push(item);
+		if (_pm_queue_push(item)) {
+			ERR("failed to push queue item");
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
 		p = __get_position_from_pkg_type(item->pkg_type);
 		/*the backend shows the success/failure popup
 		so this request is non quiet*/
 		__unset_backend_mode(p);
 		/* Free resource */
 		free(item);
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CANCEL:
@@ -1001,28 +1005,31 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 			goto err;
 		}
 
-		err = _pm_queue_push(item);
+		if (_pm_queue_push(item)) {
+			ERR("failed to push queue item");
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);
 		/* Free resource */
 		free(item);
-		if (err == 0)
-			g_idle_add(queue_job, NULL);
 		*ret = COMM_RET_OK;
 		break;
 
 	case COMM_REQ_CHECK_APP:
 	case COMM_REQ_KILL_APP:
 		/* In case of activate, there is no popup */
-		err = _pm_queue_push(item);
+		if (_pm_queue_push(item)) {
+			ERR("failed to push queue item");
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);
 		/* Free resource */
 		free(item);
 
-/*		g_idle_add(queue_job, NULL); */
-		if (err == 0)
-			queue_job(NULL);
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CLEAR_CACHE_DIR:
@@ -1034,12 +1041,14 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 			goto err;
 		}
 
-		err = _pm_queue_push(item);
+		if (_pm_queue_push(item)) {
+			ERR("failed to push queue item");
+			*ret = COMM_RET_ERROR;
+			goto err;
+		}
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);
 
-		if (err == 0)
-			g_idle_add(queue_job, NULL);
 		*ret = PKGMGR_R_OK;
 		break;
 
@@ -1735,7 +1744,7 @@ gboolean queue_job(void *data)
 
 	free(item);
 
-	return FALSE;
+	return TRUE;
 }
 
 #define IS_WHITESPACE(CHAR) \
