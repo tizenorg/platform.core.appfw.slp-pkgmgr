@@ -1466,50 +1466,41 @@ static void __exec_with_arg_vector(const char *cmd, char **argv, uid_t uid)
 
 gboolean queue_job(void *data)
 {
-	/* DBG("queue_job start"); */
-	pm_dbus_msg *item;
-	backend_info *ptr = NULL;
-	ptr = begin;
-	int x = 0;
-	int pos = 0;
-	/* Pop a job from queue */
-pop:
-	if (!__is_backend_busy(pos % num_of_backends)) {
-		item = _pm_queue_pop(pos % num_of_backends);
-		pos = (pos + 1) % num_of_backends;
-	} else {
-		pos = (pos + 1) % num_of_backends;
-		goto pop;
-	}
-	int ret = 0;
+	pm_dbus_msg *item = NULL;
+	backend_info *ptr;
+	int x;
+	int ret;
 	char *backend_cmd = NULL;
 
-	/* queue is empty and backend process is not running */
-	if ( (item == NULL) || (item->req_type == -1) ) {
-		if(item)
-			free(item);
-		DBG("the queue is empty for backend %d ", (pos + num_of_backends - 1) % num_of_backends);
+	/* Pop a job from queue */
+	for (x = 0, ptr = begin; x < num_of_backends; x++, ptr++) {
+		if (__is_backend_busy(x))
+			continue;
 
-		if (pos == 0) // all backend messages queue are empty
-			return FALSE;
-		else // check the next backend message queue
-			goto pop;
+		item = _pm_queue_pop(x);
+		if (item && item->req_type != -1)
+			break;
+		free(item);
 	}
-	__set_backend_busy((pos + num_of_backends - 1) % num_of_backends);
+
+	/* all backend messages queue are empty or busy */
+	if (x == num_of_backends)
+		return FALSE;
+
+	__set_backend_busy(x);
 	__set_recovery_mode(item->pkgid, item->pkg_type);
 
 	/* fork */
 	_save_queue_status(item, "processing");
 	DBG("saved queue status. Now try fork()");
 	/*save pkg type and pkg name for future*/
-	x = (pos + num_of_backends - 1) % num_of_backends;
-	strncpy((ptr + x)->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
-	strncpy((ptr + x)->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
-	strncpy((ptr + x)->args, item->args, MAX_PKG_ARGS_LEN-1);
-	(ptr + x)->pid = fork();
-	DBG("child forked [%d] for request type [%d]", (ptr + x)->pid, item->req_type);
+	strncpy(ptr->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
+	strncpy(ptr->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
+	strncpy(ptr->args, item->args, MAX_PKG_ARGS_LEN-1);
+	ptr->pid = fork();
+	DBG("child forked [%d] for request type [%d]", ptr->pid, item->req_type);
 
-	switch ((ptr + x)->pid) {
+	switch (ptr->pid) {
 	case 0:	/* child */
 		switch (item->req_type) {
 		case COMM_REQ_TO_INSTALLER:
