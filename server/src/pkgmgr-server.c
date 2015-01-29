@@ -630,6 +630,7 @@ int create_popup(struct appdata *ad)
 	char *button1_text = dgettext("sys_string", "IDS_COM_SK_YES");
 	char *button2_text = dgettext("sys_string", "IDS_COM_SK_NO");
 	*/
+	char *timeout_text = "10";
 	char *button1_text = "Yes";
 	char *button2_text = "No";
 	char *buttons_text = malloc(strlen(button1_text) +
@@ -638,7 +639,7 @@ int create_popup(struct appdata *ad)
 	strcat(buttons_text, ",");
 	strcat(buttons_text, button2_text);
 
-	bundle_add (b, "timeout", "0");
+	bundle_add (b, "timeout", timeout_text);
 	bundle_add (b, "noresize", "1");
 	bundle_add (b, "buttons", buttons_text);
 
@@ -668,7 +669,7 @@ int create_popup(struct appdata *ad)
 	/* Catch user response */
 	int button;
 
-	err = notification_wait_response (noti, 10, &button, NULL);
+	err = notification_wait_response (noti, atoi(timeout_text), &button, NULL);
 	if (err != NOTIFICATION_ERROR_NONE) {
 		DBG("Failed to wait for user response, defaulting to 'no'\n");
 		button = 2;
