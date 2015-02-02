@@ -80,32 +80,19 @@
 
 /* req_type */
 enum {
-	/* to installer */
-	COMM_REQ_TO_INSTALLER = 1,
-
-	/* to activator */
-	COMM_REQ_TO_ACTIVATOR,
-
-	/* to clearer */
-	COMM_REQ_TO_CLEARER,
-
-	/* to mover*/
-	COMM_REQ_TO_MOVER,
-
-	/* cancel job */
-	COMM_REQ_CANCEL,
-
-	/*get package size */
-	COMM_REQ_GET_SIZE,
-
-	/*kill app */
-	COMM_REQ_KILL_APP,
-
-	/*check app */
-	COMM_REQ_CHECK_APP,
-
-	/* to cache clear */
-	COMM_REQ_CLEAR_CACHE_DIR,
+	COMM_REQ_TO_INSTALLER = 1,          /* to installer */
+	COMM_REQ_ACTIVATE_PKG,              /* activate pkg */
+	COMM_REQ_DEACTIVATE_PKG,            /* deactivate pkg */
+	COMM_REQ_ACTIVATE_APP,              /* activate app */
+	COMM_REQ_DEACTIVATE_APP,            /* deactivate app */
+	COMM_REQ_ACTIVATE_APP_WITH_LABEL,   /* activate app with label */
+	COMM_REQ_TO_CLEARER,                /* to clearer */
+	COMM_REQ_TO_MOVER,                  /* to mover */
+	COMM_REQ_CANCEL,                    /* cancel job */
+	COMM_REQ_GET_SIZE,                  /* get package size */
+	COMM_REQ_KILL_APP,                  /* kill all */
+	COMM_REQ_CHECK_APP,                 /* check app */
+	COMM_REQ_CLEAR_CACHE_DIR,           /* to cache clear */
 
 	COMM_REQ_MAX_SENTINEL
 };

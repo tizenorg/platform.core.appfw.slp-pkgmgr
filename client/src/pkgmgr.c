@@ -2073,7 +2073,7 @@ API int pkgmgr_client_usr_activate(pkgmgr_client * pc, const char *pkg_type,
 	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, pkgid, "1 PKG", cookie, uid, 1);
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_ACTIVATE_PKG, pkgtype, pkgid, NULL, cookie, uid, 1);
 	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
 	ret = PKGMGR_R_OK;
@@ -2120,7 +2120,7 @@ API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
 	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, pkgid, "0 PKG", cookie, uid, 1);
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_DEACTIVATE_PKG, pkgtype, pkgid, NULL, cookie, uid, 1);
 	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
 	ret = PKGMGR_R_OK;
@@ -2161,7 +2161,7 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client * pc, const char *appid, ui
 	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, appid, "1 APP", cookie, uid, 1);
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_ACTIVATE_APP, pkgtype, appid, NULL, cookie, uid, 1);
 	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
 	ret = PKGMGR_R_OK;
@@ -2230,20 +2230,11 @@ API int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, c
 		}
 	}
 
-	argsr = (char *)calloc(strlen("1 APP")+2+len, sizeof(char));
-	tryvm_if(argsr == NULL, ret = PKGMGR_R_ERROR, "calloc failed");
-
-	strncpy(argsr, "1 APP", strlen("1 APP"));
-	if (argcnt) {
-		strncat(argsr, " ", strlen(" "));
-		strncat(argsr, args, strlen(args));
-	}
-
-	DBG("argsr [%s]\n", argsr);
+	DBG("args [%s]\n", args);
 	/******************* end of quote ************************/
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, appid, argsr, cookie, uid, 1);
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_ACTIVATE_APP_WITH_LABEL, pkgtype, appid, args, cookie, uid, 1);
 	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
 	ret = PKGMGR_R_OK;
@@ -2289,7 +2280,7 @@ API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid, u
 	retvm_if(req_key == NULL, PKGMGR_R_EINVAL, "req_key is NULL");
 
 	/* 3. request activate */
-	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_TO_ACTIVATOR, pkgtype, appid, "0 APP", cookie, uid, 1);
+	ret = comm_client_request(mpc->info.request.cc, req_key, COMM_REQ_DEACTIVATE_APP, pkgtype, appid, NULL, cookie, uid, 1);
 	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "request failed, ret=%d", ret);
 
 	ret = PKGMGR_R_OK;
