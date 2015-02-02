@@ -113,6 +113,7 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backendlib
 mkdir -p %{buildroot}%{_sysconfdir}/opt/upgrade
 
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
+touch %{buildroot}%{_sysconfdir}/package-manager/backend/pkg
 
 %find_lang package-manager
 
@@ -142,6 +143,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %defattr(-,root,root,-)
 %dir %{_sysconfdir}/package-manager/backend
 %dir %{_sysconfdir}/package-manager/backendlib
+%attr(0644,root,root) %{_sysconfdir}/package-manager/backend/pkg
 %dir %{_sysconfdir}/opt/upgrade
 %{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
 %{_bindir}/pkgcmd
