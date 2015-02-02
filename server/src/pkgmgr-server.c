@@ -936,8 +936,12 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 			}
 		}
 		break;
-	case COMM_REQ_TO_ACTIVATOR:
-		/* In case of activate, there is no popup */
+	case COMM_REQ_ACTIVATE_PKG:
+	case COMM_REQ_DEACTIVATE_PKG:
+	case COMM_REQ_ACTIVATE_APP:
+	case COMM_REQ_DEACTIVATE_APP:
+	case COMM_REQ_ACTIVATE_APP_WITH_LABEL:
+		/* In case of (de)activate, there is no popup */
 		err = _pm_queue_push(item);
 		p = __get_position_from_pkg_type(item->pkg_type);
 		__set_backend_mode(p);
@@ -1438,19 +1442,8 @@ static char **__generate_argv(const char *args)
 	return args_vector;
 }
 
-static void __exec_with_arg_vector(const char *cmd, char **argv, uid_t uid)
+static void __exec_with_arg_vector(const char *cmd, char **argv)
 {
-	user_ctx* user_context = get_user_context(uid);
-	if(!user_context) {
-		DBG("Failed to getenv for the user : %d", uid);
-		exit(1);
-	}
-	if(set_environement(user_context)){
-		DBG("Failed to set env for the user : %d", uid);
-		exit(1);
-	}
-	free_user_context(user_context);
-
 	/* Execute backend !!! */
 	int ret = execv(cmd, argv);
 
@@ -1465,6 +1458,85 @@ static void __exec_with_arg_vector(const char *cmd, char **argv, uid_t uid)
 	}
 }
 
+static void __request_to_installer(pm_dbus_msg *item)
+{
+	char **args_vector;
+
+	DBG("Try to exec backend installer type [%s]", item->pkg_type);
+	fprintf(stdout, "Try to exec backend installer type [%s]\n", item->pkg_type);
+
+	args_vector = __generate_argv(item->args);
+	__exec_with_arg_vector(args_vector[0], args_vector);
+}
+
+static void __set_pkg_state(pm_dbus_msg *item, bool is_active)
+{
+	int ret;
+	char *manifest;
+	pkgmgrinfo_pkginfo_h handle = NULL;
+
+	manifest = pkgmgr_parser_get_usr_manifest_file(item->pkgid, item->uid);
+	if (manifest == NULL) {
+		ERR("Failed to fetch package manifest file");
+		exit(1);
+	}
+
+	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(item->pkgid, item->uid, &handle);
+	if (ret != 0 && is_active) {
+		if (pkgmgr_parser_parse_usr_manifest_for_installation(manifest, item->uid, NULL))
+			ERR("Failed to activate pkg[%s]", item->pkgid);
+		else
+			DBG("Activate pkg[%s]", item->pkgid);
+	} else if (ret == 0 && !is_active) {
+		if (pkgmgr_parser_parse_usr_manifest_for_uninstallation(manifest, item->uid, NULL))
+			ERR("Failed to deactivate pkg[%s]", item->pkgid);
+		else
+			DBG("Deactivate pkg[%s]", item->pkgid);
+	}
+
+	if (handle)
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+}
+
+static void __set_app_state(pm_dbus_msg *item, bool is_active, char *label)
+{
+
+	if (pkgmgrinfo_appinfo_set_usr_state_enabled(item->pkgid, is_active, item->uid) != PMINFO_R_OK) {
+		ERR("fail to set app state");
+		exit(1);
+	} else {
+		DBG("%s app[%s]", is_active ? "Activate" : "Deactivate", item->pkgid);
+	}
+
+	if (label) {
+		if (pkgmgrinfo_appinfo_set_usr_default_label(item->pkgid, item->args, item->uid) != PMINFO_R_OK) {
+			ERR("fail to set label");
+			exit(1);
+		}
+	}
+}
+
+static void __kill_or_check_app(pm_dbus_msg *item, const char *action)
+{
+	int ret;
+	pkgmgrinfo_pkginfo_h handle;
+
+	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(item->pkgid, item->uid, &handle);
+	if (ret < 0) {
+		DBG("Failed to get handle\n");
+		exit(1);
+	}
+
+	ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, action, item->uid);
+	if (ret < 0) {
+		DBG("pkgmgrinfo_appinfo_get_list() failed\n");
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+		exit(1);
+	}
+
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+}
+
 gboolean queue_job(void *data)
 {
 	/* DBG("queue_job start"); */
@@ -1473,6 +1545,7 @@ gboolean queue_job(void *data)
 	ptr = begin;
 	int x = 0;
 	int pos = 0;
+	user_ctx *user_context;
 	/* Pop a job from queue */
 pop:
 	if (!__is_backend_busy(pos % num_of_backends)) {
@@ -1512,219 +1585,52 @@ pop:
 
 	switch ((ptr + x)->pid) {
 	case 0:	/* child */
+		user_context = get_user_context(item->uid);
+		if(!user_context) {
+			DBG("Failed to getenv for the user : %d", item->uid);
+			exit(1);
+		}
+		if(set_environement(user_context)){
+			DBG("Failed to set env for the user : %d", item->uid);
+			exit(1);
+		}
+		free_user_context(user_context);
+
 		switch (item->req_type) {
 		case COMM_REQ_TO_INSTALLER:
-			DBG("before run _get_backend_cmd()");
-			/*Check for efl-tpk app*/
-			backend_cmd = _get_backend_cmd(item->pkg_type);
-			if (backend_cmd == NULL)
-				break;
-
-			if (strcmp(item->pkg_type, "tpk") == 0) {
-				ret = __is_efl_tpk_app(item->pkgid);
-				if (ret == 1) {
-					if (backend_cmd)
-						free(backend_cmd);
-					backend_cmd = _get_backend_cmd("efltpk");
-				}
-			}
-
-			DBG("Try to exec [%s][%s]", item->pkg_type, backend_cmd);
-			fprintf(stdout, "Try to exec [%s][%s]\n", item->pkg_type, backend_cmd);
-
-			char **args_vector = __generate_argv(item->args);
-			args_vector[0] = backend_cmd;
-
-			/* Execute backend !!! */
-			__exec_with_arg_vector(backend_cmd, args_vector, item->uid);
-			free(backend_cmd);
+		case COMM_REQ_TO_CLEARER:
+			__request_to_installer(item);
 			break;
-		case COMM_REQ_TO_ACTIVATOR:
-			DBG("activator start");
-			int val = 0;
-			if (item->args[0] == '1')	/* activate */
-				val = 1;
-			else if (item->args[0] == '0')	/* deactivate */
-				val = 0;
-			else {
-				DBG("error in args parameter:[%c]\n",
-				    item->args[0]);
+		case COMM_REQ_ACTIVATE_PKG:
+			__set_pkg_state(item, true);
+			break;
+		case COMM_REQ_DEACTIVATE_PKG:
+			__set_pkg_state(item, false);
+			break;
+		case COMM_REQ_ACTIVATE_APP:
+			__set_app_state(item, true, NULL);
+			break;
+		case COMM_REQ_DEACTIVATE_APP:
+			__set_app_state(item, false, NULL);
+			break;
+		case COMM_REQ_ACTIVATE_APP_WITH_LABEL:
+			if (item->args == NULL) {
+				ERR("label is null");
 				exit(1);
 			}
-
-			DBG("activated val %d", val);
-
-			gboolean ret_parse;
-			gint argcp;
-			gchar **argvp;
-			GError *gerr = NULL;
-			char *label = NULL;
-			user_ctx* user_context = get_user_context(item->uid);
-			if(!user_context) {
-				DBG("Failed to getenv for the user : %d", item->uid);
-				exit(1);
-			}
-			if(set_environement(user_context)){
-				DBG("Failed to set env for the user : %d", item->uid);
-				exit(1);
-			}
-			free_user_context(user_context);
-
-			ret_parse = g_shell_parse_argv(item->args,
-						       &argcp, &argvp, &gerr);
-			if (FALSE == ret_parse) {
-				DBG("Failed to split args: %s", item->args);
-				DBG("messsage: %s", gerr->message);
-				exit(1);
-			}
-
-			if (!strcmp(argvp[1], "APP")) { /* in case of application */
-				DBG("(De)activate APP");
-				int opt;
-				while ((opt = getopt(argcp, argvp, "l:")) != -1) {
-					switch (opt) {
-					case 'l':
-						label = strdup(optarg);
-						DBG("activated label %s", label);
-						break;
-					default: /* '?' */
-						ERR("Incorrect argument %s\n", item->args);
-						exit(1);
-					}
-				}
-
-				ret = pkgmgrinfo_appinfo_set_usr_state_enabled(item->pkgid, val, item->uid);
-				if (ret != PMINFO_R_OK) {
-					perror("fail to activate/deactivte package");
-					exit(1);
-				}
-
-				if (label) {
-					ret = pkgmgrinfo_appinfo_set_usr_default_label(item->pkgid, label, item->uid);
-					if (ret != PMINFO_R_OK) {
-						perror("fail to activate/deactivte package");
-						exit(1);
-					}
-
-					ret = ail_desktop_appinfo_modify_usr_str(item->pkgid,
-								item->uid,
-								AIL_PROP_NAME_STR,
-								label, FALSE);
-					if (ret != AIL_ERROR_OK) {
-						perror("fail to activate/deactivte package");
-						exit(1);
-					}
-					free(label);
-				}
-
-				ret = ail_desktop_appinfo_modify_usr_bool(item->pkgid,
-							item->uid,
-							AIL_PROP_X_SLP_ENABLED_BOOL,
-							val, TRUE);
-				if (ret != AIL_ERROR_OK) {
-					perror("fail to activate/deactivte package");
-					exit(1);
-				}
-			} else { /* in case of package */
-				ERR("(De)activate PKG[pkgid=%s, val=%d]", item->pkgid, val);
-				char *manifest = NULL;
-				manifest = pkgmgr_parser_get_manifest_file(item->pkgid);
-				if (manifest == NULL) {
-					ERR("Failed to fetch package manifest file\n");
-					exit(1);
-				}
-				ERR("manifest : %s\n", manifest);
-
-				if (val) {
-					pkgmgrinfo_pkginfo_h handle;
-					ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(item->pkgid, item->uid, &handle);
-					if (ret < 0) {
-						ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest,item->uid, NULL);
-						if (ret < 0) {
-							ERR("insert in db failed\n");
-						}
-
-						ret = ail_usr_desktop_add(item->pkgid, item->uid);
-						if (ret != AIL_ERROR_OK) {
-							ERR("fail to ail_desktop_add");
-						}
-					} else {
-						pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-					}
-
-					ret = pkgmgrinfo_appinfo_set_usr_state_enabled(item->pkgid, val, item->uid);
-					if (ret != PMINFO_R_OK) {
-						perror("fail to activate/deactivte package");
-						exit(1);
-					}
-
-					ret = ail_desktop_appinfo_modify_usr_bool(item->pkgid,
-								item->uid,
-								AIL_PROP_X_SLP_ENABLED_BOOL,
-								val, TRUE);
-					if (ret != AIL_ERROR_OK) {
-						perror("fail to ail_desktop_appinfo");
-						exit(1);
-					}
-				}
-				else
-					ret = pkgmgr_parser_parse_usr_manifest_for_uninstallation(manifest, item->uid, NULL);
-
-				if (ret < 0) {
-					ERR("insert in db failed\n");
-					exit(1);
-				}
-			}
+			__set_app_state(item, true, item->args);
 			break;
 		case COMM_REQ_TO_MOVER:
-		case COMM_REQ_TO_CLEARER:
-			DBG("cleaner start");
-			DBG("before run _get_backend_cmd()");
-			backend_cmd = _get_backend_cmd(item->pkg_type);
-			if (NULL == backend_cmd)
-				break;
-
-			DBG("Try to exec [%s][%s]", item->pkg_type, backend_cmd);
-			fprintf(stdout, "Try to exec [%s][%s]\n", item->pkg_type, backend_cmd);
-
-			char **args_vectors = __generate_argv(item->args);
-			args_vectors[0] = backend_cmd;
-
-			/* Execute backend !!! */
-			__exec_with_arg_vector(backend_cmd, args_vectors, item->uid);
-			free(backend_cmd);
+			/* TODO: move app to external is for mobile profile */
 			break;
 		case COMM_REQ_GET_SIZE:
-			DBG("before run _get_backend_cmd()");
-			__exec_with_arg_vector("usr/bin/pkg_getsize", __generate_argv(item->args), item->uid);
+			__exec_with_arg_vector("usr/bin/pkg_getsize", __generate_argv(item->args));
 			break;
 		case COMM_REQ_KILL_APP:
+			__kill_or_check_app(item, "kill");
+			break;
 		case COMM_REQ_CHECK_APP:
-			DBG("COMM_REQ_CHECK_APP start");
-			pkgmgrinfo_pkginfo_h handle;
-			ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(item->pkgid, item->uid, &handle);
-			if (ret < 0) {
-				DBG("Failed to get handle\n");
-				exit(1);
-			}
-
-			if (item->req_type == COMM_REQ_KILL_APP) {
-				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "kill", item->uid);
-				if (ret < 0) {
-					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
-					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-					exit(1);
-				}
-			} else if (item->req_type == COMM_REQ_CHECK_APP) {
-				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "check", item->uid);
-				if (ret < 0) {
-					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
-					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-					exit(1);
-				}
-			}
-
-			pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+			__kill_or_check_app(item, "check");
 			break;
 		}
 		/* exit child */
