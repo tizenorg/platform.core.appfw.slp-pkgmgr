@@ -246,6 +246,18 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->move_type = atoi(optarg);
 			break;
 
+		case 'a':	/* upgrade */
+			if (mode) {
+				r = -EINVAL;
+				goto RET;
+			}
+			mode = 'a';
+			pi->request_type = PKGMGR_REQ_UPGRADE;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 		case 'q':	/* quiet mode */
 			pi->quiet = 1;
 			break;
