@@ -429,7 +429,7 @@ static int __add_app_filter(uid_t uid)
 			printf("App count = %d\n", count);
 			break;
 		case 1:
-			if (uid != GLOBAL_USER)
+			if (uid != OWNER_ROOT)
 				ret = pkgmgrinfo_appinfo_usr_filter_foreach_appinfo(handle, app_func, NULL, uid);
 			else
 				ret = pkgmgrinfo_appinfo_filter_foreach_appinfo(handle, app_func, NULL);
@@ -674,7 +674,7 @@ static int __add_pkg_filter(uid_t uid)
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
-			if (uid != GLOBAL_USER)
+			if (uid != OWNER_ROOT)
 				ret = pkgmgrinfo_pkginfo_usr_filter_count(handle, &count, uid);
 			else
 				ret = pkgmgrinfo_pkginfo_filter_count(handle, &count);
@@ -686,7 +686,7 @@ static int __add_pkg_filter(uid_t uid)
 			printf("Package count = %d\n", count);
 			break;
 		case 1:
-			if (uid != GLOBAL_USER)
+			if (uid != OWNER_ROOT)
 				ret = pkgmgrinfo_pkginfo_usr_filter_foreach_pkginfo(handle, __pkg_list_cb, NULL, uid);
 			else
 				ret = pkgmgrinfo_pkginfo_filter_foreach_pkginfo(handle, __pkg_list_cb, NULL);
@@ -1023,7 +1023,7 @@ static int __add_arg_filter(char *key, char *value, uid_t uid)
 		__print_arg_filter_usage();
 		goto err;
 	}
-	if (uid != GLOBAL_USER)
+	if (uid != OWNER_ROOT)
 		ret = pkgmgrinfo_appinfo_usr_filter_foreach_appinfo(handle, __get_app_id, NULL, uid);
 	else
 		ret = pkgmgrinfo_appinfo_filter_foreach_appinfo(handle, __get_app_id, NULL);
@@ -1140,7 +1140,7 @@ static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid, uid_
 
 	int ret = 0;
 	pkgmgrinfo_cert_compare_result_type_e result;
-	if (uid != GLOBAL_USER)
+	if (uid != OWNER_ROOT)
 		ret = pkgmgrinfo_pkginfo_compare_usr_pkg_cert_info(lhs_pkgid, rhs_pkgid, uid, &result);
 	else
 		ret = pkgmgrinfo_pkginfo_compare_pkg_cert_info(lhs_pkgid, rhs_pkgid, &result);
@@ -1162,7 +1162,7 @@ static int __compare_app_certinfo_from_db(char *lhs_appid, char *rhs_appid, uid_
 
 	int ret = 0;
 	pkgmgrinfo_cert_compare_result_type_e result;
-	if (uid != GLOBAL_USER)
+	if (uid != OWNER_ROOT)
 		ret = pkgmgrinfo_pkginfo_compare_usr_app_cert_info(lhs_appid, rhs_appid, uid, &result);
 	else
 		ret = pkgmgrinfo_pkginfo_compare_app_cert_info(lhs_appid, rhs_appid, &result);
@@ -1574,7 +1574,7 @@ static int __insert_manifest_in_db(char *manifest, uid_t uid)
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	if (uid != GLOBAL_USER)
+	if (uid != OWNER_ROOT)
 		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
 	else
 		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
@@ -1594,7 +1594,7 @@ static int __fota_insert_manifest_in_db(char *manifest, uid_t uid)
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	if (uid != GLOBAL_USER)
+	if (uid != OWNER_ROOT)
 		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
 	else
 		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
@@ -1612,7 +1612,7 @@ static int __remove_manifest_from_db(char *manifest, uid_t uid)
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	if (uid != GLOBAL_USER)
+	if (uid != OWNER_ROOT)
 		ret = pkgmgr_parser_parse_usr_manifest_for_uninstallation(manifest, uid, NULL);
 	else
 		ret = pkgmgr_parser_parse_manifest_for_uninstallation(manifest, NULL);
@@ -1821,7 +1821,7 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 static int __get_pkg_list(uid_t uid)
 {
 	int ret = -1;
-	if (uid != GLOBAL_USER)
+	if (uid != OWNER_ROOT)
 		ret = pkgmgr_pkginfo_get_usr_list(__pkg_list_cb, NULL, uid);
 	else
 		ret = pkgmgr_pkginfo_get_list(__pkg_list_cb, NULL);
@@ -2002,7 +2002,7 @@ static int __get_app_list(char *pkgid, uid_t uid)
 		printf("Failed to get handle\n");
 		return -1;
 	}
-	if (uid != GLOBAL_USER) {
+	if (uid != OWNER_ROOT) {
 		printf("List of Ui-Apps\n\n");
 		ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, app_func, (void *)test_data, uid);
 		if (ret < 0) {
@@ -2228,12 +2228,12 @@ int main(int argc, char *argv[])
 	else
 		printf("Locale is %s\n", locale);
 
-
+/*
 	if(getuid() == OWNER_ROOT) {
 		printf("User is Root! : Only tizenglobalapp or regular user are allowed\n");
 		return -1;
 	}
-	
+*/
 	free(locale);
 	locale = NULL;
 	if (argc == 2) {
