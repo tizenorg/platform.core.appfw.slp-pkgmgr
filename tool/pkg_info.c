@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <tzplatform_config.h>
 #include <vconf.h>
 //Work around for https://bugs.tizen.org/jira/browse/TC-2399
 #include <ail_vconf.h>
@@ -38,6 +39,7 @@
 #include "pkgmgr_installer.h"
 
 #define OWNER_ROOT 0
+#define BUFSIZE 4096
 
 static void __print_usage();
 static int __get_pkg_info(char *pkgid, uid_t uid);
@@ -1567,6 +1569,51 @@ static int __set_pkginfo_in_db(char *pkgid, uid_t uid)
 	return 0;
 }
 
+static int __insert_privilege_to_cynara_db(char *manifest, uid_t uid)
+{
+	manifest_x *mfx;
+	privilege_x *priv;
+	char buf[BUFSIZE];
+	int ret;
+
+	if (uid != OWNER_ROOT) {
+		printf("This is only permitted to ROOT user and "
+				"for global apps(preloaded apps)\n");
+		return 0;
+	}
+
+	mfx = pkgmgr_parser_process_manifest_xml(manifest);
+	if (mfx == NULL) {
+		printf("Parse manifest failed\n");
+		return -1;
+	}
+
+	for (priv = mfx->privileges->privilege; priv; priv = priv->next) {
+		snprintf(buf, BUFSIZE, "/usr/sbin/cyad -s -k MANIFESTS "
+				/* please refer to app-installers for below
+				 * client name
+				 */
+				"-c User::App::%s "
+				"-u %lu "
+				"-p %s "
+				"-t ALLOW",
+				mfx->package,
+				tzplatform_getuid(TZ_SYS_GLOBALAPP_USER),
+				priv->text);
+		ret = system(buf);
+		if (WEXITSTATUS(ret) != 0) {
+			printf("Error on execute: %s, return %d\n",
+					buf, WEXITSTATUS(ret));
+			pkgmgr_parser_free_manifest_xml(mfx);
+			return -1;
+		}
+	}
+
+	pkgmgr_parser_free_manifest_xml(mfx);
+
+	return 0;
+}
+
 static int __insert_manifest_in_db(char *manifest, uid_t uid)
 {
 	int ret = 0;
@@ -1580,6 +1627,10 @@ static int __insert_manifest_in_db(char *manifest, uid_t uid)
 		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
 	if (ret < 0) {
 		printf("insert in db failed\n");
+		return -1;
+	}
+	if (__insert_privilege_to_cynara_db(manifest, uid)) {
+		printf("insert privilege to cynara db failed\n");
 		return -1;
 	}
 	return 0;
