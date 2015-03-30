@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 	}
 
 
-	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
+//	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
 	/* This is for AIL initializing */
 	ret = setenv("INITDB", "1", 1);
 	_D("INITDB : %d", ret);
