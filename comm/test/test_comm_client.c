@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 	gint ret;
 	ret = comm_client_request(cc, "__test__req_key", COMM_REQ_TO_INSTALLER,
 				  "dpkg", "test_pkg", "arg1 arg2 arg3",
-				  "this_is_a_cookie", getuid(), 0);
+				  getuid(), 0);
 
 	printf("client: waiting signal...\n");
 	comm_client_set_status_callback(COMM_STATUS_BROADCAST_ALL,

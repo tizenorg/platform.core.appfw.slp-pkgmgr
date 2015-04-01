@@ -9,8 +9,7 @@ pkg_check_modules(CLIENT_DEPS REQUIRED
 		pkgmgr-parser
 		pkgmgr-info
 		iniparser
-		libtzplatform-config
-		security-server)
+		libtzplatform-config)
 FOREACH(CLIENT_FLAGS ${CLIENT_DEPS_CFLAGS})
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CLIENT_FLAGS}")
 ENDFOREACH(CLIENT_FLAGS)

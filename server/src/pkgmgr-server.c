@@ -38,7 +38,7 @@
 #include <pkgmgr-info.h>
 #include <pkgmgr/pkgmgr_parser.h>
 
-#include <security-server.h>
+#include <cynara-client.h>
 
 #include <vconf.h>
 
@@ -101,6 +101,7 @@ static guint pipe_wid;
 backend_info *begin;
 extern queue_info_map *start;
 extern int entries;
+static cynara *p_cynara;
 
 GMainLoop *mainloop = NULL;
 
@@ -240,53 +241,49 @@ static void __unset_recovery_mode(char *pkgid, char *pkg_type)
 		DBG("remove recovery_file[%s] fail\n", recovery_file);
 }
 
-static int __check_privilege_by_cookie(const char *e_cookie, int req_type)
+#define PRIVILEGE_PACKAGEMANAGER_ADMIN "http://tizen.org/privilege/packagemanager.admin"
+#define PRIVILEGE_PACKAGEMANAGER_INFO  "http://tizen.org/privilege/packagemanager.info"
+#define PRIVILEGE_PACKAGEMANAGER_NONE  "NONE"
+
+static const char *__convert_req_type_to_privilege(int req_type)
 {
-	guchar *cookie = NULL;
-	gsize size;
-	int ret = PMINFO_R_OK;	//temp to success , it should be PMINFO_R_ERROR
-
-	if (e_cookie == NULL)	{
-		DBG("e_cookie is NULL!!!\n");
-		return PMINFO_R_ERROR;
-	}
-
-	cookie = g_base64_decode(e_cookie, &size);
-	if (cookie == NULL)	{
-		DBG("Unable to decode cookie!!!\n");
-		return PMINFO_R_ERROR;
-	}
-
 	switch (req_type) {
-		case COMM_REQ_TO_INSTALLER:
-			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "r"))
-				ret = PMINFO_R_OK;
-
-			break;
-
-		case COMM_REQ_TO_MOVER:
-			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::svc", "x"))
-				ret = PMINFO_R_OK;
-			break;
-
-		case COMM_REQ_GET_SIZE:
-			if (SECURITY_SERVER_API_SUCCESS == security_server_check_privilege_by_cookie(cookie, "pkgmgr::info", "r"))
-				ret = PMINFO_R_OK;
-			break;
-
-		default:
-			DBG("Check your request[%d]..\n", req_type);
-			break;
+	case COMM_REQ_TO_INSTALLER:
+	case COMM_REQ_TO_ACTIVATOR:
+	case COMM_REQ_TO_CLEARER:
+	case COMM_REQ_TO_MOVER:
+	case COMM_REQ_KILL_APP:
+	case COMM_REQ_CLEAR_CACHE_DIR:
+		return PRIVILEGE_PACKAGEMANAGER_ADMIN;
+	case COMM_REQ_GET_SIZE:
+	case COMM_REQ_CHECK_APP:
+		return PRIVILEGE_PACKAGEMANAGER_INFO;
+	case COMM_REQ_CANCEL:
+	default:
+		return PRIVILEGE_PACKAGEMANAGER_NONE;
 	}
+}
 
-	DBG("security_server[req-type:%d] check cookie result = %d, \n", req_type, ret);
+static int __check_privilege_by_cynara(const char *client, const char *session, const char *user, int req_type)
+{
+	int ret;
+	const char *privilege;
 
-	if (cookie){
-		g_free(cookie);
-		cookie = NULL;
+	privilege = __convert_req_type_to_privilege(req_type);
+	if (!strcmp(privilege, PRIVILEGE_PACKAGEMANAGER_NONE))
+		return 0;
+
+	ret = cynara_check(p_cynara, client, session, user, privilege);
+	switch (ret) {
+	case CYNARA_API_ACCESS_ALLOWED:
+		DBG("%s(%s) from user %s privilege %s allowed", client, session, user, privilege);
+		return 0;
+	case CYNARA_API_ACCESS_DENIED:
+		DBG("%s(%s) from user %s privilege %s denied", client, session, user, privilege);
+		return -1;
+	default:
+		return -1;
 	}
-
-	return ret;
 }
 
 static int __get_position_from_pkg_type(char *pkgtype)
@@ -826,13 +823,12 @@ static int __register_signal_handler(void)
 
 void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	    const char *pkg_type, const char *pkgid, const char *args,
-	    const char *cookie, int *ret)
+	    const char *client, const char *session, const char *user, int *ret)
 {
 	int p;
-	int cookie_result;
 
-	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s]",
-	    req_id, req_type, pkg_type, pkgid, args, cookie);
+	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s] [%s] [%s]",
+	    req_id, req_type, pkg_type, pkgid, args, client, session, user);
 
 	struct appdata *ad = (struct appdata *)cb_data;
 
@@ -844,7 +840,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 	strncpy(item->pkg_type, pkg_type, sizeof(item->pkg_type) - 1);
 	strncpy(item->pkgid, pkgid, sizeof(item->pkgid) - 1);
 	strncpy(item->args, args, sizeof(item->args) - 1);
-	strncpy(item->cookie, cookie, sizeof(item->cookie) - 1);
 	item->uid = uid;
 	/* uid equals to GLOBALUSER means that the installation or action is made at Global level.
 	 * At this time, we are not able to check the credentials of this dbus message (due to gdbus API to implement the pkgmgr-server)
@@ -875,16 +870,13 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 
 	char *quiet = NULL;
 
+	if (__check_privilege_by_cynara(client, session, user, item->req_type)) {
+		*ret = PKGMGR_R_EPRIV;
+		goto err;
+	}
+
 	switch (item->req_type) {
 	case COMM_REQ_TO_INSTALLER:
-		/* check caller privilege */
-		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
-		if (cookie_result < 0){
-			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-
 		/* -q option should be located at the end of command !! */
 		if (((quiet = strstr(args, " -q")) &&
 		     (quiet[strlen(quiet)] == '\0')) ||
@@ -969,14 +961,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_TO_MOVER:
-		/* check caller privilege */
-		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
-		if (cookie_result < 0){
-			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-
 		/* In case of mover, there is no popup */
 		if (_pm_queue_push(item)) {
 			ERR("failed to push queue item");
@@ -1000,14 +984,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_GET_SIZE:
-		/* check caller privilege */
-		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
-		if (cookie_result < 0){
-			DBG("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-
 		if (_pm_queue_push(item)) {
 			ERR("failed to push queue item");
 			*ret = COMM_RET_ERROR;
@@ -1036,14 +1012,6 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		*ret = COMM_RET_OK;
 		break;
 	case COMM_REQ_CLEAR_CACHE_DIR:
-		/* check caller privilege */
-		cookie_result = __check_privilege_by_cookie(cookie, item->req_type);
-		if (cookie_result < 0){
-			LOGE("__check_privilege_by_cookie result fail[%d]\n", cookie_result);
-			*ret = PKGMGR_R_EPRIV;
-			goto err;
-		}
-
 		if (_pm_queue_push(item)) {
 			ERR("failed to push queue item");
 			*ret = COMM_RET_ERROR;
@@ -1061,7 +1029,7 @@ void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
 		break;
 	}
 err:
-	if (*ret == COMM_RET_ERROR) {
+	if (*ret != COMM_RET_OK) {
 		DBG("Failed to handle request %s %s\n",item->pkg_type, item->pkgid);
 		pkgmgr_installer *pi;
 		gboolean ret_parse;
@@ -1891,6 +1859,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (cynara_initialize(&p_cynara, NULL)) {
+		ERR("cynara initialize failed");
+		return -1;
+	}
+
 	g_type_init();
 	mainloop = g_main_loop_new(NULL, FALSE);
 	if (!mainloop) {
@@ -1913,6 +1886,7 @@ int main(int argc, char *argv[])
 	DBG("Quit main loop.");
 	_pm_queue_final();
 	__fini_backend_info();
+	cynara_finish(p_cynara);
 
 	DBG("package manager server terminated.");
 
