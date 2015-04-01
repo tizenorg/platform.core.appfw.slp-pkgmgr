@@ -19,7 +19,10 @@ BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
 BuildRequires:  pkgconfig(ecore)
-BuildRequires:  pkgconfig(security-server)
+BuildRequires:  pkgconfig(cynara-plugin)
+BuildRequires:  pkgconfig(cynara-client)
+BuildRequires:  pkgconfig(cynara-creds-dbus)
+BuildRequires:  pkgconfig(cynara-session)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(dlog)

@@ -3,8 +3,10 @@
         "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
 
 <busconfig>
-        <policy context="default">
-                <allow own="org.tizen.slp.pkgmgr"/>
+        <policy user="root">
+		<allow own="org.tizen.slp.pkgmgr"/>
+	</policy>
+	<policy context="default">
                 <allow own="org.tizen.slp.pkgmgr_status"/>
                 <allow receive_sender="org.tizen.slp.pkgmgr"/>
                 <allow send_destination="org.tizen.slp.pkgmgr"/>
