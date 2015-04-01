@@ -4,12 +4,12 @@
 	<interface name="org.tizen.slp.pkgmgr">
 		<annotation name="org.freedesktop.DBus.GLib.CSymbol" value="pkgmgr" />
 		<method name="Request">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="yes" />
 			<arg type="s" name="req_id" direction="in" />
 			<arg type="i" name="req_type" direction="in" />
 			<arg type="s" name="pkg_type" direction="in" />
 			<arg type="s" name="pkgid" direction="in" />
 			<arg type="s" name="args" direction="in" />
-			<arg type="s" name="cookie" direction="in" />
 			<arg type="i" name="uid" direction="in" />
 			<arg type="i" name="ret" direction="out" />
 		</method>

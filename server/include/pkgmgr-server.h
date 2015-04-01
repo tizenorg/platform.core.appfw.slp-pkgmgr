@@ -39,7 +39,6 @@
 #define MAX_PKG_TYPE_LEN 128
 #define MAX_PKG_NAME_LEN 256
 #define MAX_PKG_ARGS_LEN 4096
-#define MAX_COOKIE_LEN	 32
 #define DESKTOP_FILE_DIRS_NUM 1024
 
 typedef struct {
@@ -49,7 +48,6 @@ typedef struct {
 	char pkg_type[MAX_PKG_TYPE_LEN];
 	char pkgid[MAX_PKG_NAME_LEN];
 	char args[MAX_PKG_ARGS_LEN];
-	char cookie[MAX_COOKIE_LEN];
 } pm_dbus_msg;
 
 typedef struct backend_info_t {
