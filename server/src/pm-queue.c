@@ -282,7 +282,6 @@ int _pm_queue_push(pm_dbus_msg *item)
 	strncpy(data->msg->pkg_type, item->pkg_type, strlen(item->pkg_type));
 	strncpy(data->msg->pkgid, item->pkgid, strlen(item->pkgid));
 	strncpy(data->msg->args, item->args, strlen(item->args));
-	strncpy(data->msg->cookie, item->cookie, strlen(item->cookie));
 
 	data->next = NULL;
 
@@ -336,7 +335,6 @@ pm_dbus_msg *_pm_queue_pop(int position)
 	strncpy(ret->pkg_type, cur->msg->pkg_type, strlen(cur->msg->pkg_type));
 	strncpy(ret->pkgid, cur->msg->pkgid, strlen(cur->msg->pkgid));
 	strncpy(ret->args, cur->msg->args, strlen(cur->msg->args));
-	strncpy(ret->cookie, cur->msg->cookie, strlen(cur->msg->cookie));
 
 	ptr->head = cur->next;
 	saveptr = ptr->head;

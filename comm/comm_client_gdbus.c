@@ -61,7 +61,6 @@ static int __retry_request(comm_client *cc,
 	const gchar *pkg_type,
 	const gchar *pkgid,
 	const gchar *args,
-	const gchar *cookie,
 	uid_t uid,
 	gint *ret)
 {	
@@ -79,7 +78,7 @@ static int __retry_request(comm_client *cc,
 	}
 
 	rc = org_tizen_slp_pkgmgr_call_request_sync(proxy,
-			req_id, req_type, pkg_type, pkgid, args, cookie, uid, &ret, NULL, &error);
+			req_id, req_type, pkg_type, pkgid, args, uid, &ret, NULL, &error);
 	if (!rc) {
 		ERR("Failed to send request[rc=%d, err=%s]\n", rc, error->message);
 		return FALSE;
@@ -276,7 +275,6 @@ comm_client_request(
 		const char *pkg_type,
 		const char *pkgid,
 		const char *args,
-		const char *cookie,
 		uid_t uid,
 		int is_block)
 {
@@ -308,11 +306,9 @@ comm_client_request(
 		pkgid = "";
 	if (args == NULL)
 		args = "";
-	if (cookie == NULL)
-		cookie = "";
 
 	rc = org_tizen_slp_pkgmgr_call_request_sync(proxy,
-			req_id, req_type, pkg_type, pkgid, args, cookie, uid, &ret, NULL, &error);
+			req_id, req_type, pkg_type, pkgid, args, uid, &ret, NULL, &error);
 
 	while ((rc == FALSE) && (retry_cnt < COMM_CLIENT_RETRY_MAX)) {
 		ERR("Failed to send request, sleep and retry[rc=%d, err=%s]\n", rc, error->message);
@@ -320,7 +316,7 @@ comm_client_request(
 
 		retry_cnt++;
 
-		rc = __retry_request(cc, req_id, req_type, pkg_type, pkgid, args, cookie, uid, &ret);
+		rc = __retry_request(cc, req_id, req_type, pkg_type, pkgid, args, uid, &ret);
 		if(rc == TRUE) {
 			ERR("__retry_request is success[retry_cnt=%d]\n", retry_cnt);
 		}
