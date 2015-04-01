@@ -41,7 +41,8 @@ API GType pkg_mgr_object_get_type(void);
 typedef void (*request_callback) (void *cb_data, uid_t uid, const char *req_id,
 				  const int req_type, const char *pkg_type,
 				  const char *pkgid, const char *args,
-				  const char *cookie, int *ret);
+				  const char *client, const char *session,
+				  const char *user, int *ret);
 
 API void pkg_mgr_set_request_callback(PkgMgrObject *obj,
 				      request_callback req_cb, void *cb_data);

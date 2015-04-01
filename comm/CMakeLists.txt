@@ -25,7 +25,7 @@ message(STATUS "version/major : ${VERSION} / ${VERSION_MAJOR}")
 ### Get required CFLAGS, LDFLAGS from pkg-config
 
 include(FindPkgConfig)
-pkg_check_modules(comm_pkgs REQUIRED dbus-1 glib-2.0 dbus-glib-1 gio-2.0 gio-unix-2.0 dlog pkgmgr-info db-util)
+pkg_check_modules(comm_pkgs REQUIRED dbus-1 glib-2.0 dbus-glib-1 gio-2.0 gio-unix-2.0 dlog pkgmgr-info db-util cynara-creds-dbus cynara-session)
 
 foreach(flag ${comm_pkgs_CFLAGS})
 	set(comm_pkgs_CFLAGS_str "${comm_pkgs_CFLAGS_str} ${flag}")
@@ -38,11 +38,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 ### Create dbus-glib bindings headers (client/server) from xml by dbus-binding-tool
 
 # comm_pkg_mgr : package manger interface (client - package manager process)
-add_custom_target(comm_pkg_mgr_client_dbus_bindings.h
-	COMMAND dbus-binding-tool --prefix=pkgmgr --mode=glib-client 
-			${CMAKE_CURRENT_SOURCE_DIR}/comm_pkg_mgr.xml 
-			--output=${CMAKE_CURRENT_BINARY_DIR}/comm_pkg_mgr_client_dbus_bindings.h
-	)
 add_custom_target(comm_pkg_mgr_server_dbus_bindings.h
 	COMMAND dbus-binding-tool --prefix=pkgmgr --mode=glib-server
 			${CMAKE_CURRENT_SOURCE_DIR}/comm_pkg_mgr.xml 
@@ -55,29 +50,11 @@ add_custom_command(OUTPUT comm_pkg_mgr_client_gdbus_generated.c comm_pkg_mgr_cli
 			--interface-prefix pkgmgr ${CMAKE_CURRENT_SOURCE_DIR}/comm_pkg_mgr.xml
 	)
 
-# comm_status_broadcast : status broadcast interface (client - backend process)
-add_custom_target(comm_status_broadcast_client_dbus_bindings.h
-	COMMAND dbus-binding-tool --prefix=status_broadcast --mode=glib-client 
-			${CMAKE_CURRENT_SOURCE_DIR}/comm_status_broadcast.xml 
-			--output=${CMAKE_CURRENT_BINARY_DIR}/comm_status_broadcast_client_dbus_bindings.h
-	)
 add_custom_target(comm_status_broadcast_server_dbus_bindings.h
 	COMMAND dbus-binding-tool --prefix=status_broadcast --mode=glib-server
 			${CMAKE_CURRENT_SOURCE_DIR}/comm_status_broadcast.xml 
 			--output=${CMAKE_CURRENT_BINARY_DIR}/comm_status_broadcast_server_dbus_bindings.h
 	)
-
-### Create marshaller header/source for signal (client must use this)
-add_custom_target(comm_status_broadcast_signal_marshaller.h
-		COMMAND glib-genmarshal --header ${CMAKE_CURRENT_SOURCE_DIR}/comm_status_broadcast_signal_marshaller.list > ${CMAKE_CURRENT_BINARY_DIR}/comm_status_broadcast_signal_marshaller.h
-		)
-add_custom_target(comm_status_broadcast_signal_marshaller.c
-		COMMAND glib-genmarshal --body ${CMAKE_CURRENT_SOURCE_DIR}/comm_status_broadcast_signal_marshaller.list > ${CMAKE_CURRENT_BINARY_DIR}/comm_status_broadcast_signal_marshaller.c
-		)
-set_source_files_properties(comm_status_broadcast_signal_marshaller.c PROPERTIES GENERATED true)  # This source is generated during build time, so this property must be set
-
-
-
 
 
 ### Build modules
@@ -87,13 +64,11 @@ set_source_files_properties(comm_status_broadcast_signal_marshaller.c PROPERTIES
 add_library(pkgmgr_installer_client SHARED
 		comm_client_gdbus.c
 		comm_pkg_mgr_client_gdbus_generated.c
-		#${CMAKE_CURRENT_BINARY_DIR}/comm_status_broadcast_signal_marshaller.c
 		)
 set_target_properties(pkgmgr_installer_client PROPERTIES SOVERSION ${VERSION_MAJOR})
 set_target_properties(pkgmgr_installer_client PROPERTIES VERSION ${VERSION})
 set_target_properties(pkgmgr_installer_client PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
 target_link_libraries(pkgmgr_installer_client ${comm_pkgs_LDFLAGS})
-#add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_dbus_bindings.h comm_status_broadcast_client_dbus_bindings.h comm_status_broadcast_signal_marshaller.h comm_status_broadcast_signal_marshaller.c)
 add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_gdbus_generated.h comm_pkg_mgr_client_gdbus_generated.c)
 
 ## pkg-mgr server for PMS
