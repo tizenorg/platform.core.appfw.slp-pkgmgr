@@ -25,13 +25,13 @@
 #include <stdio.h>
 
 void
-req_cb(void *cb_data, const char *req_id, const int req_type,
+req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
        const char *pkg_type, const char *pkgid, const char *args,
-       const char *cookie, int *ret)
+       const char *client, const char *session, const char *user, int *ret)
 {
 	/* TODO: Do your job here */
-	printf(">> in callback >> Got request: %s %d %s %s %s (cookie:%s)\n",
-	       req_id, req_type, pkg_type, pkgid, args, cookie);
+	printf(">> in callback >> Got request: %s %d %s %s %s\n",
+	       req_id, req_type, pkg_type, pkgid, args);
 }
 
 gboolean queue_job(void *data)

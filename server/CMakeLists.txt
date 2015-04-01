@@ -4,7 +4,7 @@ SET(PKGMGR_SERVER "pkgmgr-server")
 SET(SRCS src/pkgmgr-server.c src/pm-queue.c)
 
 pkg_check_modules(SERVER_DEPS REQUIRED
-		security-server
+		cynara-client
 		dlog
 		ail
 		pkgmgr-parser
