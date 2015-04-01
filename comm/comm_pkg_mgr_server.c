@@ -30,6 +30,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <cynara-creds-dbus.h>
+#include <cynara-session.h>
+
 #include "comm_pkg_mgr_server.h"
 #include "comm_debug.h"
 
@@ -73,10 +76,10 @@ G_DEFINE_TYPE(PkgMgrObject, pkg_mgr_object, G_TYPE_OBJECT);
 /* Method declarations
  * Used for binding stub.
  */
-GCallback pkgmgr_request(PkgMgrObject *obj, const gchar *req_id,
+static gboolean pkgmgr_request(PkgMgrObject *obj, const gchar *req_id,
 			 const gint req_type, const gchar *pkg_type,
 			 const gchar *pkgid, const gchar *args,
-			 const gchar *cookie, uid_t uid, gint *ret, GError *err);
+			 uid_t uid, DBusGMethodInvocation *invocation);
 
 /* Include stub header */
 #include "comm_pkg_mgr_server_dbus_bindings.h"
@@ -159,27 +162,64 @@ static void pkg_mgr_object_finalize(GObject *self)
 
 /* dbus-glib methods */
 
-GCallback
+static gboolean
 pkgmgr_request(PkgMgrObject *obj,
 	       const gchar *req_id,
 	       const gint req_type,
 	       const gchar *pkg_type,
 	       const gchar *pkgid,
 	       const gchar *args,
-	       const gchar *cookie, uid_t uid, gint *ret, GError *err)
+	       uid_t uid,
+	       DBusGMethodInvocation *invocation)
 {
+	DBusConnection *con;
+	gchar *sender = NULL;
+	char *client = NULL;
+	char *session = NULL;
+	char *user = NULL;
+	pid_t pid;
+	int ret;
+
 	DBG("Called");
-	*ret = COMM_RET_OK;	/* TODO: fix this! */
+	ret = COMM_RET_OK;	/* TODO: fix this! */
 
 	/* TODO: Add business logic 
 	 * - add to queue, or remove from queue
 	 * */
+	con = dbus_g_connection_get_connection(obj->bus);
+	sender = dbus_g_method_get_sender(invocation);
+	if (sender == NULL) {
+		ERR("get sender failed");
+		ret = COMM_RET_ERROR;
+	}
 
-	if (obj->req_cb) {
-		DBG("Call request callback(obj, %lu, %s, %d, %s, %s, %s, *ret)",
+	if (cynara_creds_dbus_get_client(con, sender, CLIENT_METHOD_SMACK,
+				&client)) {
+		ERR("cynara creds failed: get client");
+		ret = COMM_RET_ERROR;
+	}
+
+	if (cynara_creds_dbus_get_user(con, sender, USER_METHOD_UID, &user)) {
+		ERR("cynara creds failed: get user");
+		ret = COMM_RET_ERROR;
+	}
+
+	if (cynara_creds_dbus_get_pid(con, sender, &pid)) {
+		ERR("cynara creds failed: get pid");
+		ret = COMM_RET_ERROR;
+	}
+
+	session = cynara_session_from_pid(pid);
+	if (session == NULL) {
+		ERR("cynara session get failed");
+		ret = COMM_RET_ERROR;
+	}
+
+	if (obj->req_cb && ret != COMM_RET_ERROR) {
+		DBG("Call request callback(obj, %lu, %s, %d, %s, %s, %s)",
 		    uid, req_id, req_type, pkg_type, pkgid, args);
 		obj->req_cb(obj->req_cb_data, uid, req_id, req_type, pkg_type,
-			    pkgid, args, cookie, ret);
+			    pkgid, args, client, session, user, &ret);
 	} else {
 		DBG("Attempt to call request callback,"
 		" but request callback is not set. Do nothing.\n"
@@ -187,7 +227,18 @@ pkgmgr_request(PkgMgrObject *obj,
 		" to register your callback.");
 	}
 
-	return (GCallback) TRUE;
+	if (sender)
+		g_free(sender);
+	if (client)
+		free(client);
+	if (session)
+		free(session);
+	if (user)
+		free(user);
+
+	dbus_g_method_return(invocation, ret);
+
+	return TRUE;
 }
 
 /* Other APIs
