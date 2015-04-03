@@ -6,18 +6,18 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 
 INCLUDE(FindPkgConfig)
 
-pkg_check_modules(pkgs_initdb REQUIRED libsmack ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config)
+pkg_check_modules(pkgs_initdb REQUIRED libsmack ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${pkgs_initdb_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
 
-pkg_check_modules(pkgs_test REQUIRED ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config)
+pkg_check_modules(pkgs_test REQUIRED ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${pkgs_test_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-pkg_check_modules(toolpkgs REQUIRED appcore-efl dlog bundle glib-2.0 pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config)
+pkg_check_modules(toolpkgs REQUIRED appcore-efl dlog bundle glib-2.0 pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${toolpkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)

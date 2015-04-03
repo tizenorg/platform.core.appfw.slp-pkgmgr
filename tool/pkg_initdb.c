@@ -253,7 +253,6 @@ int main(int argc, char *argv[])
 	}
 
 
-	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
 	/* This is for AIL initializing */
 	ret = setenv("INITDB", "1", 1);
 	_D("INITDB : %d", ret);
@@ -274,8 +273,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	setuid(OWNER_ROOT);
-	
 	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE);
 	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE_JOURNAL);
 	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE);
