@@ -12,7 +12,7 @@ FOREACH(flag ${pkgs_initdb_CFLAGS})
 ENDFOREACH(flag)
 
 
-pkg_check_modules(pkgs_test REQUIRED ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config)
+pkg_check_modules(pkgs_test REQUIRED ecore dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf security-server pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${pkgs_test_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
@@ -38,6 +38,11 @@ add_executable(pkginfo
                 pkg_info.c)
 target_link_libraries(pkginfo pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkginfo DESTINATION bin)
+
+add_executable(pkg_privilege
+                pkg_privilege.c)
+target_link_libraries(pkg_privilege ${pkgs_test_LDFLAGS})
+INSTALL(TARGETS pkg_privilege DESTINATION bin)
 
 add_executable(pkg_getsize
                 pkg_getsize.c)
