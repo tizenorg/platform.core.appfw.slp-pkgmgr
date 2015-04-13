@@ -32,6 +32,7 @@ BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(iniparser)
 BuildRequires:  pkgconfig(notification)
 BuildRequires:  pkgconfig(libtzplatform-config)
+BuildRequires:  pkgconfig(security-manager)
 BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
@@ -156,6 +157,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %attr(755,root,root) %{_bindir}/pkg_initdb_user
 %{_bindir}/pkg_getsize
 %{_bindir}/pkg_clearcache
+%{_bindir}/pkg_privilege
 %{_bindir}/pkginfo
 %{_bindir}/pkgmgr-install
 %attr(-,tizenglobalapp,root) %dir %{TZ_SYS_RW_PACKAGES}

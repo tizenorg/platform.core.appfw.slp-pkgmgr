@@ -129,7 +129,7 @@ char* _manifest_to_package(const char* manifest)
 
 
 
-int initdb_load_directory(const char *directory)
+static int __initdb_load_directory(const char *directory, const char *cmd)
 {
 	DIR *dir;
 	struct dirent entry, *result;
@@ -176,7 +176,7 @@ int initdb_load_directory(const char *directory)
 		// pkgmgr_parser_parse_manifest_for_installation(buf, NULL);
 
 		char buf2[BUFSZE];
-		snprintf(buf2, sizeof(buf2), "/usr/bin/pkginfo --imd %s", buf);
+		snprintf(buf2, sizeof(buf2), "%s %s", cmd, buf);
 		system(buf2);
 
 		free(manifest);
@@ -187,7 +187,15 @@ int initdb_load_directory(const char *directory)
 	return 0;
 }
 
+static int initdb_install_manifest(void)
+{
+	return __initdb_load_directory(SYS_MANIFEST_DIRECTORY, "/usr/bin/pkginfo --imd");
+}
 
+static int initdb_install_privilege(void)
+{
+	return __initdb_load_directory(SYS_MANIFEST_DIRECTORY, "/usr/bin/pkg_privilege");
+}
 
 static int initdb_change_perm(const char *db_file)
 {
@@ -263,9 +271,9 @@ int main(int argc, char *argv[])
 		_D("Some Packages in the Package Info DB.");
 		return 0;
 	}
-	ret = initdb_load_directory(SYS_MANIFEST_DIRECTORY);
+	ret = initdb_install_manifest();
 	if (ret == -1) {
-		_E("cannot load opt manifest directory.");
+		_E("cannot install manifest.");
 	}
 
 	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
@@ -274,12 +282,18 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	setuid(OWNER_ROOT);
-	
+	setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT);
+
 	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE);
 	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE_JOURNAL);
 	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE);
 	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE_JOURNAL);
+
+	ret = initdb_install_privilege();
+	if (ret == -1) {
+		_E("cannot install priveilge.");
+		return -1;
+	}
 
 	return 0;
 }
