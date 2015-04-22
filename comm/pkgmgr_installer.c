@@ -59,6 +59,7 @@ struct pkgmgr_installer {
 	char *license_path;
 	char *optional_data;
 	char *caller_pkgid;
+	uid_t target_uid;
 
 	DBusConnection *conn;
 };
@@ -79,7 +80,7 @@ static int __send_signal_for_event(int comm_status_type, pkgmgr_installer *pi,
 	char *sid = pi->session_id;
 	if (!sid)
 		sid = "";
-	comm_status_broadcast_server_send_signal(comm_status_type, pi->conn, sid, pkg_type, pkgid, key, val);
+	comm_status_broadcast_server_send_signal(comm_status_type, pi->conn, pi->target_uid, sid, pkg_type, pkgid, key, val);
 
 	return 0;
 }
@@ -164,6 +165,8 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 	int opt_idx = 0;
 	int c;
 	int mode = 0;
+
+	pi->target_uid = getuid();
 	while (1) {
 		c = getopt_long(argc, argv, short_opts, long_opts, &opt_idx);
 		/* printf("c=%d %c\n", c, c); //debug */
@@ -350,7 +353,7 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 	char *sid = pi->session_id;
 	if (!sid)
 		sid = "";
-	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, pi->conn, sid, pkg_type,
+	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, pi->conn, pi->target_uid, sid, pkg_type,
 						 pkgid, key, val);
 
 	__send_event(pi, pkg_type, pkgid, key, val);

@@ -36,7 +36,7 @@ enum {
 };
 
 typedef struct comm_client comm_client;
-typedef void (*status_cb) (void *cb_data, const char *req_id,
+typedef void (*status_cb) (void *cb_data, uid_t target_uid, const char *req_id,
 			   const char *pkg_type, const char *pkgid,
 			   const char *key, const char *val);
 

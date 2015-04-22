@@ -308,15 +308,17 @@ static void __add_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
 	}
 }
 
-static void __operation_callback(void *cb_data, const char *req_id,
-				 const char *pkg_type, const char *pkgid,
-				 const char *key, const char *val)
+static void __operation_callback(void *cb_data, uid_t target_uid,
+				 const char *req_id, const char *pkg_type,
+				 const char *pkgid, const char *key,
+				 const char *val)
 {
 	pkgmgr_client_t *pc;
 	req_cb_info *cb_info;
 
-	DBG("__operation_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
-	      "key[%s] val[%s]\n", req_id, pkg_type, pkgid, key, val);
+	DBG("__operation_callback() target_uid[%u] req_id[%s] pkg_type[%s] "
+	      "pkgid[%s] key[%s] val[%s]\n",
+	      target_uid, req_id, pkg_type, pkgid, key, val);
 
 	pc = (pkgmgr_client_t *) cb_data;
 
@@ -329,8 +331,8 @@ static void __operation_callback(void *cb_data, const char *req_id,
 
 	/* call callback */
 	if (cb_info->event_cb) {
-		cb_info->event_cb(cb_info->request_id, pkg_type, pkgid, key,
-				  val, NULL, cb_info->data);
+		cb_info->event_cb(target_uid, cb_info->request_id, pkg_type,
+				  pkgid, key, val, NULL, cb_info->data);
 		DBG("event_cb is called");
 	}
 
@@ -344,22 +346,24 @@ static void __operation_callback(void *cb_data, const char *req_id,
 	return;
 }
 
-static void __status_callback(void *cb_data, const char *req_id,
-			      const char *pkg_type, const char *pkgid,
-			      const char *key, const char *val)
+static void __status_callback(void *cb_data, uid_t target_uid,
+			      const char *req_id, const char *pkg_type,
+			      const char *pkgid,  const char *key,
+			      const char *val)
 {
 	pkgmgr_client_t *pc;
 	listen_cb_info *tmp;
 
-	DBG("__status_callback() req_id[%s] pkg_type[%s] pkgid[%s]"
-	      "key[%s] val[%s]\n", req_id, pkg_type, pkgid, key, val);
+	DBG("__status_callback() target_uid[%u] req_id[%s] pkg_type[%s] "
+	      "pkgid[%s] key[%s] val[%s]\n", target_uid, req_id, pkg_type,
+	      pkgid, key, val);
 
 	pc = (pkgmgr_client_t *) cb_data;
 
 	tmp = pc->info.listening.lhead;
 	while (tmp) {
-		if (tmp->event_cb(tmp->request_id, pkg_type, pkgid, key, val,
-				  NULL, tmp->data) != 0)
+		if (tmp->event_cb(target_uid, tmp->request_id, pkg_type, pkgid,
+				  key, val, NULL, tmp->data) != 0)
 			break;
 		tmp = tmp->next;
 	}
@@ -1142,13 +1146,13 @@ catch:
 	return ret;
 }
 
-static int __get_pkg_size_info_cb(int req_id, const char *req_type,
+static int __get_pkg_size_info_cb(uid_t target_uid, int req_id, const char *req_type,
 		const char *pkgid, const char *key,
 		const char *value, const void *pc, void *user_data)
 {
 	int ret = 0;
-	DBG("reqid: %d, req type: %s, pkgid: %s, unused key: %s, size info: %s",
-			req_id, req_type, pkgid, key, value);
+	DBG("target_uid: %u, reqid: %d, req type: %s, pkgid: %s, unused key: %s, size info: %s",
+			target_uid, req_id, req_type, pkgid, key, value);
 
 	pkg_size_info_t *size_info = (pkg_size_info_t *)malloc(sizeof(pkg_size_info_t));
 	retvm_if(size_info == NULL, -1, "The memory is insufficient.");
@@ -2433,8 +2437,8 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, mpc->info.broadcast.bc,
-						 PKG_STATUS, pkg_type,
-						 pkgid, key, val);
+						 getuid(), PKG_STATUS,
+						 pkg_type, pkgid, key, val);
 
 	return PKGMGR_R_OK;
 }

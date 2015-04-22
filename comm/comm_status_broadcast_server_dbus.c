@@ -202,6 +202,7 @@ API DBusConnection *comm_status_broadcast_server_connect(int status_type)
 
 API void
 comm_status_broadcast_server_send_signal(int comm_status_type, DBusConnection *conn,
+					 uid_t target_uid,
 					 const char *req_id,
 					 const char *pkg_type,
 					 const char *pkgid, const char *key,
@@ -232,6 +233,12 @@ comm_status_broadcast_server_send_signal(int comm_status_type, DBusConnection *c
 	}
 
 	dbus_message_iter_init_append(msg, &args);
+
+	if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT32,
+				&target_uid)) {
+		DBG("dbus_message_iter_append_basic failed: Out of memory");
+		return;
+	}
 
 	for (i = 0; i < 5; i++) {
 		if (!dbus_message_iter_append_basic
