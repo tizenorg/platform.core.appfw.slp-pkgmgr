@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <glib.h>
+
 #include "comm_client.h"
 static int _argc;
 static char **_argv;

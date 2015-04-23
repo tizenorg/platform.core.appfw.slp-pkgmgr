@@ -25,12 +25,25 @@ message(STATUS "version/major : ${VERSION} / ${VERSION_MAJOR}")
 ### Get required CFLAGS, LDFLAGS from pkg-config
 
 include(FindPkgConfig)
-pkg_check_modules(comm_pkgs REQUIRED dbus-1 glib-2.0 dbus-glib-1 gio-2.0 gio-unix-2.0 dlog pkgmgr-info db-util cynara-client cynara-creds-dbus cynara-session)
+pkg_check_modules(installer_client_pkgs REQUIRED glib-2.0 gio-2.0 gio-unix-2.0 dlog)
+foreach(flag ${installer_client_pkgs_CFLAGS})
+	set(installer_client_pkgs_CFLAGS_str "${installer_client_pkgs_CFLAGS_str} ${flag}")
+endforeach()
 
+pkg_check_modules(comm_pkgs REQUIRED glib-2.0 dbus-glib-1 dlog cynara-client cynara-creds-dbus cynara-session)
 foreach(flag ${comm_pkgs_CFLAGS})
 	set(comm_pkgs_CFLAGS_str "${comm_pkgs_CFLAGS_str} ${flag}")
 endforeach()
 
+pkg_check_modules(broadcast_server_pkgs REQUIRED dbus-1 dlog)
+foreach(flag ${broadcast_server_pkgs_CFLAGS})
+	set(broadcast_server_pkgs_CFLAGS_str "${broadcast_server_pkgs_CFLAGS_str} ${flag}")
+endforeach()
+
+pkg_check_modules(installer_pkgs REQUIRED dbus-1 dlog pkgmgr-info)
+foreach(flag ${installer_pkgs_CFLAGS})
+	set(installer_pkgs_CFLAGS_str "${installer_pkgs_CFLAGS_str} ${flag}")
+endforeach()
 
 ### Set current binary dir to be included (for generated *.h files)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -67,8 +80,8 @@ add_library(pkgmgr_installer_client SHARED
 		)
 set_target_properties(pkgmgr_installer_client PROPERTIES SOVERSION ${VERSION_MAJOR})
 set_target_properties(pkgmgr_installer_client PROPERTIES VERSION ${VERSION})
-set_target_properties(pkgmgr_installer_client PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
-target_link_libraries(pkgmgr_installer_client ${comm_pkgs_LDFLAGS})
+set_target_properties(pkgmgr_installer_client PROPERTIES COMPILE_FLAGS "${installer_client_pkgs_CFLAGS_str}")
+target_link_libraries(pkgmgr_installer_client ${installer_client_pkgs_LDFLAGS})
 add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_gdbus_generated.h comm_pkg_mgr_client_gdbus_generated.c)
 
 ## pkg-mgr server for PMS
@@ -88,8 +101,8 @@ add_library(pkgmgr_installer_status_broadcast_server SHARED
 	)
 set_target_properties(pkgmgr_installer_status_broadcast_server PROPERTIES SOVERSION ${VERSION_MAJOR})
 set_target_properties(pkgmgr_installer_status_broadcast_server PROPERTIES VERSION ${VERSION})
-set_target_properties(pkgmgr_installer_status_broadcast_server PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
-target_link_libraries(pkgmgr_installer_status_broadcast_server ${comm_pkgs_LDFLAGS})
+set_target_properties(pkgmgr_installer_status_broadcast_server PROPERTIES COMPILE_FLAGS "${broadcast_server_pkgs_CFLAGS_str}")
+target_link_libraries(pkgmgr_installer_status_broadcast_server ${broadcast_server_pkgs_LDFLAGS})
 add_dependencies(pkgmgr_installer_status_broadcast_server comm_status_broadcast_server_dbus_bindings.h)
 
 
@@ -98,8 +111,8 @@ add_dependencies(pkgmgr_installer_status_broadcast_server comm_status_broadcast_
 add_library(pkgmgr_installer SHARED pkgmgr_installer.c)
 set_target_properties(pkgmgr_installer PROPERTIES SOVERSION ${VERSION_MAJOR})
 set_target_properties(pkgmgr_installer PROPERTIES VERSION ${VERSION})
-set_target_properties(pkgmgr_installer PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
-target_link_libraries(pkgmgr_installer pkgmgr_installer_status_broadcast_server ${comm_pkgs_LDFLAGS})
+set_target_properties(pkgmgr_installer PROPERTIES COMPILE_FLAGS "${installer_pkgs_CFLAGS_str}")
+target_link_libraries(pkgmgr_installer pkgmgr_installer_status_broadcast_server ${installer_pkgs_LDFLAGS})
 
 
 ### Create pc file

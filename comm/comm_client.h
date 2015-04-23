@@ -28,8 +28,6 @@
 #define __COMM_CLIENT_H__
 
 #include "comm_config.h"
-#include <glib.h>
-#include <dbus/dbus-glib.h>
 
 enum {
 	COMM_CLIENT_STATUS_CALLBACK_FLAG_NONE = 0,
