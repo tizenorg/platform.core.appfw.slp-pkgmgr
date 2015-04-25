@@ -35,7 +35,6 @@
 #include "comm_debug.h"
 #include "error_report.h"
 
-#include <db-util.h>
 #include <pkgmgr-info.h>
 
 #undef LOG_TAG

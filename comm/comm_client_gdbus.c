@@ -31,6 +31,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <glib.h>
+#include <gio/gio.h>
+
 #include "comm_config.h"
 #include "comm_client.h"
 #include "comm_pkg_mgr_client_gdbus_generated.h"
