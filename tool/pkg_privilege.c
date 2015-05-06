@@ -10,10 +10,10 @@
 #define OWNER_ROOT 0
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
-static const char *__get_path(char *pkgid, char *appid, uid_t uid)
+static const char *__get_path(const char *pkgid, const char *appid, uid_t uid)
 {
 	char buf[BUFSIZE];
-	char *path;
+	const char *path;
 
 	/* TODO: unify application directory layout */
 	if (uid == OWNER_ROOT || uid == GLOBAL_USER)
@@ -58,7 +58,7 @@ static int __insert_privilege(char *manifest, uid_t uid)
 		security_manager_app_inst_req_set_app_id(req, uiapp->appid);
 		path = __get_path(mfx->package, uiapp->appid, uid);
 		security_manager_app_inst_req_add_path(req, path,
-				SECURITY_MANAGER_PATH_PUBLIC_RO);
+				SECURITY_MANAGER_PATH_PRIVATE);
 		uiapp = uiapp->next;
 	}
 
@@ -67,7 +67,7 @@ static int __insert_privilege(char *manifest, uid_t uid)
 		security_manager_app_inst_req_set_app_id(req, svcapp->appid);
 		path = __get_path(mfx->package, svcapp->appid, uid);
 		security_manager_app_inst_req_add_path(req, path,
-				SECURITY_MANAGER_PATH_PUBLIC_RO);
+				SECURITY_MANAGER_PATH_PRIVATE);
 		svcapp = svcapp->next;
 	}
 
