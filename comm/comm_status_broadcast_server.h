@@ -27,6 +27,7 @@
 #ifndef __COMM_STATUS_BROADCAST_SERVER_H__
 #define __COMM_STATUS_BROADCAST_SERVER_H__
 
+#include <sys/types.h>
 #include "comm_config.h"
 #include <dbus/dbus.h>
 
