@@ -3,6 +3,7 @@
 <node name="/org/tizen/slp/pkgmgr_status">
 	<interface name="org.tizen.slp.pkgmgr_status">
 		<signal name="status">
+			<arg type="i" name="target_uid" direction="out" />
 			<arg type="s" name="req_id" direction="out" />
 			<arg type="s" name="pkgtype" direction="out" />
 			<arg type="s" name="pkgid" direction="out" />

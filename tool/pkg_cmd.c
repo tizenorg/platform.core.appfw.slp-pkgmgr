@@ -53,9 +53,9 @@ static int __process_request(uid_t uid);
 static void __print_usage();
 static int __is_app_installed(char *pkgid, uid_t uid);
 static void __print_pkg_info(pkgmgr_info * pkg_info);
-static int __return_cb(int req_id, const char *pkg_type, const char *pkgid,
-		       const char *key, const char *val, const void *pmsg,
-		       void *data);
+static int __return_cb(uid_t target_uid, int req_id, const char *pkg_type,
+		       const char *pkgid, const char *key, const char *val,
+		       const void *pmsg, void *data);
 static int __convert_to_absolute_path(char *path);
 
 /* Supported options */
@@ -195,7 +195,7 @@ static void __error_no_to_string(int errnumber, char **errstr)
 	}
 }
 
-static int __return_cb(int req_id, const char *pkg_type,
+static int __return_cb(uid_t target_uid, int req_id, const char *pkg_type,
 		       const char *pkgid, const char *key, const char *val,
 		       const void *pmsg, void *priv_data)
 {

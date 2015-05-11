@@ -156,6 +156,7 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 		return;
 	}
 	/* Values to be received by signal */
+	uid_t target_uid;
 	char *req_id = NULL;
 	char *pkg_type = NULL;
 	char *pkgid = NULL;
@@ -169,15 +170,15 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 	else
 		return;
 
-	g_variant_get(parameters, "(&s&s&s&s&s)",
-				&req_id, &pkg_type, &pkgid, &key, &val);
+	g_variant_get(parameters, "(u&s&s&s&s&s)",
+				&target_uid, &req_id, &pkg_type, &pkgid, &key, &val);
 	/* Got signal! */
-	SECURE_LOGD("Got signal: [%s] %s / %s / %s / %s / %s", signal_name, req_id,
+	SECURE_LOGD("Got signal: [%s] %u / %s / %s / %s / %s / %s", signal_name, target_uid, req_id,
 	    pkg_type, pkgid, key, val);
 
 	/* Run signal callback if exist */
 	if (sig_cb_data && sig_cb_data->cb) {
-		sig_cb_data->cb(sig_cb_data->cb_data, req_id,
+		sig_cb_data->cb(sig_cb_data->cb_data, target_uid, req_id,
 				pkg_type, pkgid, key, val);
 		DBG("callback function is end");
 	}

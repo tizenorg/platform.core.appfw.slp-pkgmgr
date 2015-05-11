@@ -216,7 +216,7 @@ typedef struct {
 typedef int (*pkgmgr_iter_fn)(const char* pkg_type, const char* pkgid,
 				const char* version, void *data);
 
-typedef int (*pkgmgr_handler)(int req_id, const char *pkg_type,
+typedef int (*pkgmgr_handler)(uid_t target_uid, int req_id, const char *pkg_type,
 				const char *pkgid, const char *key,
 				const char *val, const void *pmsg, void *data);
 
