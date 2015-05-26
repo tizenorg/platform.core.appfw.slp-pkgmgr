@@ -115,6 +115,14 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backend
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backendlib
 mkdir -p %{buildroot}%{_sysconfdir}/opt/upgrade
 
+touch  %{buildroot}%{_sysconfdir}/package-manager/backend/pkg
+chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/pkg
+touch  %{buildroot}%{_sysconfdir}/package-manager/backend/getsize
+chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/getsize
+touch  %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
+chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
+
+
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 
 %find_lang package-manager
@@ -146,6 +154,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %dir %{_sysconfdir}/package-manager/backend
 %dir %{_sysconfdir}/package-manager/backendlib
 %dir %{_sysconfdir}/opt/upgrade
+%{_sysconfdir}/package-manager/backend/*
 %{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
 %{_bindir}/pkgcmd
 %attr(06755,root,root) %{_bindir}/pkg_createdb
