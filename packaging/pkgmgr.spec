@@ -59,6 +59,7 @@ Package Manager client library develpoment package for packaging
 %package client-devel
 Summary:    Package Manager client library develpoment package
 Requires:   %{name} = %{version}-%{release}
+Requires: pkgmgr-client
 
 %description client-devel
 Package Manager client library develpoment package for packaging
