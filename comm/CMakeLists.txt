@@ -40,7 +40,7 @@ foreach(flag ${broadcast_server_pkgs_CFLAGS})
 	set(broadcast_server_pkgs_CFLAGS_str "${broadcast_server_pkgs_CFLAGS_str} ${flag}")
 endforeach()
 
-pkg_check_modules(installer_pkgs REQUIRED dbus-1 dlog pkgmgr-info)
+pkg_check_modules(installer_pkgs REQUIRED glib-2.0 dbus-1 dlog pkgmgr-info)
 foreach(flag ${installer_pkgs_CFLAGS})
 	set(installer_pkgs_CFLAGS_str "${installer_pkgs_CFLAGS_str} ${flag}")
 endforeach()
