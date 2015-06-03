@@ -141,11 +141,3 @@ INSTALL(FILES
 		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-status-broadcast-server.pc 
 		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc 
         DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
-
-
-
-
-## test
-add_subdirectory(test)
-
-
