@@ -18,20 +18,22 @@ Source1007: %{name}-types-devel.manifest
 BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
-BuildRequires:  pkgconfig(ecore)
 BuildRequires:  pkgconfig(cynara-client)
 BuildRequires:  pkgconfig(cynara-creds-dbus)
 BuildRequires:  pkgconfig(cynara-session)
+BuildRequires:  pkgconfig(glib-2.0)
+BuildRequires:  pkgconfig(gio-2.0)
+BuildRequires:  pkgconfig(gio-unix-2.0)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(ail)
 BuildRequires:  pkgconfig(bundle)
-BuildRequires:  pkgconfig(appcore-efl)
 BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(iniparser)
 BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgconfig(security-manager)
+BuildRequires:  pkgconfig(xdgmime)
 BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
@@ -168,9 +170,6 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %{_bindir}/pkg_clearcache
 %{_bindir}/pkg_privilege
 %{_bindir}/pkginfo
-%{_bindir}/pkgmgr-install
-%attr(-,tizenglobalapp,root) %dir %{TZ_SYS_RW_PACKAGES}
-%attr(-,tizenglobalapp,root) %{TZ_SYS_RW_PACKAGES}/org.tizen.pkgmgr-install.xml
 %{_datadir}/mime/packages/mime.wac.xml
 %{_datadir}/mime/packages/mime.tpk.xml
 %exclude %{_includedir}/pkgmgr/comm_client.h
