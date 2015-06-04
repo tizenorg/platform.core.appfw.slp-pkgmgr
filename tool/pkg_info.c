@@ -60,7 +60,7 @@ static int __get_integer_input_data(void);
 char *__get_string_input_data(void);
 static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data);
 static int __app_category_list_cb(const char *category_name, void *user_data);
-static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data);
+static int __app_control_list_cb(const char *operation, const char *uri, const char *mime, void *user_data);
 static int __app_metadata_list_cb(const char *metadata_name, const char *metadata_value, void *user_data);
 int app_func(const pkgmgr_appinfo_h handle, void *user_data);
 
@@ -1864,58 +1864,12 @@ static int __app_metadata_list_cb(const char *metadata_name, const char *metadat
 	return 0;
 }
 
-static int __app_control_list_cb(pkgmgrinfo_appcontrol_h handle, void *user_data)
+static int __app_control_list_cb(const char *operation, const char *uri, const char *mime, void *user_data)
 {
 	printf("-------------------------------------------------------\n");
-	int i = 0;
-	int ret = 0;
-	int oc = 0;
-	int mc = 0;
-	int uc = 0;
-	int sc = 0;
-	char **operation = NULL;
-	char **uri = NULL;
-	char **mime = NULL;
-	char **subapp = NULL;
-
-	ret = pkgmgrinfo_appinfo_get_operation(handle, &oc, &operation);
-	if (ret < 0) {
-		printf("Get Operation Failed\n");
-		return -1;
-	}
-	ret = pkgmgrinfo_appinfo_get_uri(handle, &uc, &uri);
-	if (ret < 0) {
-		printf("Get Uri Failed\n");
-		return -1;
-	}
-	ret = pkgmgrinfo_appinfo_get_mime(handle, &mc, &mime);
-	if (ret < 0) {
-		printf("Get Mime Failed\n");
-		return -1;
-	}
-	ret = pkgmgrinfo_appinfo_get_subapp(handle, &sc, &subapp);
-	if (ret < 0) {
-		printf("Get subapp Failed\n");
-		return -1;
-	}
-
-	for (i = 0; i < oc; i++) {
-		if (operation && operation[i])
-			printf("Operation: %s\n", operation[i]);
-	}
-	for (i = 0; i < uc; i++) {
-		if (uri && uri[i])
-			printf("Uri: %s\n", uri[i]);
-	}
-	for (i = 0; i < mc; i++) {
-		if (mime && mime[i])
-			printf("Mime: %s\n", mime[i]);
-	}
-	for (i = 0; i < sc; i++) {
-		if (subapp && subapp[i])
-			printf("subapp: %s\n", subapp[i]);
-	}
-
+	printf("Operation: %s\n", operation);
+	printf("Uri: %s\n", uri);
+	printf("Mime: %s\n", mime);
 	printf("-------------------------------------------------------\n\n");
 	return 0;
 }
@@ -1925,7 +1879,7 @@ static int __get_app_category_list(char *appid)
 {
 	int ret = -1;
 	pkgmgr_appinfo_h handle;
-	ret = pkgmgr_appinfo_get_appinfo(appid, &handle);
+	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
@@ -1944,7 +1898,7 @@ static int __get_app_metadata_list(char *appid)
 {
 	int ret = -1;
 	pkgmgr_appinfo_h handle;
-	ret = pkgmgr_appinfo_get_appinfo(appid, &handle);
+	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
@@ -1963,7 +1917,7 @@ static int __get_app_control_list(char *appid)
 {
 	int ret = -1;
 	pkgmgr_appinfo_h handle;
-	ret = pkgmgr_appinfo_get_appinfo(appid, &handle);
+	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
@@ -2072,7 +2026,7 @@ static int __get_app_info(char *appid)
 	pkgmgr_appinfo_h handle;
 	int ret = -1;
 
-	ret = pkgmgr_appinfo_get_appinfo(appid, &handle);
+	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
