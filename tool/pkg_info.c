@@ -37,8 +37,6 @@
 #include "pkgmgr-dbinfo.h"
 #include "pkgmgr_installer.h"
 
-#define OWNER_ROOT 0
-
 static void __print_usage();
 static int __get_pkg_info(char *pkgid, uid_t uid);
 static int __get_app_info(char *appid);
@@ -2183,11 +2181,6 @@ int main(int argc, char *argv[])
 		printf("Locale is %s\n", locale);
 
 
-	if(getuid() == OWNER_ROOT) {
-		printf("User is Root! : Only tizenglobalapp or regular user are allowed\n");
-		return -1;
-	}
-	
 	free(locale);
 	locale = NULL;
 	if (argc == 2) {
