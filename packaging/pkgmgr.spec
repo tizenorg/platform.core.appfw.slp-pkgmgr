@@ -117,6 +117,8 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backend
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backendlib
 mkdir -p %{buildroot}%{_sysconfdir}/opt/upgrade
 
+touch  %{buildroot}%{_sysconfdir}/package-manager/backend/rpm
+chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/rpm
 touch  %{buildroot}%{_sysconfdir}/package-manager/backend/pkg
 chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/pkg
 touch  %{buildroot}%{_sysconfdir}/package-manager/backend/getsize
