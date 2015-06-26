@@ -201,7 +201,7 @@ pkgmgr_request(PkgMgrObject *obj,
 		}
 
 		r = cynara_creds_dbus_get_client(con, sender,
-				CLIENT_METHOD_SMACK, &client);
+				CLIENT_METHOD_DEFAULT, &client);
 		if (r != CYNARA_API_SUCCESS) {
 			cynara_strerror(r, buf, BUFMAX);
 			ERR("cynara_creds_dbus_get_client failed: %s", buf);
@@ -209,7 +209,7 @@ pkgmgr_request(PkgMgrObject *obj,
 			break;
 		}
 
-		r = cynara_creds_dbus_get_user(con, sender, USER_METHOD_UID, &user);
+		r = cynara_creds_dbus_get_user(con, sender, USER_METHOD_DEFAULT, &user);
 		if (r != CYNARA_API_SUCCESS) {
 			cynara_strerror(r, buf, BUFMAX);
 			ERR("cynara_creds_dbus_get_user failed: %s", buf);
