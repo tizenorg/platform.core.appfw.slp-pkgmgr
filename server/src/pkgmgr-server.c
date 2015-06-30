@@ -931,11 +931,13 @@ static int __pkgcmd_app_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 	int pid = -1;
 	if (handle == NULL) {
 		perror("appinfo handle is NULL\n");
+		vconf_set_int(VCONFKEY_PKGMGR_STATUS, 0);
 		exit(1);
 	}
 	ret = pkgmgrinfo_appinfo_get_exec(handle, &exec);
 	if (ret) {
 		perror("Failed to get app exec path\n");
+		vconf_set_int(VCONFKEY_PKGMGR_STATUS, 0);
 		exit(1);
 	}
 
@@ -1361,21 +1363,20 @@ gboolean queue_job(void *data)
 			}
 
 			if (item->req_type == COMM_REQ_KILL_APP) {
-				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "kill", item->uid);
+				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_ALL_APP, __pkgcmd_app_cb, "kill", item->uid);
 				if (ret < 0) {
 					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
 					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 					exit(1);
 				}
 			} else if (item->req_type == COMM_REQ_CHECK_APP) {
-				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_UI_APP, __pkgcmd_app_cb, "check", item->uid);
+				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_ALL_APP, __pkgcmd_app_cb, "check", item->uid);
 				if (ret < 0) {
 					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
 					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 					exit(1);
 				}
 			}
-
 			pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 			break;
 		}
