@@ -194,7 +194,7 @@ static int initdb_install_manifest(void)
 
 static int initdb_install_privilege(void)
 {
-	return __initdb_load_directory(SYS_MANIFEST_DIRECTORY, "/usr/bin/pkg_privilege");
+	return __initdb_load_directory(SYS_MANIFEST_DIRECTORY, "/usr/bin/pkg_privilege -i");
 }
 
 static int initdb_change_perm(const char *db_file)
