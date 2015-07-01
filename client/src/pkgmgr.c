@@ -331,8 +331,15 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 
 	/* call callback */
 	if (cb_info->event_cb) {
-		cb_info->event_cb(target_uid, cb_info->request_id, pkg_type,
-				  pkgid, key, val, NULL, cb_info->data);
+		if (pc->new_event_cb) {
+			cb_info->event_cb(target_uid, cb_info->request_id,
+					pkg_type, pkgid, key, val, pc,
+					cb_info->data);
+		} else {
+			cb_info->event_cb(target_uid, cb_info->request_id,
+					pkg_type, pkgid, key, val, NULL,
+					cb_info->data);
+		}
 		DBG("event_cb is called");
 	}
 

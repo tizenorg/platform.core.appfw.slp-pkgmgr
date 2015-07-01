@@ -339,6 +339,11 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 {
 	int r = 0;
 
+	if (strcmp(pkg_type,PKGMGR_INSTALLER_GET_SIZE_KEY_STR) == 0) {
+		r = __send_signal_for_event(COMM_STATUS_BROADCAST_GET_SIZE, pi, pkg_type, pkgid, key, val);
+		return r;
+	}
+
 	if (!pi->conn)
 		pi->conn = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
 

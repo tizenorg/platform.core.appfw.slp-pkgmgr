@@ -119,6 +119,10 @@ static const gchar *__get_interface(int status_type)
 			ifc = COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE;
 			break;
 
+		case COMM_STATUS_BROADCAST_GET_SIZE:
+			ifc = COMM_STATUS_BROADCAST_DBUS_GET_SIZE_INTERFACE;
+			break;
+
 		default:
 			break;
 	}
@@ -142,7 +146,8 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_UNINSTALL_INTERFACE) &&
 		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE) &&
 		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE) &&
-		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE)) {
+		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE) &&
+		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_GET_SIZE_INTERFACE)) {
 		DBG("Interface name did not match. Drop the message");
 		return;
 	}
@@ -151,7 +156,8 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_UNINSTALL) &&
 		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_UPGRADE) &&
 		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_MOVE) &&
-		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS)) {
+		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS) &&
+		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_GET_SIZE)) {
 		DBG("Signal name did not match. Drop the message");
 		return;
 	}

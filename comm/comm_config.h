@@ -74,6 +74,11 @@
 #define COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE "org.tizen.slp.pkgmgr.upgrade"
 #define COMM_STATUS_BROADCAST_EVENT_UPGRADE "upgrade"
 
+#define COMM_STATUS_BROADCAST_DBUS_GET_SIZE_SERVICE_PREFIX "org.tizen.pkgmgr.get.size"
+#define COMM_STATUS_BROADCAST_DBUS_GET_SIZE_PATH "/org/tizen/pkgmgr/get/size"
+#define COMM_STATUS_BROADCAST_DBUS_GET_SIZE_INTERFACE "org.tizen.pkgmgr.get.size"
+#define COMM_STATUS_BROADCAST_EVENT_GET_SIZE "get_size"
+
 /********
  * enums
  ********/

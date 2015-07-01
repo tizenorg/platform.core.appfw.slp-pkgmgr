@@ -7,6 +7,7 @@
 		<allow own="org.tizen.slp.pkgmgr"/>
 	</policy>
 	<policy context="default">
+                <allow own="org.tizen.pkgmgr.get.size"/>
                 <allow own="org.tizen.slp.pkgmgr_status"/>
                 <allow receive_sender="org.tizen.slp.pkgmgr"/>
                 <allow send_destination="org.tizen.slp.pkgmgr"/>
