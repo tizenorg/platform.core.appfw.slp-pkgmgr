@@ -38,8 +38,6 @@
 
 #include <cynara-client.h>
 
-#include <vconf.h>
-
 /* For multi-user support */
 #include <tzplatform_config.h>
 
@@ -924,20 +922,53 @@ static int __pkgcmd_proc_iter_kill_cmdline(const char *apppath, int option)
 	return 0;
 }
 
+static void __make_pid_info_file(char *req_key, int pid)
+{
+	FILE* file;
+	int fd;
+	char buf[MAX_PKG_TYPE_LEN] = {0};
+	char info_file[PATH_MAX] = {'\0'};
+
+	if(req_key == NULL)
+		return;
+
+	snprintf(info_file, PATH_MAX, "/tmp/%s", req_key);
+
+	DBG("info_path(%s)", info_file);
+	file = fopen(info_file, "w");
+	if (file == NULL) {
+		ERR("Couldn't open the file(%s)", info_file);
+		return;
+	}
+
+	snprintf(buf, MAX_PKG_TYPE_LEN, "%d\n", pid);
+	fwrite(buf, 1, strlen(buf), file);
+
+	fflush(file);
+	fd = fileno(file);
+	fsync(fd);
+	fclose(file);
+}
+
 static int __pkgcmd_app_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 {
-	char *exec = NULL;
-	int ret = 0;
+	char *pkgid;
+	char *exec;
+	int ret;
 	int pid = -1;
+
 	if (handle == NULL) {
 		perror("appinfo handle is NULL\n");
-		vconf_set_int(VCONFKEY_PKGMGR_STATUS, 0);
 		exit(1);
 	}
 	ret = pkgmgrinfo_appinfo_get_exec(handle, &exec);
 	if (ret) {
 		perror("Failed to get app exec path\n");
-		vconf_set_int(VCONFKEY_PKGMGR_STATUS, 0);
+		exit(1);
+	}
+	ret = pkgmgrinfo_appinfo_get_pkgid(handle, &pkgid);
+	if (ret) {
+		perror("Failed to get pkgid\n");
 		exit(1);
 	}
 
@@ -946,7 +977,7 @@ static int __pkgcmd_app_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)
 	else if(strcmp(user_data, "check") == 0)
 		pid = __pkgcmd_proc_iter_kill_cmdline(exec, 0);
 
-	vconf_set_int(VCONFKEY_PKGMGR_STATUS, pid);
+	__make_pid_info_file(pkgid, pid);
 
 	return 0;
 }

@@ -32,7 +32,6 @@
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <ail.h>
-#include <vconf.h>
 #include <db-util.h>
 #include <pkgmgr-info.h>
 #include <iniparser.h>
@@ -690,31 +689,46 @@ static int __app_list_cb (const pkgmgr_appinfo_h handle,
 
 static int __sync_process(char *req_key)
 {
+	int ret;
 	char info_file[PKG_STRING_LEN_MAX] = {'\0', };
-	int result = 0;
+	int result = -1;
 	int check_cnt = 0;
+	FILE *fp;
+	char buf[PKG_STRING_LEN_MAX] = {0, };
 
-	snprintf(info_file, PKG_STRING_LEN_MAX, "%s/%s", PKG_TMP_PATH, req_key);
+	snprintf(info_file, PKG_STRING_LEN_MAX, "%s/%s", PKG_SIZE_INFO_PATH, req_key);
 	while(1)
 	{
-		check_cnt ++;
+		check_cnt++;
 
-		vconf_get_int(VCONFKEY_PKGMGR_STATUS, &result);
-		if (result < 0) {
-			DBG("file is not generated yet.... wait\n");
-			usleep(10 * 1000);	/* 10ms sleep*/
-		} else {
-			DBG("info_file file is generated, result = %d. \n", result);
+		if (access(info_file, F_OK) == 0) {
+			fp = fopen(info_file, "r");
+			if (fp == NULL){
+				DBG("file is not generated yet.... wait\n");
+				usleep(100 * 1000);	/* 100ms sleep*/
+				continue;
+			}
+
+			fgets(buf, PKG_STRING_LEN_MAX, fp);
+			fclose(fp);
+
+			DBG("info_file file is generated, result = %s. \n", buf);
+			result = atoi(buf);
 			break;
 		}
 
-		if (check_cnt > 6000) {	/* 60s time over*/
-			DBG("wait time over!!\n");
+		DBG("file is not generated yet.... wait\n");
+		usleep(100 * 1000);	/* 100ms sleep*/
+
+		if (check_cnt > 6000) {	/* 60s * 10 time over*/
+			ERR("wait time over!!\n");
 			break;
 		}
 	}
 
-	vconf_set_int(VCONFKEY_PKGMGR_STATUS, -1);
+	ret = remove(info_file);
+	if (ret < 0)
+		ERR("file is can not remove[%s, %d]\n", info_file, ret);
 
 	return result;
 }
@@ -882,7 +896,6 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 	char *temp = NULL;
 	int i = 0;
 	char buf[128] = {'\0'};
-	char info_file[PKG_STRING_LEN_MAX] = {'\0', };
 
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 	retvm_if(mpc->ctype != PC_REQUEST, PKGMGR_R_EINVAL, "mpc->ctype is not PC_REQUEST\n");
@@ -942,8 +955,7 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 	if (ret < 0)
 		ERR("comm_client_request failed, ret=%d\n", ret);
 
-	snprintf(info_file, PKG_STRING_LEN_MAX, "app2sd_%s", pkgid);
-	ret = __sync_process(info_file);
+	ret = __sync_process(pkgid);
 	if (ret != 0)
 		ERR("move pkg failed, ret=%d\n", ret);
 
@@ -991,7 +1003,7 @@ static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_
 	if (ret < 0)
 		ERR("request failed, ret=%d\n", ret);
 
-	pid  = __sync_process(req_key);
+	pid  = __sync_process(pkgid);
 	* (int *) data = pid;
 
 catch:
@@ -2464,7 +2476,6 @@ API int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_ty
 	/* Check for NULL value of service type */
 	retvm_if(service_type > PM_REQUEST_MAX, PKGMGR_R_EINVAL, "service type is not defined\n");
 	retvm_if(service_type < 0, PKGMGR_R_EINVAL, "service type is error\n");
-	vconf_set_int(VCONFKEY_PKGMGR_STATUS, -1);
 
 	switch (service_type) {
 	case PM_REQUEST_CSC:

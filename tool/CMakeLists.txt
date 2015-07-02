@@ -12,13 +12,8 @@ FOREACH(flag ${pkgs_initdb_CFLAGS})
 ENDFOREACH(flag)
 
 
-pkg_check_modules(pkgs_test REQUIRED dbus-1 ail libxml-2.0 bundle pkgmgr-parser vconf pkgmgr-info libtzplatform-config security-manager)
+pkg_check_modules(pkgs_test REQUIRED dbus-1 ail libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${pkgs_test_CFLAGS})
-	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
-ENDFOREACH(flag)
-
-pkg_check_modules(toolpkgs REQUIRED dlog bundle glib-2.0 pkgmgr-parser vconf pkgmgr-info libtzplatform-config)
-FOREACH(flag ${toolpkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 

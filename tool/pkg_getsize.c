@@ -27,7 +27,6 @@
 #include <string.h>
 
 #include <pkgmgr-info.h>
-#include <vconf.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
