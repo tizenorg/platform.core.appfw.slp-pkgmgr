@@ -500,6 +500,50 @@ int pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 				 const char *val);
 
 /**
+	@brief		Send a signal which indicates application is being uninstalled
+	@pre		None
+	@post		None
+	@see		None
+	@param[in]	pi	pkgmgr_installer object
+	@param[in]	pkg_type	package type: "deb", "jar", "wgt", ...
+	@param[in]	pkgid	package id
+	@param[in]	key			Signal key
+	@param[in]	val			Signal value
+	@return		Operation result
+	@retval		0 on success
+	@retval		-errno on failure
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	char *session_id = NULL;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+
+	// Do something...
+	pkgmgr_installer_send_app_uninstall_signal(pi,
+	 "tpk", "org.tizen.foo");
+	// A sample signal
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+	@endcode
+ */
+int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *val);
+
+
+/**
  * @brief	This API creates the certinfo handle.
  *
  *              This API is for package-manager client application.\n

@@ -379,6 +379,17 @@ API const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi)
 	return pi->caller_pkgid;
 }
 
+API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *val)
+{
+	int ret = -1;
+
+	ret = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, "appid", val);
+	return ret;
+}
+
 API int
 pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 			     const char *pkg_type,
