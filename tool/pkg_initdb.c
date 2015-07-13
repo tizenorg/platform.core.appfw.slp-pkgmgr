@@ -47,7 +47,6 @@
 
 #define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
 #define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
-#define PKG_INFO_DB_LABEL "*"
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
 
@@ -62,8 +61,8 @@
 #define _D(fmt, arg...) fprintf(stderr, "[PKG_INITDB][D][%s,%d] "fmt"\n", __FUNCTION__, __LINE__, ##arg);
 
 #define SET_DEFAULT_LABEL(x) \
-	if(smack_setlabel((x), "*", SMACK_LABEL_ACCESS)) _E("failed chsmack -a \"*\" %s", x) \
-    else  _D("chsmack -a \"*\" %s", x)
+	if(smack_setlabel((x), "_", SMACK_LABEL_ACCESS)) _E("failed chsmack -a \"_\" %s", x) \
+    else  _D("chsmack -a \"_\" %s", x)
 	  
 static int initdb_count_package(void)
 {
@@ -260,8 +259,6 @@ int main(int argc, char *argv[])
 			_E(" %s is not removed",PACKAGE_INFO_DB_FILE_JOURNAL);
 	}
 
-
-	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
 	/* This is for AIL initializing */
 	ret = setenv("INITDB", "1", 1);
 	_D("INITDB : %d", ret);
@@ -281,8 +278,6 @@ int main(int argc, char *argv[])
 		_E("cannot chown.");
 		return -1;
 	}
-
-	setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT);
 
 	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE);
 	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE_JOURNAL);
