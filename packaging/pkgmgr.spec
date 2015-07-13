@@ -167,6 +167,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %attr(755,root,root) %{_bindir}/pkg_syncdb_user
 #obsolete tools
 %attr(06755,root,root) %{_bindir}/pkg_initdb
+%attr(755,root,root) %{_sysconfdir}/gumd/useradd.d/10_package-manager-add.post
 %attr(755,root,root) %{_bindir}/pkg_initdb_user
 %{_bindir}/pkg_getsize
 %{_bindir}/pkg_clearcache

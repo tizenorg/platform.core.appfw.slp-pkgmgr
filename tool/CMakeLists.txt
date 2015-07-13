@@ -67,6 +67,7 @@ install(TARGETS pkg_clearcache DESTINATION bin)
 add_executable(pkg_initdb pkg_initdb.c)
 target_link_libraries(pkg_initdb ${pkgs_initdb_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
+INSTALL(FILES 10_package-manager-add.post  DESTINATION ${SYSCONF_INSTALL_DIR}/gumd/useradd.d/)
 
 add_executable(pkg_initdb_user pkg_initdb_user.c)
 target_link_libraries(pkg_initdb_user ${pkgs_initdb_LDFLAGS})
