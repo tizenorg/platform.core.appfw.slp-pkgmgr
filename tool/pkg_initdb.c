@@ -38,18 +38,8 @@
 #include <tzplatform_config.h>
 
 #define OWNER_ROOT 0
-#define GROUP_MENU 6010
-#define BUFSZE 1024
-#define SYS_MANIFEST_DIRECTORY tzplatform_getenv(TZ_SYS_RW_PACKAGES)
-#define PACKAGE_INFO_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db")
-#define PACKAGE_INFO_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_parser.db-journal")
-
-
-#define PKG_CERT_DB_FILE tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db")
-#define PKG_CERT_DB_FILE_JOURNAL tzplatform_mkpath(TZ_SYS_DB, ".pkgmgr_cert.db-journal")
-#define PKG_INFO_DB_LABEL "*"
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
-
+#define BUFSZE 1024
 
 #ifdef _E
 #undef _E
@@ -61,125 +51,49 @@
 #endif
 #define _D(fmt, arg...) fprintf(stderr, "[PKG_INITDB][D][%s,%d] "fmt"\n", __FUNCTION__, __LINE__, ##arg);
 
-#define SET_DEFAULT_LABEL(x) \
-	if(smack_setlabel((x), "*", SMACK_LABEL_ACCESS)) _E("failed chsmack -a \"*\" %s", x) \
-    else  _D("chsmack -a \"*\" %s", x)
-	  
-static int initdb_count_package(void)
+static int _is_global(uid_t uid)
 {
-	int total = 0;
-
-	return total;
+	return (uid == OWNER_ROOT || uid == GLOBAL_USER) ? 1 : 0;
 }
 
-static int initdb_xsystem(const char *argv[])
-{
-	int status = 0;
-	pid_t pid;
-	pid = fork();
-	switch (pid) {
-	case -1:
-		perror("fork failed");
-		return -1;
-	case 0:
-		/* child */
-		execvp(argv[0], (char *const *)argv);
-		_exit(-1);
-	default:
-		/* parent */
-		break;
-	}
-	if (waitpid(pid, &status, 0) == -1) {
-		perror("waitpid failed");
-		return -1;
-	}
-	if (WIFSIGNALED(status)) {
-		perror("signal");
-		return -1;
-	}
-	if (!WIFEXITED(status)) {
-		/* shouldn't happen */
-		perror("should not happen");
-		return -1;
-	}
-	return WEXITSTATUS(status);
-}
-
-
-char* _manifest_to_package(const char* manifest)
-{
-	char *package;
-
-	if(manifest == NULL)
-		return NULL;
-
-	package = strdup(manifest);
-	if(package == NULL)
-		return NULL;
-
-
-	if (!strstr(package, ".xml")) {
-		_E("%s is not a manifest file", manifest);
-		free(package);
-		return NULL;
-	}
-
-	return package;
-}
-
-
-
-static int __initdb_load_directory(const char *directory, const char *cmd)
+static int _initdb_load_directory(uid_t uid, const char *directory, const char *cmd)
 {
 	DIR *dir;
 	struct dirent entry, *result;
 	int ret;
 	char buf[BUFSZE];
+	char buf2[BUFSZE];
 
 	// desktop file
 	dir = opendir(directory);
 	if (!dir) {
-		if (strerror_r(errno, buf, sizeof(buf)) == 0)
-			_E("Failed to access the [%s] because %s\n", directory, buf);
+		_E("Failed to access the [%s] because %s", directory,
+				strerror_r(errno, buf, sizeof(buf)));
 		return -1;
 	}
 
-	_D("Loading manifest files from %s\n", directory);
+	_D("Loading manifest files from %s", directory);
 
 	for (ret = readdir_r(dir, &entry, &result);
 			ret == 0 && result != NULL;
 			ret = readdir_r(dir, &entry, &result)) {
-		char *manifest;
-
-		if (entry.d_name[0] == '.') continue;
-
-		manifest = _manifest_to_package(entry.d_name);
-		if (!manifest) {
-			_E("Failed to convert file to package[%s]\n", entry.d_name);
+		if (entry.d_name[0] == '.')
 			continue;
-		}
 
-		snprintf(buf, sizeof(buf), "%s/%s", directory, manifest);
-
-		fprintf(stderr, "pkg_initdb : manifest file %s\n", buf);
+		snprintf(buf, sizeof(buf), "%s/%s", directory, entry.d_name);
+		_D("manifest file %s", buf);
 
 		ret = pkgmgr_parser_check_manifest_validation(buf);
 		if (ret < 0) {
-			_E("check manifest validation failed code[%d] %s\n", ret, buf);
-			fprintf(stderr, "check manifest validation failed code[%d] %s\n", ret, buf);
-			free(manifest);
+			_E("check manifest validation failed code[%d] %s",
+					ret, buf);
 			continue;
 		}
 
-
-		/*temporarily fixed due to glib abort */
-		// pkgmgr_parser_parse_manifest_for_installation(buf, NULL);
-
-		char buf2[BUFSZE];
 		snprintf(buf2, sizeof(buf2), "%s %s", cmd, buf);
+		setresuid(uid, uid, OWNER_ROOT);
 		system(buf2);
-
-		free(manifest);
+		setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT);
 	}
 
 	closedir(dir);
@@ -187,111 +101,100 @@ static int __initdb_load_directory(const char *directory, const char *cmd)
 	return 0;
 }
 
-static int initdb_install_manifest(void)
+static int _install_manifest(uid_t uid)
 {
-	return __initdb_load_directory(SYS_MANIFEST_DIRECTORY, "/usr/bin/pkginfo --imd");
+	const char *dir;
+
+	dir = tzplatform_getenv(
+			_is_global(uid) ? TZ_SYS_RW_PACKAGES : TZ_USER_PACKAGES);
+
+	return _initdb_load_directory(uid, dir, "/usr/bin/pkginfo --imd");
 }
 
-static int initdb_install_privilege(void)
+static int _install_privilege(uid_t uid)
 {
-	return __initdb_load_directory(SYS_MANIFEST_DIRECTORY, "/usr/bin/pkg_privilege -i");
+	const char *dir;
+
+	dir = tzplatform_getenv(
+			_is_global(uid) ? TZ_SYS_RW_PACKAGES : TZ_USER_PACKAGES);
+
+	return _initdb_load_directory(uid, dir, "/usr/bin/pkg_privilege -i");
 }
 
-static int initdb_change_perm(const char *db_file)
-{
-	char buf[BUFSZE];
-	char journal_file[BUFSZE];
-	char *files[3];
-	int ret, i;
-
-	files[0] = (char *)db_file;
-	files[1] = journal_file;
-	files[2] = NULL;
-
-	if(db_file == NULL)
-		return -1;
-
-	snprintf(journal_file, sizeof(journal_file), "%s%s", db_file, "-journal");
-
-	for (i = 0; files[i]; i++) {
-		ret = chown(files[i], GLOBAL_USER, OWNER_ROOT);
-		if (ret == -1) {
-			strerror_r(errno, buf, sizeof(buf));
-			_E("FAIL : chown %s %d.%d, because %s", db_file, GLOBAL_USER, OWNER_ROOT, buf);
-			return -1;
-		}
-
-		ret = chmod(files[i], S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
-		if (ret == -1) {
-			strerror_r(errno, buf, sizeof(buf));
-			_E("FAIL : chmod %s 0664, because %s", db_file, buf);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-static int __is_authorized()
+static int _is_authorized()
 {
 	/* pkg_init db should be called by as root privilege. */
-
 	uid_t uid = getuid();
-	uid_t euid = geteuid();
-	//euid need to be root to allow smack label changes during initialization
+
 	if ((uid_t) OWNER_ROOT == uid)
 		return 1;
 	else
 		return 0;
 }
 
+static void _remove_old_dbs(uid)
+{
+	const char *info_db_path;
+	const char *info_db_journal_path;
+	const char *cert_db_path;
+	const char *cert_db_journal_path;
+
+	info_db_path = tzplatform_mkpath(
+			_is_global(uid) ? TZ_SYS_DB : TZ_USER_DB,
+			".pkgmgr_parser.db");
+	info_db_journal_path = tzplatform_mkpath(
+			_is_global(uid) ? TZ_SYS_DB : TZ_USER_DB,
+			".pkgmgr_parser.db-journal");
+	cert_db_path = tzplatform_mkpath(
+			_is_global(uid) ? TZ_SYS_DB : TZ_USER_DB,
+			".pkgmgr_cert.db");
+	cert_db_journal_path = tzplatform_mkpath(
+			_is_global(uid) ? TZ_SYS_DB : TZ_USER_DB,
+			".pkgmgr_cert.db-journal");
+
+	if (remove(info_db_path))
+		_E(" %s is not removed", info_db_path);
+	if (remove(info_db_journal_path))
+		_E(" %s is not removed", info_db_journal_path);
+	if (remove(cert_db_path))
+		_E(" %s is not removed", cert_db_path);
+	if (remove(cert_db_journal_path))
+		_E(" %s is not removed", cert_db_journal_path);
+}
 
 int main(int argc, char *argv[])
 {
 	int ret;
+	uid_t uid = 0;
 
-	if (!__is_authorized()) {
-		_E("You are not an authorized user!\n");
-		return -1;
-	} else {
-		if(remove(PACKAGE_INFO_DB_FILE))
-			_E(" %s is not removed",PACKAGE_INFO_DB_FILE);
-		if(remove(PACKAGE_INFO_DB_FILE_JOURNAL))
-			_E(" %s is not removed",PACKAGE_INFO_DB_FILE_JOURNAL);
-	}
-
-
-	setresuid(GLOBAL_USER, GLOBAL_USER, OWNER_ROOT);
-	/* This is for AIL initializing */
-	ret = setenv("INITDB", "1", 1);
-	_D("INITDB : %d", ret);
-
-	ret = initdb_count_package();
-	if (ret > 0) {
-		_D("Some Packages in the Package Info DB.");
-		return 0;
-	}
-	ret = initdb_install_manifest();
-	if (ret == -1) {
-		_E("cannot install manifest.");
-	}
-
-	ret = initdb_change_perm(PACKAGE_INFO_DB_FILE);
-	if (ret == -1) {
-		_E("cannot chown.");
+	if (!_is_authorized()) {
+		_E("You are not an authorized user!");
 		return -1;
 	}
 
-	setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT);
+	if (argc > 1)
+		uid = (uid_t)atoi(argv[1]);
 
-	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE);
-	SET_DEFAULT_LABEL(PACKAGE_INFO_DB_FILE_JOURNAL);
-	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE);
-	SET_DEFAULT_LABEL(PKG_CERT_DB_FILE_JOURNAL);
+	if (!_is_global(uid))
+		tzplatform_set_user(uid);
 
-	ret = initdb_install_privilege();
-	if (ret == -1) {
-		_E("cannot install priveilge.");
+	_remove_old_dbs(uid);
+
+	ret = pkgmgr_parser_create_and_initialize_db(uid);
+	if (ret < 0) {
+		_E("cannot create db");
+		return -1;
+	}
+
+	ret = _install_manifest(uid);
+	if (ret < 0) {
+		_E("cannot install manifest");
+		return -1;
+	}
+
+	ret = _install_privilege(uid);
+	if (ret < 0) {
+		_E("cannot install priveilge");
 		return -1;
 	}
 
