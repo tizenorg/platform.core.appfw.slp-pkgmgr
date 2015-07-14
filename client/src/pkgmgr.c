@@ -315,31 +315,25 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 	pkgmgr_client_t *pc;
 	req_cb_info *cb_info;
 
-	DBG("__operation_callback() target_uid[%u] req_id[%s] pkg_type[%s] "
-	      "pkgid[%s] key[%s] val[%s]\n",
-	      target_uid, req_id, pkg_type, pkgid, key, val);
-
 	pc = (pkgmgr_client_t *) cb_data;
 
 	/* find callback info */
 	cb_info = __find_op_cbinfo(pc, req_id);
-	if (cb_info == NULL)
+	if (cb_info == NULL) {
+		ERR("cannot fint cb_info for req_id:%d", req_id);
 		return;
-
-	DBG("__find_op_cbinfo");
+	}
 
 	/* call callback */
 	if (cb_info->event_cb) {
-		if (pc->new_event_cb) {
+		if (pc->new_event_cb)
 			cb_info->event_cb(target_uid, cb_info->request_id,
 					pkg_type, pkgid, key, val, pc,
 					cb_info->data);
-		} else {
+		else
 			cb_info->event_cb(target_uid, cb_info->request_id,
 					pkg_type, pkgid, key, val, NULL,
 					cb_info->data);
-		}
-		DBG("event_cb is called");
 	}
 
 	/*remove callback for last call 
@@ -359,10 +353,6 @@ static void __status_callback(void *cb_data, uid_t target_uid,
 {
 	pkgmgr_client_t *pc;
 	listen_cb_info *tmp;
-
-	DBG("__status_callback() target_uid[%u] req_id[%s] pkg_type[%s] "
-	      "pkgid[%s] key[%s] val[%s]\n", target_uid, req_id, pkg_type,
-	      pkgid, key, val);
 
 	pc = (pkgmgr_client_t *) cb_data;
 

@@ -178,17 +178,12 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 
 	g_variant_get(parameters, "(u&s&s&s&s&s)",
 				&target_uid, &req_id, &pkg_type, &pkgid, &key, &val);
-	/* Got signal! */
-	SECURE_LOGD("Got signal: [%s] %u / %s / %s / %s / %s / %s", signal_name, target_uid, req_id,
-	    pkg_type, pkgid, key, val);
 
 	/* Run signal callback if exist */
-	if (sig_cb_data && sig_cb_data->cb) {
+	if (sig_cb_data && sig_cb_data->cb)
 		sig_cb_data->cb(sig_cb_data->cb_data, target_uid, req_id,
 				pkg_type, pkgid, key, val);
-		DBG("callback function is end");
-	}
-	DBG("Handled signal. Exit function");
+
 	return;
 }
 
