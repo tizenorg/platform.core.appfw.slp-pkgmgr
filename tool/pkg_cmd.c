@@ -469,10 +469,8 @@ static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 		return ret;
 	}
 	ret = pkgmgr_pkginfo_get_label(handle, &pkg_label);
-	if (ret == -1) {
-		printf("Failed to get pkgmgr_pkginfo_get_label\n");
-		return ret;
-	}
+	if (ret == -1)
+		pkg_label = "(null)";
 
 	ret = pkgmgr_pkginfo_is_for_all_users(handle, &for_all_users);
 	if (ret == -1) {
