@@ -1572,7 +1572,7 @@ static int __insert_manifest_in_db(char *manifest, uid_t uid)
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	if (uid != GLOBAL_USER)
+	if (uid != GLOBAL_USER && uid != OWNER_ROOT)
 		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
 	else
 		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
