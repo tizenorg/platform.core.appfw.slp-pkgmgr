@@ -37,6 +37,8 @@
 #include "pkgmgr-dbinfo.h"
 #include "pkgmgr_installer.h"
 
+#define OWNER_ROOT 0
+
 static void __print_usage();
 static int __get_pkg_info(char *pkgid, uid_t uid);
 static int __get_app_info(char *appid);
@@ -1572,10 +1574,10 @@ static int __insert_manifest_in_db(char *manifest, uid_t uid)
 		printf("Manifest file is NULL\n");
 		return -1;
 	}
-	if (uid != GLOBAL_USER)
-		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
-	else
+	if (uid == GLOBAL_USER || uid == OWNER_ROOT)
 		ret = pkgmgr_parser_parse_manifest_for_installation(manifest, NULL);
+	else
+		ret = pkgmgr_parser_parse_usr_manifest_for_installation(manifest, uid, NULL);
 	if (ret < 0) {
 		printf("insert in db failed\n");
 		return -1;
