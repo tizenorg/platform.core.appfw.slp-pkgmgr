@@ -191,7 +191,6 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %manifest %{name}-client-devel.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager.h
-%{_includedir}/pkgmgr-dbinfo.h
 %{_libdir}/pkgconfig/pkgmgr.pc
 %{_libdir}/libpkgmgr-client.so
 

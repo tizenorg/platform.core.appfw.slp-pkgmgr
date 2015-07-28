@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sqlite3.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <getopt.h>
@@ -34,11 +33,13 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <sys/types.h>
-#include <glib.h>
-#include <ail.h>
-#include <glib-object.h>
-#include <pkgmgr-info.h>
 
+#include <glib.h>
+#include <glib-object.h>
+#include <sqlite3.h>
+
+#include <ail.h>
+#include <pkgmgr-info.h>
 /* For multi-user support */
 #include <tzplatform_config.h>
 
@@ -270,18 +271,18 @@ static int __convert_to_absolute_path(char *path)
 
 static int __is_app_installed(char *pkgid, uid_t uid)
 {
-	pkgmgr_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle;
 	int ret;
 	if (uid != GLOBAL_USER)
-		ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
 	else
-		ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 
 	if(ret < 0) {
 		printf("package is not in pkgmgr_info DB\n");
 		return -1;
 	} else
-		pkgmgr_pkginfo_destroy_pkginfo(handle);
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 
 	return 0;
 }
@@ -441,7 +442,7 @@ static void __print_pkg_info(pkgmgr_info *pkg_info)
 	}
 }
 
-static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
+static int __pkgmgr_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 {
 	int ret = -1;
 	char *pkgid = NULL;
@@ -453,28 +454,28 @@ static int __pkgmgr_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 
 	pkgmgrinfo_uidinfo_t *uid_info = (pkgmgrinfo_uidinfo_t *) handle;
 
-	ret = pkgmgr_pkginfo_get_pkgid(handle, &pkgid);
+	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
 	if (ret == -1) {
-		printf("Failed to get pkgmgr_pkginfo_get_pkgid\n");
+		printf("Failed to get pkgmgrinfo_pkginfo_get_pkgid\n");
 		return ret;
 	}
-	ret = pkgmgr_pkginfo_get_type(handle, &pkg_type);
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkg_type);
 	if (ret == -1) {
-		printf("Failed to get pkgmgr_pkginfo_get_type\n");
+		printf("Failed to get pkgmgrinfo_pkginfo_get_type\n");
 		return ret;
 	}
-	ret = pkgmgr_pkginfo_get_version(handle, &pkg_version);
+	ret = pkgmgrinfo_pkginfo_get_version(handle, &pkg_version);
 	if (ret == -1) {
-		printf("Failed to get pkgmgr_pkginfo_get_version\n");
+		printf("Failed to get pkgmgrinfo_pkginfo_get_version\n");
 		return ret;
 	}
-	ret = pkgmgr_pkginfo_get_label(handle, &pkg_label);
+	ret = pkgmgrinfo_pkginfo_get_label(handle, &pkg_label);
 	if (ret == -1)
 		pkg_label = "(null)";
 
-	ret = pkgmgr_pkginfo_is_for_all_users(handle, &for_all_users);
+	ret = pkgmgrinfo_pkginfo_is_for_all_users(handle, &for_all_users);
 	if (ret == -1) {
-		printf("Failed to get pkgmgr_pkginfo_is_for_all_users\n");
+		printf("Failed to get pkgmgrinfo_pkginfo_is_for_all_users\n");
 		return ret;
 	}
 
@@ -491,7 +492,7 @@ static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data, ui
 
 	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
 	if(ret < 0) {
-		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
+		printf("pkgmgrinfo_pkginfo_get_pkgid() failed\n");
 	}
   if (uid_info->uid != GLOBAL_USER)
 	  ret = pkgmgr_client_usr_request_service(PM_REQUEST_GET_SIZE, PM_GET_TOTAL_SIZE, (pkgmgr_client *)user_data, NULL, pkgid, uid_info->uid, NULL, NULL, NULL);
@@ -819,9 +820,9 @@ static int __process_request(uid_t uid)
 		if (data.pkg_type[0] == '\0') {
 			ret = 0;
 			if (uid != GLOBAL_USER) {
-				ret = pkgmgr_pkginfo_get_usr_list(__pkgmgr_list_cb, NULL, uid);
+				ret = pkgmgrinfo_pkginfo_get_usr_list(__pkgmgr_list_cb, NULL, uid);
 			} else {
-				ret = pkgmgr_pkginfo_get_list(__pkgmgr_list_cb, NULL);
+				ret = pkgmgrinfo_pkginfo_get_list(__pkgmgr_list_cb, NULL);
 				}
 				if (ret == -1)
 					printf("no packages found\n");
