@@ -1,6 +1,6 @@
 # package manager client library
 
-SET(SRCS src/pkgmgr-internal.c src/pkgmgr.c src/pkgmgr-dbinfo.c)
+SET(SRCS src/pkgmgr-internal.c src/pkgmgr.c)
 
 pkg_check_modules(CLIENT_DEPS REQUIRED
 		dbus-glib-1

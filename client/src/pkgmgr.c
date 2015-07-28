@@ -29,13 +29,14 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
+
 #include <ail.h>
 #include <db-util.h>
 #include <pkgmgr-info.h>
 #include <iniparser.h>
-
 /* For multi-user support */
 #include <tzplatform_config.h>
 
@@ -666,11 +667,11 @@ static int __pkgmgr_proc_iter_kill_cmdline(const char *apppath)
 }
 
 
-static int __app_list_cb (const pkgmgr_appinfo_h handle,
+static int __app_list_cb (const pkgmgrinfo_appinfo_h handle,
 						void *user_data)
 {
 	char *exec = NULL;
-	pkgmgr_appinfo_get_exec(handle, &exec);
+	pkgmgrinfo_appinfo_get_exec(handle, &exec);
 
 	__pkgmgr_proc_iter_kill_cmdline(exec);
 
@@ -894,10 +895,10 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
 	else
 		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
-	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_pkginfo failed");
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgrinfo_pkginfo_get_pkginfo failed");
 
 	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
-	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_type failed");
+	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgrinfo_pkginfo_get_type failed");
 
 	installer_path = _get_backend_path_with_type(pkgtype);
 	req_key = __get_req_key(pkgid);
@@ -976,10 +977,10 @@ static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_
 		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
 	else
 		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
-	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_pkginfo failed");
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgrinfo_pkginfo_get_pkginfo failed");
 
 	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
-	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgr_pkginfo_get_type failed");
+	tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "pkgmgrinfo_pkginfo_get_type failed");
 
 	/* 2. generate req_key */
 	req_key = __get_req_key(pkgid);
@@ -1584,38 +1585,38 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	/* 1. check argument */
 	retv_if(pkgid == NULL, PKGMGR_R_EINVAL);
 
-	pkgmgr_pkginfo_h handle;
-	ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle); 
+	pkgmgrinfo_pkginfo_h handle;
+	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle); 
 
 	/*check package id	*/
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_pkginfo fail");
+	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_pkginfo_get_pkginfo fail");
 	tryvm_if(handle == NULL, ret = PKGMGR_R_EINVAL, "Pkgid(%s) can not find in installed pkg DB! \n", pkgid);
 
   if (uid != GLOBAL_USER) {
 	  /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, __app_list_cb, NULL, uid);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
+	  ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_UI_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_UI_APP fail");
 
 	  /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, __app_list_cb, NULL, uid);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
+	  ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_SVC_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_SVC_APP fail");
   } else {
  	  /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
+	  ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_UI_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_UI_APP fail");
 
 	  /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail"); 
+	  ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_SVC_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_SVC_APP fail"); 
 	}
   /*check type	*/
-	ret = pkgmgr_pkginfo_get_type(handle, &pkgtype);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_type fail");
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
+	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_pkginfo_get_type fail");
 	tryvm_if(pkgtype == NULL, ret = PKGMGR_R_ERROR, "pkgtype is NULL");
 
 	/*check removable, execpt "rpm" type	*/
 	if (strcmp(pkgtype, "rpm")) {
-		pkgmgr_pkginfo_is_removable(handle, &removable);
+		pkgmgrinfo_pkginfo_is_removable(handle, &removable);
 		tryvm_if(removable == false, ret = PKGMGR_R_ERROR, "Pkgid(%s) can not be removed, This is non-removalbe package...\n", pkgid);
 	}
 
@@ -1685,7 +1686,7 @@ catch:
 	if(args)
 		free(args);
 
-	pkgmgr_pkginfo_destroy_pkginfo(handle);
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return ret;
 }
 
@@ -1848,36 +1849,36 @@ API int pkgmgr_client_move_usr_pkg(pkgmgr_client *pc, const char *pkg_type,
 	/* 1. check argument */
 	retv_if(pkgid == NULL, PKGMGR_R_EINVAL);
 
-	pkgmgr_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle;
   if (uid != GLOBAL_USER)
-	  ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+	  ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
   else
-	  ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+	  ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 
 	/*check package id	*/
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_pkginfo fail");
+	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_pkginfo_get_pkginfo fail");
 	tryvm_if(handle == NULL, ret = PKGMGR_R_EINVAL, "Pkgid(%s) can not find in installed pkg DB! \n", pkgid);
 
   if (uid != GLOBAL_USER) {
 	  /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, __app_list_cb, NULL, uid);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
+	  ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_UI_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_UI_APP fail");
 
     /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, __app_list_cb, NULL, uid);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
+	  ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_SVC_APP, __app_list_cb, NULL, uid);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_SVC_APP fail");
 
   } else {
     /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, __app_list_cb, NULL);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_UI_APP fail");
+	  ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_UI_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_UI_APP fail");
     /*check running app , terminate app if it is running*/
-	  ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, __app_list_cb, NULL);
-	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_appinfo_get_list : PM_SVC_APP fail");
+	  ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_SVC_APP, __app_list_cb, NULL);
+	  tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_appinfo_get_list : PMINFO_SVC_APP fail");
   }
 	/*check type	*/
-	ret = pkgmgr_pkginfo_get_type(handle, &pkgtype);
-	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgr_pkginfo_get_type fail");
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
+	tryvm_if(ret < 0, ret = PKGMGR_R_EINVAL, "pkgmgrinfo_pkginfo_get_type fail");
 	tryvm_if(pkgtype == NULL, ret = PKGMGR_R_ERROR, "pkgtype is NULL");
 
 	/*check pkgid length	*/
@@ -1949,7 +1950,7 @@ catch:
 	if(args)
 		free(args);
 
-	pkgmgr_pkginfo_destroy_pkginfo(handle);
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return ret;
 }
 
@@ -2561,10 +2562,10 @@ API int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid)
 	if (strcmp(pkgid, PKG_CLEAR_ALL_CACHE) != 0)
 	{
 		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
-		tryvm_if(ret < 0, ret = PKGMGR_R_ENOPKG, "pkgmgr_pkginfo_get_pkginfo failed");
+		tryvm_if(ret < 0, ret = PKGMGR_R_ENOPKG, "pkgmgrinfo_pkginfo_get_pkginfo failed");
 
 		ret = pkgmgrinfo_pkginfo_get_type(handle, &pkg_type);
-		tryvm_if(ret < 0, ret = PKGMGR_R_ESYSTEM, "pkgmgr_pkginfo_get_type failed");
+		tryvm_if(ret < 0, ret = PKGMGR_R_ESYSTEM, "pkgmgrinfo_pkginfo_get_type failed");
 	}
 	else
 	{
@@ -2949,355 +2950,3 @@ API int pkgmgr_info_free(pkgmgr_info * pkg_info)
 }
 
 #define __END_OF_OLD_API
-
-API int pkgmgr_pkginfo_get_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_data)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_list(pkg_list_cb, user_data);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_usr_list(pkgmgr_info_pkg_list_cb pkg_list_cb, void *user_data, uid_t uid)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_usr_list(pkg_list_cb, user_data, uid);
-	return ret;
-}
-
-
-API int pkgmgr_pkginfo_get_usr_pkginfo(const char *pkgid, uid_t uid, pkgmgr_pkginfo_h *handle)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, handle);
-	return ret;
-}
-
-
-API int pkgmgr_pkginfo_get_pkginfo(const char *pkgid, pkgmgr_pkginfo_h *handle)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, handle);
-	return ret;
-}
-
-
-
-API int pkgmgr_pkginfo_get_pkgname(pkgmgr_pkginfo_h handle, char **pkg_name)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_pkgname(handle, pkg_name);
-	return ret;
-}
-
-
-API int pkgmgr_pkginfo_get_pkgid(pkgmgr_pkginfo_h handle, char **pkgid)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, pkgid);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_type(pkgmgr_pkginfo_h handle, char **type)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_type(handle, type);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_version(pkgmgr_pkginfo_h handle, char **version)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_version(handle, version);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_install_location(pkgmgr_pkginfo_h handle, pkgmgr_install_location *location)
-{
-	int ret = 0;
-	pkgmgrinfo_install_location loc;
-	ret = pkgmgrinfo_pkginfo_get_install_location(handle, &loc);
-	*location = loc;
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_package_size(pkgmgr_pkginfo_h handle, int *size)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_package_size(handle, size);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_icon(pkgmgr_pkginfo_h handle, char **icon)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_icon(handle, icon);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_label(pkgmgr_pkginfo_h handle, char **label)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_label(handle, label);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_description(pkgmgr_pkginfo_h handle, char **description)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_description(handle, description);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_author_name(pkgmgr_pkginfo_h handle, char **author_name)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_author_name(handle, author_name);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_author_email(pkgmgr_pkginfo_h handle, char **author_email)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_author_email(handle, author_email);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_author_href(pkgmgr_pkginfo_h handle, char **author_href)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_author_href(handle, author_href);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_is_removable(pkgmgr_pkginfo_h handle, bool *removable)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_is_removable(handle, removable);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_is_preload(pkgmgr_pkginfo_h handle, bool *preload)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_is_preload(handle, preload);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_is_readonly(pkgmgr_pkginfo_h handle, bool *readonly)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_is_readonly(handle, readonly);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_is_for_all_users(pkgmgr_pkginfo_h handle, bool *for_all_users)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_is_for_all_users(handle, for_all_users);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_is_accessible(pkgmgr_pkginfo_h handle, bool *accessible)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_is_accessible(handle, accessible);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_destroy_pkginfo(pkgmgr_pkginfo_h handle)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_installed_storage(pkgmgr_pkginfo_h handle, pkgmgr_installed_storage *storage)
-{
-	int ret = 0;
-	pkgmgrinfo_installed_storage sto;
-	ret = pkgmgrinfo_pkginfo_get_installed_storage(handle, &sto);
-	*storage = sto;
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_installed_time(pkgmgr_pkginfo_h handle, int *installed_time)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_installed_time(handle, installed_time);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_list(pkgmgr_pkginfo_h handle, pkgmgr_app_component component,
-							pkgmgr_info_app_list_cb app_func, void *user_data)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_list(handle, component, app_func, user_data);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_usr_list(pkgmgr_pkginfo_h handle, pkgmgr_app_component component,
-							pkgmgr_info_app_list_cb app_func, void *user_data, uid_t uid)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_usr_list(handle, component, app_func, user_data, uid);
-	return ret;
-}
-
-API int pkgmgr_appinfo_foreach_category(pkgmgr_appinfo_h handle, pkgmgr_info_app_category_list_cb category_func,
-							void *user_data)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_foreach_category(handle, category_func, user_data);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_appinfo(const char *appid, pkgmgr_appinfo_h *handle)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_appinfo(appid, handle);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_appid(pkgmgr_appinfo_h  handle, char **appid)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_appid(handle, appid);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_pkgname(pkgmgr_appinfo_h  handle, char **pkg_name)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_pkgname(handle, pkg_name);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_pkgid(pkgmgr_appinfo_h  handle, char **pkgid)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_pkgid(handle, pkgid);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_icon(pkgmgr_appinfo_h handle, char **icon)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_icon(handle, icon);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_label(pkgmgr_appinfo_h handle, char **label)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_label(handle, label);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_exec(pkgmgr_appinfo_h  handle, char **exec)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_exec(handle, exec);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_component(pkgmgr_appinfo_h  handle, pkgmgr_app_component *component)
-{
-	int ret = 0;
-	pkgmgrinfo_app_component comp;
-	ret = pkgmgrinfo_appinfo_get_component(handle, &comp);
-	*component = comp;
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_apptype(pkgmgr_appinfo_h  handle, char **app_type)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_get_apptype(handle, app_type);
-	return ret;
-}
-
-API int pkgmgr_appinfo_is_nodisplay(pkgmgr_appinfo_h  handle, bool *nodisplay)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_is_nodisplay(handle, nodisplay);
-	return ret;
-}
-
-API int pkgmgr_appinfo_is_multiple(pkgmgr_appinfo_h  handle, bool *multiple)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_is_multiple(handle, multiple);
-	return ret;
-}
-
-API int pkgmgr_appinfo_is_taskmanage(pkgmgr_appinfo_h  handle, bool *taskmanage)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_is_taskmanage(handle, taskmanage);
-	return ret;
-}
-
-API int pkgmgr_appinfo_get_hwacceleration(pkgmgr_appinfo_h  handle, pkgmgr_hwacceleration_type *hwacceleration)
-{
-	int ret = 0;
-	pkgmgrinfo_app_hwacceleration hwacc;
-	ret = pkgmgrinfo_appinfo_get_hwacceleration(handle, &hwacc);
-	*hwacceleration = hwacc;
-	return ret;
-}
-
-API int pkgmgr_appinfo_is_onboot(pkgmgr_appinfo_h  handle, bool *onboot)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_is_onboot(handle, onboot);
-	return ret;
-}
-
-API int pkgmgr_appinfo_is_autorestart(pkgmgr_appinfo_h  handle, bool *autorestart)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_is_autorestart(handle, autorestart);
-	return ret;
-}
-
-API int pkgmgr_appinfo_destroy_appinfo(pkgmgr_appinfo_h  handle)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_appinfo_destroy_appinfo(handle);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_create_certinfo(pkgmgr_certinfo_h *handle)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_create_certinfo(handle);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_load_certinfo(const char *pkgid, pkgmgr_certinfo_h handle, uid_t uid)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_load_certinfo(pkgid, handle, uid);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_get_cert_value(pkgmgr_certinfo_h handle, pkgmgr_cert_type cert_type, const char **cert_value)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_get_cert_value(handle, cert_type, cert_value);
-	return ret;
-}
-
-API int pkgmgr_pkginfo_destroy_certinfo(pkgmgr_certinfo_h handle)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_pkginfo_destroy_certinfo(handle);
-	return ret;
-}
-
-API int pkgmgr_datacontrol_get_info(const char *providerid, const char * type, char **appid, char **access)
-{
-	int ret = 0;
-	ret = pkgmgrinfo_datacontrol_get_info(providerid, type, appid, access);
-	return ret;
-}

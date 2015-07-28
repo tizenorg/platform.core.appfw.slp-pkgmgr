@@ -27,11 +27,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+
 #include <vconf.h>
 //Work around for https://bugs.tizen.org/jira/browse/TC-2399
 #include <ail_vconf.h>
 #include <pkgmgr_parser.h>
 #include <pkgmgr-info.h>
+
 #include "package-manager.h"
 #include "package-manager-types.h"
 #include "pkgmgr-dbinfo.h"
@@ -58,11 +60,11 @@ static int __get_certinfo_from_db(char *pkgid, uid_t uid);
 static int __del_certinfo_from_db(char *pkgid);
 static int __get_integer_input_data(void);
 char *__get_string_input_data(void);
-static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data);
+static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data);
 static int __app_category_list_cb(const char *category_name, void *user_data);
 static int __app_control_list_cb(const char *operation, const char *uri, const char *mime, void *user_data);
 static int __app_metadata_list_cb(const char *metadata_name, const char *metadata_value, void *user_data);
-int app_func(const pkgmgr_appinfo_h handle, void *user_data);
+int app_func(const pkgmgrinfo_appinfo_h handle, void *user_data);
 
 static void __get_pkgmgrinfo_pkginfo(const pkgmgrinfo_pkginfo_h handle, void *user_data)
 {
@@ -74,7 +76,7 @@ static void __get_pkgmgrinfo_pkginfo(const pkgmgrinfo_pkginfo_h handle, void *us
 	char *author_href = NULL;
 	char *root_path = NULL;
 	char *mainappid = NULL;
-	pkgmgr_install_location location = 0;
+	pkgmgrinfo_install_location location = 0;
 	char *icon = NULL;
 	char *label = NULL;
 	char *desc = NULL;
@@ -1062,15 +1064,15 @@ static int __get_certinfo_from_db(char *pkgid, uid_t uid)
 	int choice = -1;
 	int i = 0;
 	const char *value = NULL;
-	pkgmgr_certinfo_h handle = NULL;
-	ret = pkgmgr_pkginfo_create_certinfo(&handle);
+	pkgmgrinfo_certinfo_h handle = NULL;
+	ret = pkgmgrinfo_pkginfo_create_certinfo(&handle);
 	if (ret < 0) {
-		printf("pkgmgr_pkginfo_create_certinfo failed\n");
+		printf("pkgmgrinfo_pkginfo_create_certinfo failed\n");
 		return -1;
 	}
-	ret = pkgmgr_pkginfo_load_certinfo(pkgid, handle, uid);
+	ret = pkgmgrinfo_pkginfo_load_certinfo(pkgid, handle, uid);
 	if (ret < 0) {
-		printf("pkgmgr_pkginfo_load_certinfo failed\n");
+		printf("pkgmgrinfo_pkginfo_load_certinfo failed\n");
 		return -1;
 	}
 	while (choice != 10)
@@ -1092,13 +1094,13 @@ static int __get_certinfo_from_db(char *pkgid, uid_t uid)
 		case 0:
 			for (i = 0; i < 9; i++)
 			{
-				pkgmgr_pkginfo_get_cert_value(handle, i, &value);
+				pkgmgrinfo_pkginfo_get_cert_value(handle, i, &value);
 				if (value)
 					printf("cert type[%d] value = %s\n", i, value);
 			}
-			ret = pkgmgr_pkginfo_destroy_certinfo(handle);
+			ret = pkgmgrinfo_pkginfo_destroy_certinfo(handle);
 			if (ret < 0) {
-				printf("pkgmgr_pkginfo_destroy_certinfo failed\n");
+				printf("pkgmgrinfo_pkginfo_destroy_certinfo failed\n");
 				return -1;
 			}
 			return 0;
@@ -1111,14 +1113,14 @@ static int __get_certinfo_from_db(char *pkgid, uid_t uid)
 		case 7:
 		case 8:
 		case 9:
-			ret = pkgmgr_pkginfo_get_cert_value(handle, choice - 1, &value);
+			ret = pkgmgrinfo_pkginfo_get_cert_value(handle, choice - 1, &value);
 			if (value)
 				printf("cert type[%d] value = %s\n", choice - 1, value);
 			break;
 		case 10:
-			ret = pkgmgr_pkginfo_destroy_certinfo(handle);
+			ret = pkgmgrinfo_pkginfo_destroy_certinfo(handle);
 			if (ret < 0) {
-				printf("pkgmgr_pkginfo_destroy_certinfo failed\n");
+				printf("pkgmgrinfo_pkginfo_destroy_certinfo failed\n");
 				return -1;
 			}
 			return 0;
@@ -1623,7 +1625,7 @@ static int __remove_manifest_from_db(char *manifest, uid_t uid)
 	return 0;
 }
 
-int app_func(const pkgmgr_appinfo_h handle, void *user_data)
+int app_func(const pkgmgrinfo_appinfo_h handle, void *user_data)
 {
 	char *appid;
 	char *data = NULL;
@@ -1634,88 +1636,88 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 	char *exec = NULL;
 	char *icon = NULL;
 	char *label = NULL;
-	pkgmgr_app_component component = 0;
+	pkgmgrinfo_app_component component = 0;
 	char *apptype = NULL;
 	bool nodisplay = 0;
 	bool multiple = 0;
 	bool taskmanage = 0;
-	pkgmgr_hwacceleration_type hwacceleration;
+	pkgmgrinfo_app_hwacceleration hwacceleration;
 	pkgmgrinfo_app_screenreader screenreader;
 	bool onboot = 0;
 	bool autorestart = 0;
 	char *package = NULL;
 
-	ret = pkgmgr_appinfo_get_appid(handle, &appid);
+	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
 	if (ret < 0) {
 		printf("Failed to get appid\n");
 	}
 	if (appid)
 		printf("Appid: %s\n", appid);
 
-	ret = pkgmgr_appinfo_get_pkgid(handle, &package);
+	ret = pkgmgrinfo_appinfo_get_pkgid(handle, &package);
 	if (ret < 0) {
 		printf("Failed to get package\n");
 	}
 	if (package)
 		printf("Package: %s\n", package);
 
-	ret = pkgmgr_appinfo_get_exec(handle, &exec);
+	ret = pkgmgrinfo_appinfo_get_exec(handle, &exec);
 	if (ret < 0) {
 		printf("Failed to get exec\n");
 	}
 	if (exec)
 		printf("Exec: %s\n", exec);
 
-	ret = pkgmgr_appinfo_get_icon(handle, &icon);
+	ret = pkgmgrinfo_appinfo_get_icon(handle, &icon);
 	if (ret < 0) {
 		printf("Failed to get icon\n");
 	}
 	if (icon)
 		printf("Icon: %s\n", icon);
 
-	ret = pkgmgr_appinfo_get_label(handle, &label);
+	ret = pkgmgrinfo_appinfo_get_label(handle, &label);
 	if (ret < 0) {
 		printf("Failed to get label\n");
 	}
 	if (label)
 		printf("Label: %s\n", label);
 
-	ret = pkgmgr_appinfo_get_component(handle, &component);
+	ret = pkgmgrinfo_appinfo_get_component(handle, &component);
 	if (ret < 0) {
 		printf("Failed to get component\n");
 	}
 
-	ret = pkgmgr_appinfo_get_apptype(handle, &apptype);
+	ret = pkgmgrinfo_appinfo_get_apptype(handle, &apptype);
 	if (ret < 0) {
 		printf("Failed to get apptype\n");
 	}
 	if (apptype)
 		printf("Apptype: %s\n", apptype);
 
-	if (component == PM_UI_APP) {
+	if (component == PMINFO_UI_APP) {
 		printf("component: uiapp\n");
-		ret = pkgmgr_appinfo_is_multiple(handle, &multiple);
+		ret = pkgmgrinfo_appinfo_is_multiple(handle, &multiple);
 		if (ret < 0) {
 			printf("Failed to get multiple\n");
 		} else {
 			printf("Multiple: %d\n", multiple);
 		}
 
-		ret = pkgmgr_appinfo_is_nodisplay(handle, &nodisplay);
+		ret = pkgmgrinfo_appinfo_is_nodisplay(handle, &nodisplay);
 		if (ret < 0) {
 			printf("Failed to get nodisplay\n");
 		} else {
 			printf("Nodisplay: %d \n", nodisplay);
 		}
 
-		ret = pkgmgr_appinfo_is_taskmanage(handle, &taskmanage);
+		ret = pkgmgrinfo_appinfo_is_taskmanage(handle, &taskmanage);
 		if (ret < 0) {
 			printf("Failed to get taskmanage\n");
 		} else {
 			printf("Taskmanage: %d\n", taskmanage);
 		}
 
-		ret = pkgmgr_appinfo_get_hwacceleration(handle, &hwacceleration);
+		ret = pkgmgrinfo_appinfo_get_hwacceleration(handle, &hwacceleration);
 		if (ret < 0) {
 			printf("Failed to get hwacceleration\n");
 		} else {
@@ -1730,16 +1732,16 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 		}
 
 	}
-	if (component == PM_SVC_APP) {
+	if (component == PMINFO_SVC_APP) {
 		printf("component: svcapp\n");
-		ret = pkgmgr_appinfo_is_onboot(handle, &onboot);
+		ret = pkgmgrinfo_appinfo_is_onboot(handle, &onboot);
 		if (ret < 0) {
 			printf("Failed to get onboot\n");
 		} else {
 			printf("Onboot: %d\n", onboot);
 		}
 
-		ret = pkgmgr_appinfo_is_autorestart(handle, &autorestart);
+		ret = pkgmgrinfo_appinfo_is_autorestart(handle, &autorestart);
 		if (ret < 0) {
 			printf("Failed to get autorestart\n");
 		} else {
@@ -1753,7 +1755,7 @@ int app_func(const pkgmgr_appinfo_h handle, void *user_data)
 }
 
 
-static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
+static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 {
 	char *test_data = "test data";
 	int ret = -1;
@@ -1764,25 +1766,25 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 	int installed_time = -1;
 
 	pkgmgrinfo_uidinfo_t *uid_info = (pkgmgrinfo_uidinfo_t *) handle;
-	ret = pkgmgr_pkginfo_get_pkgid(handle, &pkgid);
+	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
 	if(ret < 0) {
-		printf("pkgmgr_pkginfo_get_pkgid() failed\n");
+		printf("pkgmgrinfo_pkginfo_get_pkgid() failed\n");
 	}
-	ret = pkgmgr_pkginfo_get_type(handle, &pkg_type);
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkg_type);
 	if(ret < 0) {
-		printf("pkgmgr_pkginfo_get_type() failed\n");
+		printf("pkgmgrinfo_pkginfo_get_type() failed\n");
 	}
-	ret = pkgmgr_pkginfo_get_version(handle, &pkg_version);
+	ret = pkgmgrinfo_pkginfo_get_version(handle, &pkg_version);
 	if(ret < 0) {
-		printf("pkgmgr_pkginfo_get_version() failed\n");
+		printf("pkgmgrinfo_pkginfo_get_version() failed\n");
 	}
-	ret = pkgmgr_pkginfo_is_preload(handle, &preload);
+	ret = pkgmgrinfo_pkginfo_is_preload(handle, &preload);
 	if(ret < 0) {
-		printf("pkgmgr_pkginfo_is_preload() failed\n");
+		printf("pkgmgrinfo_pkginfo_is_preload() failed\n");
 	}
-	ret = pkgmgr_pkginfo_get_installed_time(handle, &installed_time);
+	ret = pkgmgrinfo_pkginfo_get_installed_time(handle, &installed_time);
 	if(ret < 0) {
-		printf("pkgmgr_pkginfo_get_installed_time() failed\n");
+		printf("pkgmgrinfo_pkginfo_get_installed_time() failed\n");
 	}
 
 
@@ -1792,23 +1794,23 @@ static int __pkg_list_cb (const pkgmgr_pkginfo_h handle, void *user_data)
 
 	if (uid_info->uid != GLOBAL_USER) {
 		printf("**List of Ui-Apps**\n");
-		ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, app_func, (void *)test_data, uid_info->uid);
+		ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_UI_APP, app_func, (void *)test_data, uid_info->uid);
 		if (ret < 0) {
 			printf("pkgmgr_get_info_app() failed\n");
 		}
 		printf("**List of Svc-Apps**\n");
-		ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, app_func, (void *)test_data, uid_info->uid);
+		ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_SVC_APP, app_func, (void *)test_data, uid_info->uid);
 		if (ret < 0) {
 			printf("pkgmgr_get_info_app() failed\n");
 		}
 	} else {
 		printf("**List of Ui-Apps**\n");
-		ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, app_func, (void *)test_data);
+		ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_UI_APP, app_func, (void *)test_data);
 		if (ret < 0) {
 			printf("pkgmgr_get_info_app() failed\n");
 		}
 		printf("**List of Svc-Apps**\n");
-		ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, app_func, (void *)test_data);
+		ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_SVC_APP, app_func, (void *)test_data);
 		if (ret < 0) {
 			printf("pkgmgr_get_info_app() failed\n");
 		}
@@ -1822,11 +1824,11 @@ static int __get_pkg_list(uid_t uid)
 {
 	int ret = -1;
 	if (uid != GLOBAL_USER)
-		ret = pkgmgr_pkginfo_get_usr_list(__pkg_list_cb, NULL, uid);
+		ret = pkgmgrinfo_pkginfo_get_usr_list(__pkg_list_cb, NULL, uid);
 	else
-		ret = pkgmgr_pkginfo_get_list(__pkg_list_cb, NULL);
+		ret = pkgmgrinfo_pkginfo_get_list(__pkg_list_cb, NULL);
 	if (ret < 0) {
-		printf("pkgmgr_pkginfo_get_list() failed\n");
+		printf("pkgmgrinfo_pkginfo_get_list() failed\n");
 		return -1;
 	}
 	return 0;
@@ -1878,26 +1880,26 @@ static int __app_control_list_cb(const char *operation, const char *uri, const c
 static int __get_app_category_list(char *appid)
 {
 	int ret = -1;
-	pkgmgr_appinfo_h handle;
+	pkgmgrinfo_appinfo_h handle;
 	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
 	}
-	ret = pkgmgr_appinfo_foreach_category(handle, __app_category_list_cb, NULL);
+	ret = pkgmgrinfo_appinfo_foreach_category(handle, __app_category_list_cb, NULL);
 	if (ret < 0) {
-		printf("pkgmgr_appinfo_foreach_category() failed\n");
-		pkgmgr_appinfo_destroy_appinfo(handle);
+		printf("pkgmgrinfo_appinfo_foreach_category() failed\n");
+		pkgmgrinfo_appinfo_destroy_appinfo(handle);
 		return -1;
 	}
-	pkgmgr_appinfo_destroy_appinfo(handle);
+	pkgmgrinfo_appinfo_destroy_appinfo(handle);
 	return 0;
 }
 
 static int __get_app_metadata_list(char *appid)
 {
 	int ret = -1;
-	pkgmgr_appinfo_h handle;
+	pkgmgrinfo_appinfo_h handle;
 	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
@@ -1906,17 +1908,17 @@ static int __get_app_metadata_list(char *appid)
 	ret = pkgmgrinfo_appinfo_foreach_metadata(handle, __app_metadata_list_cb, NULL);
 	if (ret < 0) {
 		printf("pkgmgrinfo_appinfo_foreach_metadata() failed\n");
-		pkgmgr_appinfo_destroy_appinfo(handle);
+		pkgmgrinfo_appinfo_destroy_appinfo(handle);
 		return -1;
 	}
-	pkgmgr_appinfo_destroy_appinfo(handle);
+	pkgmgrinfo_appinfo_destroy_appinfo(handle);
 	return 0;
 }
 
 static int __get_app_control_list(char *appid)
 {
 	int ret = -1;
-	pkgmgr_appinfo_h handle;
+	pkgmgrinfo_appinfo_h handle;
 	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
@@ -1925,10 +1927,10 @@ static int __get_app_control_list(char *appid)
 	ret = pkgmgrinfo_appinfo_foreach_appcontrol(handle, __app_control_list_cb, NULL);
 	if (ret < 0) {
 		printf("pkgmgrinfo_appinfo_foreach_appcontrol() failed\n");
-		pkgmgr_appinfo_destroy_appinfo(handle);
+		pkgmgrinfo_appinfo_destroy_appinfo(handle);
 		return -1;
 	}
-	pkgmgr_appinfo_destroy_appinfo(handle);
+	pkgmgrinfo_appinfo_destroy_appinfo(handle);
 	return 0;
 }
 
@@ -1945,41 +1947,41 @@ static int __set_app_enabled(char *appid, bool enabled)
 
 static int __get_app_list(char *pkgid, uid_t uid)
 {
-	pkgmgr_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle;
 	int ret = -1;
 	char *test_data = "test data";
 	if(uid != GLOBAL_USER)
-		ret = pkgmgr_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+		ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
 	else
-		ret = pkgmgr_pkginfo_get_pkginfo(pkgid, &handle);
+		ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
 	if (ret < 0) {
 		printf("Failed to get handle\n");
 		return -1;
 	}
 	if (uid != GLOBAL_USER) {
 		printf("List of Ui-Apps\n\n");
-		ret = pkgmgr_appinfo_get_usr_list(handle, PM_UI_APP, app_func, (void *)test_data, uid);
+		ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_UI_APP, app_func, (void *)test_data, uid);
 		if (ret < 0) {
-			printf("pkgmgr_appinfo_get_list() failed\n");
+			printf("pkgmgrinfo_appinfo_get_list() failed\n");
 		}
 		printf("List of Svc-Apps\n\n");
-		ret = pkgmgr_appinfo_get_usr_list(handle, PM_SVC_APP, app_func, (void *)test_data, uid);
+		ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_SVC_APP, app_func, (void *)test_data, uid);
 		if (ret < 0) {
-			printf("pkgmgr_appinfo_get_list() failed\n");
+			printf("pkgmgrinfo_appinfo_get_list() failed\n");
 		}
 	} else {
 		printf("List of Ui-Apps\n\n");
-		ret = pkgmgr_appinfo_get_list(handle, PM_UI_APP, app_func, (void *)test_data);
+		ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_UI_APP, app_func, (void *)test_data);
 		if (ret < 0) {
-			printf("pkgmgr_appinfo_get_list() failed\n");
+			printf("pkgmgrinfo_appinfo_get_list() failed\n");
 		}
 		printf("List of Svc-Apps\n\n");
-		ret = pkgmgr_appinfo_get_list(handle, PM_SVC_APP, app_func, (void *)test_data);
+		ret = pkgmgrinfo_appinfo_get_list(handle, PMINFO_SVC_APP, app_func, (void *)test_data);
 		if (ret < 0) {
-			printf("pkgmgr_appinfo_get_list() failed\n");
+			printf("pkgmgrinfo_appinfo_get_list() failed\n");
 		}
 	}
-	pkgmgr_pkginfo_destroy_pkginfo(handle);
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return 0;
 }
 
@@ -2013,17 +2015,17 @@ static int __get_app_info(char *appid)
 	char *icon = NULL;
 	char *label = NULL;
 	char *package = NULL;
-	pkgmgr_app_component component = 0;
+	pkgmgrinfo_app_component component = 0;
 	bool nodisplay = 0;
 	bool multiple = 0;
 	bool taskmanage = 0;
-	pkgmgr_hwacceleration_type hwacceleration;
+	pkgmgrinfo_app_hwacceleration hwacceleration;
 	pkgmgrinfo_app_screenreader screenreader;
 	bool onboot = 0;
 	bool autorestart = 0;
 	bool enabled = 0;
 	bool preload = 0;
-	pkgmgr_appinfo_h handle;
+	pkgmgrinfo_appinfo_h handle;
 	int ret = -1;
 
 	ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, getuid(), &handle);
@@ -2032,50 +2034,50 @@ static int __get_app_info(char *appid)
 		return -1;
 	}
 
-	ret = pkgmgr_appinfo_get_pkgid(handle, &package);
+	ret = pkgmgrinfo_appinfo_get_pkgid(handle, &package);
 	if (ret < 0) {
 		printf("Failed to get package\n");
 	}
 
-	ret = pkgmgr_appinfo_get_appid(handle, &app_id);
+	ret = pkgmgrinfo_appinfo_get_appid(handle, &app_id);
 	if (ret < 0) {
 		printf("Failed to get exec\n");
 	}
 
-	ret = pkgmgr_appinfo_get_label(handle, &label);
+	ret = pkgmgrinfo_appinfo_get_label(handle, &label);
 	if (ret < 0) {
 		printf("Failed to get label\n");
 	}
-	ret = pkgmgr_appinfo_get_icon(handle, &icon);
+	ret = pkgmgrinfo_appinfo_get_icon(handle, &icon);
 	if (ret < 0) {
 		printf("Failed to get icon\n");
 	}
 
-	ret = pkgmgr_appinfo_get_exec(handle, &exec);
+	ret = pkgmgrinfo_appinfo_get_exec(handle, &exec);
 	if (ret < 0) {
 		printf("Failed to get exec\n");
 	}
-	ret = pkgmgr_appinfo_get_component(handle, &component);
+	ret = pkgmgrinfo_appinfo_get_component(handle, &component);
 	if (ret < 0) {
 		printf("Failed to get component\n");
 	}
-	ret = pkgmgr_appinfo_get_apptype(handle, &apptype);
+	ret = pkgmgrinfo_appinfo_get_apptype(handle, &apptype);
 	if (ret < 0) {
 		printf("Failed to get apptype\n");
 	}
-	ret = pkgmgr_appinfo_is_nodisplay(handle, &nodisplay);
+	ret = pkgmgrinfo_appinfo_is_nodisplay(handle, &nodisplay);
 	if (ret < 0) {
 		printf("Failed to get nodisplay\n");
 	}
-	ret = pkgmgr_appinfo_is_multiple(handle, &multiple);
+	ret = pkgmgrinfo_appinfo_is_multiple(handle, &multiple);
 	if (ret < 0) {
 		printf("Failed to get multiple\n");
 	}
-	ret = pkgmgr_appinfo_is_taskmanage(handle, &taskmanage);
+	ret = pkgmgrinfo_appinfo_is_taskmanage(handle, &taskmanage);
 	if (ret < 0) {
 		printf("Failed to get taskmanage\n");
 	}
-	ret = pkgmgr_appinfo_get_hwacceleration(handle, &hwacceleration);
+	ret = pkgmgrinfo_appinfo_get_hwacceleration(handle, &hwacceleration);
 	if (ret < 0) {
 		printf("Failed to get hwacceleration\n");
 	}
@@ -2083,11 +2085,11 @@ static int __get_app_info(char *appid)
 	if (ret < 0) {
 		printf("Failed to get screenreader\n");
 	}
-	ret = pkgmgr_appinfo_is_onboot(handle, &onboot);
+	ret = pkgmgrinfo_appinfo_is_onboot(handle, &onboot);
 	if (ret < 0) {
 		printf("Failed to get onboot\n");
 	}
-	ret = pkgmgr_appinfo_is_autorestart(handle, &autorestart);
+	ret = pkgmgrinfo_appinfo_is_autorestart(handle, &autorestart);
 	if (ret < 0) {
 		printf("Failed to get autorestart\n");
 	}
@@ -2111,7 +2113,7 @@ static int __get_app_info(char *appid)
 	if (apptype)
 		printf("Apptype: %s\n", apptype);
 
-	if (component == PM_UI_APP) {
+	if (component == PMINFO_UI_APP) {
 		printf("component: uiapp\n");
 
 		if (icon)
@@ -2124,7 +2126,7 @@ static int __get_app_info(char *appid)
 		printf("Taskmanage: %d\n", taskmanage);
 		printf("Hw-Acceleration: %d\n", hwacceleration);
 		printf("Screenreader: %d\n", screenreader);
-	} else if (component == PM_SVC_APP) {
+	} else if (component == PMINFO_SVC_APP) {
 		printf("component: svcapp\n");
 
 		if (icon)
@@ -2141,7 +2143,7 @@ static int __get_app_info(char *appid)
 	printf("Enabled: %d\n", enabled);
 	printf("Preload: %d\n", preload);
 
-	pkgmgr_appinfo_destroy_appinfo(handle);
+	pkgmgrinfo_appinfo_destroy_appinfo(handle);
 	return 0;
 
 }
