@@ -337,6 +337,18 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'b': /* recovery */
+			if (mode) {
+				r = -EINVAL;
+				goto RET;
+			}
+			mode = 'b';
+			pi->request_type = PKGMGR_REQ_RECOVER;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 			/* Otherwise */
 		case '?':	/* Not an option */
 			break;
