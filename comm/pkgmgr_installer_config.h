@@ -32,7 +32,7 @@ extern "C" {
 #endif
 
 /* Supported options */
-const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:e:M:y:q";
+const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:b:e:M:y:q";
 const struct option long_opts[] = {
 	{ "session-id", 1, NULL, 'k' },
 	{ "license-path", 1, NULL, 'l' },
@@ -48,6 +48,7 @@ const struct option long_opts[] = {
 	{ "tep-move", 1, NULL, 'M' },
 	{ "smack", 1, NULL, 's' },
 	{ "direct-manifest-install", 1, NULL, 'y' },
+	{ "recovery", 1, NULL, 'b' },
 	{ 0, 0, 0, 0 }	/* sentinel */
 };
 
