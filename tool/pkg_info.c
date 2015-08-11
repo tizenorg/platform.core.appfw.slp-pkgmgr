@@ -852,7 +852,6 @@ static int __add_pkg_filter(uid_t uid)
 			break;
 		default:
 			printf("Invalid filter property\n");
-				pkgmgrinfo_pkginfo_filter_destroy(handle);
 			ret = -1;
 			goto err;
 		}
