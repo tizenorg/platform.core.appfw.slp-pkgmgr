@@ -172,6 +172,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %{_bindir}/pkg_getsize
 %{_bindir}/pkg_clearcache
 %{_bindir}/pkg_privilege
+%{_bindir}/pkg_install_ug
 %{_bindir}/pkginfo
 %{_datadir}/mime/packages/mime.wac.xml
 %{_datadir}/mime/packages/mime.tpk.xml
