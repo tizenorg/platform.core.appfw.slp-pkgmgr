@@ -39,6 +39,11 @@ add_executable(pkg_privilege
 target_link_libraries(pkg_privilege ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_privilege DESTINATION bin)
 
+add_executable(pkg_install_ug
+                pkg_install_ug.c)
+target_link_libraries(pkg_install_ug ${pkgs_test_LDFLAGS})
+INSTALL(TARGETS pkg_install_ug DESTINATION bin)
+
 add_executable(pkg_getsize
                 pkg_getsize.c)
 target_link_libraries(pkg_getsize pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})

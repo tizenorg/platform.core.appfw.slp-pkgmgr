@@ -415,6 +415,7 @@ static int __add_app_filter(uid_t uid)
 		printf("15 --> filter by app taskmanage [0|1]\n");
 		printf("16 --> filter by app hwacceleration\n");
 		printf("17 --> filter by app screenreader\n");
+		printf("18 --> filter by app ui_gadget [0|1]\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -618,6 +619,16 @@ static int __add_app_filter(uid_t uid)
 			}
 			free(value);
 			value = NULL;
+			break;
+		case 18:
+			val = __get_integer_input_data();
+			ret = pkgmgrinfo_appinfo_filter_add_bool(handle,
+					PMINFO_APPINFO_PROP_APP_UI_GADGET, val);
+			if (ret < 0) {
+				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
+				ret = -1;
+				goto err;
+			}
 			break;
 		default:
 			printf("Invalid filter property\n");

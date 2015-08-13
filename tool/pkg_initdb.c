@@ -51,12 +51,16 @@
 #endif
 #define _D(fmt, arg...) fprintf(stderr, "[PKG_INITDB][D][%s,%d] "fmt"\n", __FUNCTION__, __LINE__, ##arg);
 
+#define PKGINFO_CMD "/usr/bin/pkginfo --imd"
+#define PKGINSTALLUG_CMD "/usr/bin/pkg_install_ug"
+#define PKGPRIVILEGE_CMD "/usr/bin/pkg_privilege -i"
+
 static int _is_global(uid_t uid)
 {
 	return (uid == OWNER_ROOT || uid == GLOBAL_USER) ? 1 : 0;
 }
 
-static int _initdb_load_directory(uid_t uid, const char *directory, const char *cmd)
+static int _initdb_load_directory(uid_t uid, const char *directory)
 {
 	DIR *dir;
 	struct dirent entry, *result;
@@ -64,7 +68,6 @@ static int _initdb_load_directory(uid_t uid, const char *directory, const char *
 	char buf[BUFSZE];
 	char buf2[BUFSZE];
 
-	// desktop file
 	dir = opendir(directory);
 	if (!dir) {
 		_E("Failed to access the [%s] because %s", directory,
@@ -90,8 +93,12 @@ static int _initdb_load_directory(uid_t uid, const char *directory, const char *
 			continue;
 		}
 
-		snprintf(buf2, sizeof(buf2), "%s %s", cmd, buf);
 		setresuid(uid, uid, OWNER_ROOT);
+		snprintf(buf2, sizeof(buf2), "%s %s", PKGINFO_CMD, buf);
+		system(buf2);
+		snprintf(buf2, sizeof(buf2), "%s %s", PKGINSTALLUG_CMD, buf);
+		system(buf2);
+		snprintf(buf2, sizeof(buf2), "%s %s", PKGPRIVILEGE_CMD, buf);
 		system(buf2);
 		setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT);
 	}
@@ -99,41 +106,6 @@ static int _initdb_load_directory(uid_t uid, const char *directory, const char *
 	closedir(dir);
 
 	return 0;
-}
-
-static int _install_manifest(uid_t uid)
-{
-	int ret;
-	const char *dir;
-
-	if (!_is_global(uid)) {
-		tzplatform_set_user(uid);
-	}
-
-	dir = tzplatform_getenv(
-			_is_global(uid) ? TZ_SYS_RW_PACKAGES : TZ_USER_PACKAGES);
-	ret = _initdb_load_directory(uid, dir, "/usr/bin/pkginfo --imd");
-
-	tzplatform_reset_user();
-
-	return ret;
-}
-
-static int _install_privilege(uid_t uid)
-{
-	int ret;
-	const char *dir;
-
-	if (!_is_global(uid))
-		tzplatform_set_user(uid);
-
-	dir = tzplatform_getenv(
-			_is_global(uid) ? TZ_SYS_RW_PACKAGES : TZ_USER_PACKAGES);
-	ret = _initdb_load_directory(uid, dir, "/usr/bin/pkg_privilege -i");
-
-	tzplatform_reset_user();
-
-	return ret;
 }
 
 static int _is_authorized()
@@ -185,6 +157,7 @@ static void _remove_old_dbs(uid)
 int main(int argc, char *argv[])
 {
 	int ret;
+	const char *dir;
 	uid_t uid = 0;
 
 	if (!_is_authorized()) {
@@ -203,17 +176,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	ret = _install_manifest(uid);
-	if (ret < 0) {
-		_E("cannot install manifest");
-		return -1;
-	}
+	if (!_is_global(uid))
+		tzplatform_set_user(uid);
+	dir = tzplatform_getenv(
+			_is_global(uid) ? TZ_SYS_RW_PACKAGES : TZ_USER_PACKAGES);
+	tzplatform_reset_user();
 
-	ret = _install_privilege(uid);
-	if (ret < 0) {
-		_E("cannot install priveilge");
-		return -1;
-	}
-
-	return 0;
+	return _initdb_load_directory(uid, dir);
 }
