@@ -680,6 +680,7 @@ static int __add_pkg_filter(uid_t uid)
 		printf("13 --> filter by package appsetting [0|1]\n");
 		printf("14 --> filter by package size\n");
 		printf("15 --> filter by package installed storage[installed_internal | installed_external]\n");
+		printf("16 --> filter by package privilege\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -853,6 +854,19 @@ static int __add_pkg_filter(uid_t uid)
 			value = __get_string_input_data();
 			ret = pkgmgrinfo_pkginfo_filter_add_string(handle,
 				PMINFO_PKGINFO_PROP_PACKAGE_INSTALLED_STORAGE, value);
+			if (ret < 0) {
+				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
+				ret = -1;
+				goto err;
+			}
+			free(value);
+			value = NULL;
+			break;
+		case 16:
+			value = __get_string_input_data();
+			ret = pkgmgrinfo_pkginfo_filter_add_string(handle,
+					PMINFO_PKGINFO_PROP_PACKAGE_PRIVILEGE,
+					value);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_filter_add_string() failed\n");
 				ret = -1;
