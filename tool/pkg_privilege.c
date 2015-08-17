@@ -15,11 +15,7 @@ static const char *_get_path(const char *pkgid, const char *appid, uid_t uid)
 	char buf[BUFSIZE];
 	const char *path;
 
-	/* TODO: unify application directory layout */
-	if (uid == OWNER_ROOT || uid == GLOBAL_USER)
-		snprintf(buf, BUFSIZE - 1, "%s", pkgid);
-	else
-		snprintf(buf, BUFSIZE - 1, "%s/%s", pkgid, appid);
+	snprintf(buf, sizeof(buf), "%s", pkgid);
 
 	tzplatform_set_user(uid);
 	path = tzplatform_mkpath((uid == OWNER_ROOT || uid == GLOBAL_USER) ?
