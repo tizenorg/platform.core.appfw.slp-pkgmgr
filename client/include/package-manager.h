@@ -251,12 +251,21 @@ typedef enum {
 }pkgmgr_request_service_type;
 
 typedef enum {
+	/* sync, get data, total size for one requested pkgid */
 	PM_GET_TOTAL_SIZE = 0,
 	PM_GET_DATA_SIZE = 1,
+
+	/* async, get total used storage size */
 	PM_GET_ALL_PKGS = 2,
+
+	/* async, get a pkgid's data, total size for all installed pkg */
 	PM_GET_SIZE_INFO = 3,
+
+	/* deprecated */
 	PM_GET_TOTAL_AND_DATA = 4,
 	PM_GET_SIZE_FILE = 5,
+
+	/* async, get data, cache, app size based on "pkg_size_info_t" */
 	PM_GET_PKG_SIZE_INFO = 6,
 	PM_GET_TOTAL_PKG_SIZE_INFO = 7,
 	PM_GET_MAX
