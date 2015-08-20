@@ -416,6 +416,7 @@ static int __add_app_filter(uid_t uid)
 		printf("16 --> filter by app hwacceleration\n");
 		printf("17 --> filter by app screenreader\n");
 		printf("18 --> filter by app ui_gadget [0|1]\n");
+		printf("19 --> filter by app support_disable [0|1]\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -624,6 +625,16 @@ static int __add_app_filter(uid_t uid)
 			val = __get_integer_input_data();
 			ret = pkgmgrinfo_appinfo_filter_add_bool(handle,
 					PMINFO_APPINFO_PROP_APP_UI_GADGET, val);
+			if (ret < 0) {
+				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
+				ret = -1;
+				goto err;
+			}
+			break;
+		case 19:
+			val = __get_integer_input_data();
+			ret = pkgmgrinfo_appinfo_filter_add_bool(handle,
+					PMINFO_APPINFO_PROP_APP_SUPPORT_DISABLE, val);
 			if (ret < 0) {
 				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
 				ret = -1;
