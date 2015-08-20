@@ -49,7 +49,6 @@
 #include "package-manager.h"
 
 #define BUFMAX 128
-#define PACKAGE_RECOVERY_DIR tzplatform_mkpath(TZ_SYS_RW_PACKAGES, ".recovery/pkgmgr")
 #define NO_MATCHING_FILE 11
 
 static int backend_flag = 0;	/* 0 means that backend process is not running */
@@ -154,70 +153,6 @@ static void __set_backend_mode(int position)
 static void __unset_backend_mode(int position)
 {
 	backend_mode = backend_mode & ~(1<<position);
-}
-
-static void __set_recovery_mode(char *pkgid, char *pkg_type)
-{
-	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
-	char buffer[MAX_PKG_NAME_LEN] = { 0 };
-	char *pkgid_tmp = NULL;
-	FILE *rev_file = NULL;
-
-	if (pkgid == NULL) {
-		DBG("pkgid is null\n");
-		return;
-	}
-
-	/*if pkgid has a "/"charactor, that is a path name for installation, then extract pkgid from absolute path*/
-	if (strstr(pkgid, "/")) {
-		pkgid_tmp = strrchr(pkgid, '/') + 1;
-		if (pkgid_tmp == NULL) {
-			DBG("pkgid_tmp[%s] is null\n", pkgid);
-			return;
-		}
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
-	} else {
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
-	}
-
-	rev_file = fopen(recovery_file, "w");
-	if (rev_file== NULL) {
-		DBG("rev_file[%s] is null\n", recovery_file);
-		return;
-	}
-
-	snprintf(buffer, MAX_PKG_NAME_LEN, "pkgid : %s\n", pkgid);
-	fwrite(buffer, sizeof(char), strlen(buffer), rev_file);
-
-	fclose(rev_file);
-}
-
-static void __unset_recovery_mode(char *pkgid, char *pkg_type)
-{
-	int ret = -1;
-	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
-	char *pkgid_tmp = NULL;
-
-	if (pkgid == NULL) {
-		DBG("pkgid is null\n");
-		return;
-	}
-
-	/*if pkgid has a "/"charactor, that is a path name for installation, then extract pkgid from absolute path*/
-	if (strstr(pkgid, "/")) {
-		pkgid_tmp = strrchr(pkgid, '/') + 1;
-		if (pkgid_tmp == NULL) {
-			DBG("pkgid_tmp[%s] is null\n", pkgid);
-			return;
-		}
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
-	} else {
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
-	}
-
-	ret = remove(recovery_file);
-	if (ret < 0)
-		DBG("remove recovery_file[%s] fail\n", recovery_file);
 }
 
 #define PRIVILEGE_PACKAGEMANAGER_ADMIN "http://tizen.org/privilege/packagemanager.admin"
@@ -469,7 +404,6 @@ static gboolean pipe_io_handler(GIOChannel *io, GIOCondition cond, gpointer data
 
 	__set_backend_free(x);
 	__set_backend_mode(x);
-	__unset_recovery_mode(ptr->pkgid, ptr->pkgtype);
 	if (WIFSIGNALED(info.status) || WEXITSTATUS(info.status)) {
 		send_fail_signal(ptr->pkgid, ptr->pkgtype, ptr->args);
 		DBG("backend[%s] exit with error", ptr->pkgtype);
@@ -1183,7 +1117,6 @@ gboolean queue_job(void *data)
 		return FALSE;
 
 	__set_backend_busy(x);
-	__set_recovery_mode(item->pkgid, item->pkg_type);
 
 	/* fork */
 	_save_queue_status(item, "processing");
