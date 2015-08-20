@@ -54,7 +54,9 @@
 #define MAX_LONGLONG_LENGTH 	32
 #define MAX_SIZE_INFO_SIZE 		128
 
-#define APP_BASE_INTERNAL_PATH tzplatform_getenv(TZ_USER_APP)
+#define OWNER_ROOT 0
+#define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
+
 #if 0 /* installed at external storage is not supported yet */
 #define APP_BASE_EXTERNAL_PATH ""
 #endif
@@ -157,12 +159,12 @@ static long long __calculate_shared_dir_size(int dfd, const char *app_root_dir, 
 	int subfd = -1;
 	long long size = 0;
 
-	DBG("traverse path: %sshared", app_root_dir);
+	DBG("traverse path: %s/shared", app_root_dir);
 
 	fd = openat(dfd, "shared", O_RDONLY | O_DIRECTORY);
 	if (fd < 0)
 	{
-		ERR("openat() failed, path: %sshared, errno: %d (%s)", app_root_dir, errno, strerror(errno));
+		ERR("openat() failed, path: %s/shared, errno: %d (%s)", app_root_dir, errno, strerror(errno));
 		return -1;
 	}
 
@@ -170,13 +172,13 @@ static long long __calculate_shared_dir_size(int dfd, const char *app_root_dir, 
 	int res = fstat(fd, &st);
 	if (res < 0)
 	{
-		ERR("fstat() failed, path: %sshared, errno: %d (%s)", app_root_dir, errno, strerror(errno));
+		ERR("fstat() failed, path: %s/shared, errno: %d (%s)", app_root_dir, errno, strerror(errno));
 		goto error;
 	}
 	*app_size += __stat_size(&st); // shared directory
 	DBG("app_size: %lld", *app_size);
 
-	DBG("traverse path: %sshared/data", app_root_dir);
+	DBG("traverse path: %s/shared/data", app_root_dir);
 
 	subfd = openat(fd, "data", O_RDONLY | O_DIRECTORY);
 	if (subfd >= 0)
@@ -197,7 +199,7 @@ static long long __calculate_shared_dir_size(int dfd, const char *app_root_dir, 
 		goto error;
 	}
 
-	DBG("traverse path: %sshared/trusted", app_root_dir);
+	DBG("traverse path: %s/shared/trusted", app_root_dir);
 
 	subfd = openat(fd, "trusted", O_RDONLY | O_DIRECTORY);
 	if (subfd >= 0)
@@ -218,7 +220,7 @@ static long long __calculate_shared_dir_size(int dfd, const char *app_root_dir, 
 		goto error;
 	}
 
-	DBG("traverse path: %sshared/res", app_root_dir);
+	DBG("traverse path: %s/shared/res", app_root_dir);
 
 	subfd = openat(fd, "res", O_RDONLY | O_DIRECTORY);
 	if (subfd >= 0)
@@ -239,7 +241,7 @@ static long long __calculate_shared_dir_size(int dfd, const char *app_root_dir, 
 		goto error;
 	}
 
-	DBG("traverse path: %sshared/cache", app_root_dir);
+	DBG("traverse path: %s/shared/cache", app_root_dir);
 
 	subfd = openat(fd, "cache", O_RDONLY | O_DIRECTORY);
 	if (subfd >= 0)
@@ -276,13 +278,23 @@ error:
 	return -1;
 }
 
+static int __is_global(uid_t uid)
+{
+	return (uid == OWNER_ROOT || uid == GLOBAL_USER) ? 1 : 0;
+}
+
 static int __calculate_pkg_size_info(STORAGE_TYPE type, const char *pkgid, long long *data_size, long long *cache_size, long long *app_size)
 {
-	char app_root_dir[MAX_PATH_LENGTH] = { 0, };
+	uid_t uid = getuid();
+	char app_root_dir[MAX_PATH_LENGTH] = {0, };
 	if (type == STORAGE_TYPE_INTERNAL)
 	{
-		/* TODO: app directory should be fixed */
-		snprintf(app_root_dir, MAX_PATH_LENGTH, "%s/%s/%s/", APP_BASE_INTERNAL_PATH, pkgid, pkgid);
+		if (!__is_global(uid))
+			tzplatform_set_user(uid);
+		snprintf(app_root_dir, sizeof(app_root_dir), "%s",
+				tzplatform_mkpath(__is_global(uid)
+					? TZ_SYS_RW_APP : TZ_USER_APP, pkgid));
+		tzplatform_reset_user();
 	}
 #if 0 /* installed at external storage is not supported yet */
 	else if (type == STORAGE_TYPE_EXTERNAL)
@@ -338,7 +350,7 @@ static int __calculate_pkg_size_info(STORAGE_TYPE type, const char *pkgid, long 
 			{
 				if (strncmp(name, "data", strlen("data")) == 0)
 				{
-					DBG("traverse path: %s%s", app_root_dir, name);
+					DBG("traverse path: %s/%s", app_root_dir, name);
 					size = __calculate_directory_size(subfd, true);
 					if (size < 0)
 					{
@@ -350,7 +362,7 @@ static int __calculate_pkg_size_info(STORAGE_TYPE type, const char *pkgid, long 
 				}
 				else if (strncmp(name, "cache", strlen("cache")) == 0)
 				{
-					DBG("traverse path: %s%s", app_root_dir, name);
+					DBG("traverse path: %s/%s", app_root_dir, name);
 					size = __calculate_directory_size(subfd, true);
 					if (size < 0)
 					{
@@ -373,7 +385,7 @@ static int __calculate_pkg_size_info(STORAGE_TYPE type, const char *pkgid, long 
 				}
 				else
 				{
-					DBG("traverse path: %s%s", app_root_dir, name);
+					DBG("traverse path: %s/%s", app_root_dir, name);
 					size = __calculate_directory_size(subfd, true);
 					if (size < 0)
 					{
@@ -435,7 +447,7 @@ static char *__get_pkg_size_info_str(const pkg_size_info_t* pkg_size_info)
 	return size_info_str;
 }
 
-static int __get_pkg_size_info(const char *pkgid, pkg_size_info_t* pkg_size_info)
+static int __get_pkg_size_info(const char *pkgid, pkg_size_info_t *pkg_size_info)
 {
 	int res = __calculate_pkg_size_info(STORAGE_TYPE_INTERNAL, pkgid, &pkg_size_info->data_size, &pkg_size_info->cache_size, &pkg_size_info->app_size);
 	if (res < 0)
@@ -480,70 +492,16 @@ static int __get_total_pkg_size_info_cb(const pkgmgrinfo_pkginfo_h handle, void 
 	return 0;
 }
 
-static int __get_total_pkg_size_info(pkg_size_info_t* pkg_size_info)
+int __make_size_info_file(char *req_key, long long size)
 {
-	int res = pkgmgrinfo_pkginfo_get_list(__get_total_pkg_size_info_cb, pkg_size_info);
-	if (res != PMINFO_R_OK)
-	{
-		return -1;
-	}
-	return 0;
-}
-
-static void __send_signal(const char *pkgid, int argc, char *argv[], char *size_info)
-{
-	pkgmgr_installer *pi = pkgmgr_installer_new();
-	if (pi == NULL)
-	{
-		DBG("Creating the pkgmgr_installer instance failed.");
-	}
-	else
-	{
-		pkgmgr_installer_receive_request(pi, argc, argv);
-		pkgmgr_installer_send_signal(pi, PKGMGR_INSTALLER_GET_SIZE_KEY_STR, pkgid, "-1", size_info);
-		pkgmgr_installer_free(pi);
-	}
-}
-
-static int __send_signal_for_pkg_size_info(const char *pkgid, int argc, char *argv[])
-{
-	pkg_size_info_t pkg_size_info = {0,};
-	__get_pkg_size_info(pkgid, &pkg_size_info);
-	char *size_info = __get_pkg_size_info_str(&pkg_size_info);
-	if (size_info == NULL)
-	{
-		return -1;
-	}
-	__send_signal(pkgid, argc, argv, size_info);
-	free(size_info);
-	return 0;
-}
-
-static int __send_signal_for_total_pkg_size_info(int argc, char *argv[])
-{
-	pkg_size_info_t pkg_size_info = {0,};
-	__get_total_pkg_size_info(&pkg_size_info);
-	char *size_info = __get_pkg_size_info_str(&pkg_size_info);
-	if (size_info == NULL)
-	{
-		return -1;
-	}
-	__send_signal(PKG_SIZE_INFO_TOTAL, argc, argv, size_info);
-	free(size_info);
-	return 0;
-}
-
-void __make_size_info_file(char *req_key, int size)
-{
-	int ret = 0;
 	FILE* file = NULL;
 	int fd = 0;
 	char buf[MAX_PKG_BUF_LEN] = {0};
 	const char* app_info_label = "*";
 	char info_file[MAX_PKG_BUF_LEN] = {'\0', };
 
-	if(req_key == NULL)
-		return;
+	if (req_key == NULL)
+		return -1;
 
 	snprintf(info_file, MAX_PKG_BUF_LEN, "%s/%s", PKG_SIZE_INFO_PATH, req_key);
 	ERR("File path = %s\n", info_file);
@@ -551,7 +509,7 @@ void __make_size_info_file(char *req_key, int size)
 	file = fopen(info_file, "w");
 	if (file == NULL) {
 		ERR("Couldn't open the file %s \n", info_file);
-		return;
+		return -1;
 	}
 
 	snprintf(buf, 128, "%d\n", size);
@@ -622,6 +580,7 @@ static int __send_sizeinfo_cb(const pkgmgrinfo_pkginfo_h handle, void *user_data
 	int total_size = 0;
 	char total_buf[MAX_PKG_BUF_LEN] = {'\0'};
 	char data_buf[MAX_PKG_BUF_LEN] = {'\0'};
+	pkgmgr_installer *pi = (pkgmgr_installer *)user_data;
 
 	pkg_size_info_t temp_pkg_size_info = {0,};
 
@@ -636,94 +595,123 @@ static int __send_sizeinfo_cb(const pkgmgrinfo_pkginfo_h handle, void *user_data
 	total_size = temp_pkg_size_info.app_size + temp_pkg_size_info.data_size + temp_pkg_size_info.cache_size;
 	data_size = temp_pkg_size_info.data_size + temp_pkg_size_info.cache_size;
 
-	/*send size info to client*/
+	/* send size info to client */
 	snprintf(total_buf, MAX_PKG_BUF_LEN - 1, "%d", total_size);
 	snprintf(data_buf, MAX_PKG_BUF_LEN - 1, "%d", data_size);
 
-	__getsize_send_signal(PKGMGR_INSTALLER_GET_SIZE_KEY_STR, PKGMGR_INSTALLER_GET_SIZE_KEY_STR, pkgid, data_buf, total_buf);
+	return pkgmgr_installer_send_signal(pi,
+			PKGMGR_INSTALLER_GET_SIZE_KEY_STR,
+			pkgid, data_buf, total_buf);
+}
 
-	return 0;
+static int __send_result_to_signal(pkgmgr_installer *pi, const char *req_key,
+		const char *pkgid, pkg_size_info_t *info)
+{
+	int ret;
+	char *info_str;
+
+	info_str = __get_pkg_size_info_str(info);
+	if (info_str == NULL)
+		return -1;
+
+	ERR("@@ info_str: %s", info_str);
+	ret = pkgmgr_installer_send_signal(pi, req_key, pkgid, "get_size",
+			info_str);
+	free(info_str);
+	ERR("@@ result: %d", ret);
+
+	return ret;
 }
 
 int main(int argc, char *argv[])
 {
-	int ret = -1;
-	int data_size = 0;
-	int total_size = 0;
-	int get_type = 0;
-	char *pkgid = NULL;
-	char *req_key = NULL;
-
-	char data_buf[MAX_PKG_BUF_LEN] = {'\0'};
-	char total_buf[MAX_PKG_BUF_LEN] = {'\0'};
-	pkgmgr_installer *pi = NULL;
-	pkg_size_info_t temp_pkg_size_info = {0,};
+	int ret;
+	int get_type;
+	char *pkgid;
+	char *req_key;
+	long long size = 0;
+	pkgmgr_installer *pi;
+	pkg_size_info_t info = {0, };
 
 	// argv has bellowed meaning
 	// argv[0] = pkgid
 	// argv[1] = get type
 	// argv[2] = req_key
 
-	if(argv[0] == NULL) {
+	if (argv[0] == NULL) {
 		ERR("pkgid is NULL\n");
 		return -1;
 	}
 
 	pkgid = argv[0];
 	get_type = atoi(argv[1]);
+	req_key = argv[2];
 
 	DBG("start get size : [pkgid = %s, request type = %d] \n", pkgid, get_type);
 
-	if (get_type == PM_GET_SIZE_INFO) {
-		ret = pkgmgrinfo_pkginfo_get_list(__send_sizeinfo_cb, NULL);
-		__getsize_send_signal(PKGMGR_INSTALLER_GET_SIZE_KEY_STR, PKGMGR_INSTALLER_GET_SIZE_KEY_STR, "get_size", "get_size", "end");
-	} else if (get_type == PM_GET_ALL_PKGS) {
-		pkg_size_info_t pkg_size_info = {0,};
-		ret = __get_total_pkg_size_info(&pkg_size_info);
-		total_size = pkg_size_info.app_size + pkg_size_info.data_size + pkg_size_info.cache_size;
-	} else if (get_type == PM_GET_PKG_SIZE_INFO) {
-		ret = __send_signal_for_pkg_size_info(pkgid, argc, argv);
-		if (ret < 0) {
-			ERR("Sending signal for package size info failed.");
-			return -1;
-		}
-	} else if (get_type == PM_GET_TOTAL_PKG_SIZE_INFO) {
-		ret = __send_signal_for_total_pkg_size_info(argc, argv);
-		if (ret < 0) {
-			ERR("Failed to get the total size information of all the pacakges.");
-			return -1;
-		}
-	} else {
- 		ret = __get_pkg_size_info(pkgid, &temp_pkg_size_info);
-		data_size = temp_pkg_size_info.data_size + temp_pkg_size_info.cache_size;
-		total_size = temp_pkg_size_info.app_size + temp_pkg_size_info.data_size + temp_pkg_size_info.cache_size;
-  	}
-
-	if (get_type != PM_GET_SIZE_INFO && get_type != PM_GET_PKG_SIZE_INFO) {
-		pi = pkgmgr_installer_new();
-		if (!pi) {
-			DBG("Failure in creating the pkgmgr_installer object");
-		} else {
-			snprintf(data_buf, MAX_PKG_BUF_LEN - 1, "%d", data_size);
-			snprintf(total_buf, MAX_PKG_BUF_LEN - 1, "%d", total_size);
-			pkgmgr_installer_receive_request(pi, argc, argv);
-			pkgmgr_installer_send_signal(pi, PKGMGR_INSTALLER_GET_SIZE_KEY_STR, pkgid, data_buf, total_buf);
-			pkgmgr_installer_free(pi);
-		}
-	}
-
-	req_key = (char *)calloc(strlen(argv[2])+1, sizeof(char));
-	if(req_key == NULL)
+	pi = pkgmgr_installer_new();
+	if (pi == NULL) {
+		ERR("failed to create installer");
 		return -1;
-	strncpy(req_key, argv[2], strlen(argv[2]));
-
-	if (strncmp(req_key, pkgid, strlen(pkgid)) == 0) {
-		DBG("make a file for sync request [pkgid = %s] \n", pkgid);
-		__make_size_info_file(req_key , total_size);
 	}
+
+	switch (get_type) {
+	case PM_GET_TOTAL_SIZE:
+		/* send result to file */
+		ret = __get_pkg_size_info(pkgid, &info);
+		if (ret == 0)
+			size = info.app_size + info.data_size + info.cache_size;
+		ret = __make_size_info_file(req_key, size);
+		break;
+	case PM_GET_DATA_SIZE:
+		/* send result to file */
+		ret = __get_pkg_size_info(pkgid, &info);
+		if (ret == 0)
+			size = info.data_size + info.cache_size;
+		ret = __make_size_info_file(req_key, size);
+		break;
+	case PM_GET_ALL_PKGS:
+		/* send result to file */
+		ret = pkgmgrinfo_pkginfo_get_usr_list(
+				__get_total_pkg_size_info_cb, &info, getuid());
+		if (ret == 0)
+			size = info.app_size + info.data_size + info.cache_size;
+		ret = __make_size_info_file(req_key, size);
+		break;
+	case PM_GET_SIZE_INFO:
+		/* send each result to signal */
+		ret = pkgmgrinfo_pkginfo_get_usr_list(__send_sizeinfo_cb, pi,
+				getuid());
+		ret = __make_size_info_file(req_key, 0);
+		break;
+	case PM_GET_PKG_SIZE_INFO:
+		/* send result to signal */
+		ret = __get_pkg_size_info(pkgid, &info);
+		if (ret == 0)
+			ret = __send_result_to_signal(pi, req_key, pkgid, &info);
+		ret = __make_size_info_file(req_key, 0);
+		break;
+	case PM_GET_TOTAL_PKG_SIZE_INFO:
+		/* send result to signal */
+		ret = pkgmgrinfo_pkginfo_get_usr_list(
+				__get_total_pkg_size_info_cb, &info, getuid());
+		if (ret == 0)
+			ret = __send_result_to_signal(pi, req_key,
+					PKG_SIZE_INFO_TOTAL, &info);
+		__make_size_info_file(req_key, 0);
+		break;
+	default:
+		ret = -1;
+		ERR("unsupported or depreated type");
+		break;
+	}
+
+	ret = pkgmgr_installer_send_signal(pi,
+			PKGMGR_INSTALLER_GET_SIZE_KEY_STR,
+			pkgid, "get_size", (ret == 0) ? "end" : "error");
+	pkgmgr_installer_free(pi);
 
 	DBG("finish get size : [result = %d] \n", ret);
 
-	free(req_key);
-	return 0;
+	return ret;
 }
