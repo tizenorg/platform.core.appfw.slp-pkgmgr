@@ -832,6 +832,7 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 	snprintf(buf, 128, "%d", get_type);
 	argv[argcnt++] = strdup(pkgid);
 	argv[argcnt++] = strdup(buf);
+	argv[argcnt++] = strdup(req_key);
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {
