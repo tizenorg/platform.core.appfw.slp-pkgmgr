@@ -415,7 +415,8 @@ static int __add_app_filter(uid_t uid)
 		printf("15 --> filter by app taskmanage [0|1]\n");
 		printf("16 --> filter by app hwacceleration\n");
 		printf("17 --> filter by app screenreader\n");
-		printf("18 --> filter by app ui_gadget [0|1]\n");
+		printf("18 --> filter by app ui-gadget [0|1]\n");
+		printf("19 --> filter by app support disable [0|1]\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -630,6 +631,16 @@ static int __add_app_filter(uid_t uid)
 				goto err;
 			}
 			break;
+		case 19:
+			val = __get_integer_input_data();
+			ret = pkgmgrinfo_appinfo_filter_add_bool(handle,
+					PMINFO_APPINFO_PROP_APP_SUPPORT_DISABLE, val);
+			if (ret < 0) {
+				printf("pkgmgrinfo_appinfo_filter_add_bool() failed\n");
+				ret = -1;
+				goto err;
+			}
+			break;
 		default:
 			printf("Invalid filter property\n");
 				pkgmgrinfo_appinfo_filter_destroy(handle);
@@ -681,6 +692,7 @@ static int __add_pkg_filter(uid_t uid)
 		printf("14 --> filter by package size\n");
 		printf("15 --> filter by package installed storage[installed_internal | installed_external]\n");
 		printf("16 --> filter by package privilege\n");
+		printf("17 --> filter by package support disable [0|1]\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -874,6 +886,16 @@ static int __add_pkg_filter(uid_t uid)
 			}
 			free(value);
 			value = NULL;
+			break;
+		case 17:
+			val = __get_integer_input_data();
+			ret = pkgmgrinfo_pkginfo_filter_add_bool(handle,
+				PMINFO_PKGINFO_PROP_PACKAGE_SUPPORT_DISABLE, val);
+			if (ret < 0) {
+				printf("pkgmgrinfo_pkginfo_filter_add_bool() failed\n");
+				ret = -1;
+				goto err;
+			}
 			break;
 		default:
 			printf("Invalid filter property\n");
