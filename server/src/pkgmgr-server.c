@@ -49,7 +49,6 @@
 #include "package-manager.h"
 
 #define BUFMAX 128
-#define PACKAGE_RECOVERY_DIR tzplatform_mkpath(TZ_SYS_RW_PACKAGES, ".recovery/pkgmgr")
 #define NO_MATCHING_FILE 11
 
 static int backend_flag = 0;	/* 0 means that backend process is not running */
@@ -156,7 +155,27 @@ static void __unset_backend_mode(int position)
 	backend_mode = backend_mode & ~(1<<position);
 }
 
-static void __set_recovery_mode(char *pkgid, char *pkg_type)
+static int __is_global(uid_t uid)
+{
+	return (uid == OWNER_ROOT || uid == GLOBAL_USER) ? 1 : 0;
+}
+
+static const char *__get_recovery_file_path(uid_t uid)
+{
+	const char *path;
+
+	if (!__is_global(uid))
+		tzplatform_set_user(uid);
+
+	path = tzplatform_getenv(__is_global(uid)
+			? TZ_SYS_RW_PACKAGES : TZ_USER_PACKAGES);
+
+	tzplatform_reset_user(uid);
+
+	return path;
+}
+
+static void __set_recovery_mode(uid_t uid, char *pkgid, char *pkg_type)
 {
 	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
 	char buffer[MAX_PKG_NAME_LEN] = { 0 };
@@ -175,9 +194,9 @@ static void __set_recovery_mode(char *pkgid, char *pkg_type)
 			DBG("pkgid_tmp[%s] is null\n", pkgid);
 			return;
 		}
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", __get_recovery_file_path(uid), pkgid_tmp);
 	} else {
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", __get_recovery_file_path(uid), pkgid);
 	}
 
 	rev_file = fopen(recovery_file, "w");
@@ -192,7 +211,7 @@ static void __set_recovery_mode(char *pkgid, char *pkg_type)
 	fclose(rev_file);
 }
 
-static void __unset_recovery_mode(char *pkgid, char *pkg_type)
+static void __unset_recovery_mode(uid_t uid, char *pkgid, char *pkg_type)
 {
 	int ret = -1;
 	char recovery_file[MAX_PKG_NAME_LEN] = { 0, };
@@ -210,9 +229,9 @@ static void __unset_recovery_mode(char *pkgid, char *pkg_type)
 			DBG("pkgid_tmp[%s] is null\n", pkgid);
 			return;
 		}
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid_tmp);
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", __get_recovery_file_path(uid), pkgid_tmp);
 	} else {
-		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", PACKAGE_RECOVERY_DIR, pkgid);
+		snprintf(recovery_file, MAX_PKG_NAME_LEN, "%s/%s", __get_recovery_file_path(uid), pkgid);
 	}
 
 	ret = remove(recovery_file);
@@ -469,7 +488,7 @@ static gboolean pipe_io_handler(GIOChannel *io, GIOCondition cond, gpointer data
 
 	__set_backend_free(x);
 	__set_backend_mode(x);
-	__unset_recovery_mode(ptr->pkgid, ptr->pkgtype);
+	__unset_recovery_mode(ptr->uid, ptr->pkgid, ptr->pkgtype);
 	if (WIFSIGNALED(info.status) || WEXITSTATUS(info.status)) {
 		send_fail_signal(ptr->pkgid, ptr->pkgtype, ptr->args);
 		DBG("backend[%s] exit with error", ptr->pkgtype);
@@ -1183,7 +1202,7 @@ gboolean queue_job(void *data)
 		return FALSE;
 
 	__set_backend_busy(x);
-	__set_recovery_mode(item->pkgid, item->pkg_type);
+	__set_recovery_mode(item->uid, item->pkgid, item->pkg_type);
 
 	/* fork */
 	_save_queue_status(item, "processing");
@@ -1192,6 +1211,7 @@ gboolean queue_job(void *data)
 	strncpy(ptr->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN-1);
 	strncpy(ptr->pkgid, item->pkgid, MAX_PKG_NAME_LEN-1);
 	strncpy(ptr->args, item->args, MAX_PKG_ARGS_LEN-1);
+	ptr->uid = item->uid;
 	ptr->pid = fork();
 	DBG("child forked [%d] for request type [%d]", ptr->pid, item->req_type);
 
