@@ -11,7 +11,6 @@ FOREACH(flag ${pkgs_initdb_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-
 pkg_check_modules(pkgs_test REQUIRED dbus-1 ail libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${pkgs_test_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -24,62 +23,37 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 SET(CMAKE_C_FLAGS_RELEASE "-O2")
 
-add_executable(pkgcmd
-		pkg_cmd.c)
-target_link_libraries(pkgcmd pkgmgr-client ${pkgs_test_LDFLAGS})
+ADD_EXECUTABLE(pkgcmd pkg_cmd.c)
+TARGET_LINK_LIBRARIES(pkgcmd pkgmgr-client ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkgcmd DESTINATION bin)
 
-add_executable(pkginfo
-                pkg_info.c)
-target_link_libraries(pkginfo pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
+ADD_EXECUTABLE(pkginfo pkg_info.c)
+TARGET_LINK_LIBRARIES(pkginfo pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkginfo DESTINATION bin)
 
-add_executable(pkg_privilege
-                pkg_privilege.c)
-target_link_libraries(pkg_privilege ${pkgs_test_LDFLAGS})
+ADD_EXECUTABLE(pkg_privilege pkg_privilege.c)
+TARGET_LINK_LIBRARIES(pkg_privilege ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_privilege DESTINATION bin)
 
-add_executable(pkg_install_ug
-                pkg_install_ug.c)
-target_link_libraries(pkg_install_ug ${pkgs_test_LDFLAGS})
+ADD_EXECUTABLE(pkg_install_ug pkg_install_ug.c)
+TARGET_LINK_LIBRARIES(pkg_install_ug ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_install_ug DESTINATION bin)
 
-add_executable(pkg_getsize
-                pkg_getsize.c)
-target_link_libraries(pkg_getsize pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
+ADD_EXECUTABLE(pkg_getsize pkg_getsize.c)
+TARGET_LINK_LIBRARIES(pkg_getsize pkgmgr-client pkgmgr_installer ${pkgs_test_LDFLAGS})
 INSTALL(TARGETS pkg_getsize DESTINATION bin)
 
-add_executable(pkg_createdb pkg_createdb.c)
-target_link_libraries(pkg_createdb ${pkgs_initdb_LDFLAGS})
-INSTALL(TARGETS pkg_createdb DESTINATION bin)
+ADD_EXECUTABLE(pkg_clearcache pkg_clearcache.c)
+TARGET_LINK_LIBRARIES(pkg_clearcache ${pkgs_test_LDFLAGS})
+INSTALL(TARGETS pkg_clearcache DESTINATION bin)
 
-add_executable(pkg_createdb_user pkg_createdb_user.c)
-target_link_libraries(pkg_createdb_user ${pkgs_initdb_LDFLAGS})
-INSTALL(TARGETS pkg_createdb_user DESTINATION bin)
-
-add_executable(pkg_syncdb pkg_syncdb.c)
-target_link_libraries(pkg_syncdb ${pkgs_initdb_LDFLAGS})
-INSTALL(TARGETS pkg_syncdb DESTINATION bin)
-
-add_executable(pkg_syncdb_user pkg_syncdb_user.c)
-target_link_libraries(pkg_syncdb_user ${pkgs_initdb_LDFLAGS})
-INSTALL(TARGETS pkg_syncdb_user DESTINATION bin)
-
-add_executable(pkg_clearcache pkg_clearcache.c)
-target_link_libraries(pkg_clearcache ${pkgs_test_LDFLAGS})
-install(TARGETS pkg_clearcache DESTINATION bin)
-
-add_executable(pkg_initdb pkg_initdb.c)
-target_link_libraries(pkg_initdb ${pkgs_initdb_LDFLAGS})
+ADD_EXECUTABLE(pkg_initdb pkg_initdb.c)
+TARGET_LINK_LIBRARIES(pkg_initdb ${pkgs_initdb_LDFLAGS})
 INSTALL(TARGETS pkg_initdb DESTINATION bin)
 INSTALL(FILES 10_package-manager-add.post  DESTINATION ${SYSCONF_INSTALL_DIR}/gumd/useradd.d/)
 
-add_executable(pkg_initdb_user pkg_initdb_user.c)
-target_link_libraries(pkg_initdb_user ${pkgs_initdb_LDFLAGS})
-INSTALL(TARGETS pkg_initdb_user DESTINATION bin)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.wac.xml DESTINATION /usr/share/mime/packages/)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.tpk.xml DESTINATION /usr/share/mime/packages/)
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.wac.xml DESTINATION /usr/share/mime/packages/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/mime.tpk.xml DESTINATION /usr/share/mime/packages/)
-
-configure_file(pkgmgr.patch.sh.in pkgmgr.patch.sh @ONLY)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pkgmgr.patch.sh DESTINATION ${SYSCONFDIR}/opt/upgrade/)
+CONFIGURE_FILE(pkgmgr.patch.sh.in pkgmgr.patch.sh @ONLY)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pkgmgr.patch.sh DESTINATION ${SYSCONFDIR}/opt/upgrade/)

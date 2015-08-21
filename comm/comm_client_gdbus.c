@@ -67,7 +67,7 @@ static int __retry_request(comm_client *cc,
 	const gchar *args,
 	uid_t uid,
 	gint *ret)
-{	
+{
 	OrgTizenSlpPkgmgr *proxy;
 	GError *error = NULL;
 	int rc = 0;
@@ -82,7 +82,7 @@ static int __retry_request(comm_client *cc,
 	}
 
 	rc = org_tizen_slp_pkgmgr_call_request_sync(proxy,
-			req_id, req_type, pkg_type, pkgid, args, uid, &ret, NULL, &error);
+			req_id, req_type, pkg_type, pkgid, args, uid, ret, NULL, &error);
 	if (!rc) {
 		ERR("Failed to send request[rc=%d, err=%s]\n", rc, error->message);
 		return FALSE;
@@ -211,7 +211,9 @@ comm_client *comm_client_new(void)
 	comm_client *cc = NULL;
 
 	/* Allocate memory for ADT:comm_client */
+#if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init();
+#endif
 	cc = calloc(1, sizeof(comm_client));
 	if (NULL == cc) {
 		ERR("No memory");
@@ -338,10 +340,10 @@ int
 comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb cb, void *cb_data)
 {
 	int r = COMM_RET_ERROR;
-	char *ifc = NULL;
+	const char *ifc = NULL;
 
 	if (NULL == cc)
-		return NULL;
+		return COMM_RET_ERROR;
 
 	ifc = __get_interface(comm_status_type);
 	if (ifc == NULL) {
