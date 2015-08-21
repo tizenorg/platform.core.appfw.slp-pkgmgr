@@ -422,14 +422,14 @@ static char *__get_type_from_path(const char *pkg_path)
 	return strdup(pkg_type);
 }
 
-static int __get_pkgid_by_appid(const char *appid, char **pkgid)
+static int __get_pkgid_by_appid(const char *appid, char **pkgid, uid_t uid)
 {
 	pkgmgrinfo_appinfo_h pkgmgrinfo_appinfo = NULL;
 	int ret = -1;
 	char *pkg_id = NULL;
 	char *pkg_id_dup = NULL;
 
-	if (pkgmgrinfo_appinfo_get_appinfo(appid, &pkgmgrinfo_appinfo) != PMINFO_R_OK)
+	if (pkgmgrinfo_appinfo_get_usr_appinfo(appid, uid, &pkgmgrinfo_appinfo) != PMINFO_R_OK)
 		return -1;
 
 	if (pkgmgrinfo_appinfo_get_pkgname(pkgmgrinfo_appinfo, &pkg_id) != PMINFO_R_OK)
@@ -448,62 +448,37 @@ err:
 	return ret;
 }
 
-static inline ail_cb_ret_e __appinfo_cb(const ail_appinfo_h appinfo, void *user_data)
+static int __appinfo_cb(pkgmgrinfo_appinfo_h handle, void *user_data)
 {
-	char *package;
-	ail_cb_ret_e ret = AIL_CB_RET_CONTINUE;
+	int ret = 0;
+	char *appid = NULL;
 
-	ail_appinfo_get_str(appinfo, AIL_PROP_PACKAGE_STR, &package);
+	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
+	retvm_if(ret != PMINFO_R_OK, PKGMGR_R_ERROR, "pkgmgrinfo_appinfo_get_appid fail");
 
-	if (package) {
-		(* (char **) user_data) = strdup(package);
-		ret = AIL_CB_RET_CANCEL;
-	}
+	(* (char **) user_data) = strdup(appid);
 
-	return ret;
+	return PMINFO_R_OK;
 }
 
 static char *__get_app_info_from_db_by_apppath(const char *apppath, uid_t uid)
 {
+	int ret = 0;
 	char *caller_appid = NULL;
-	ail_filter_h filter;
-	ail_error_e ret;
-	int count;
+	pkgmgrinfo_appinfo_filter_h appinfo_filter_h= NULL;
 
-	if (apppath == NULL)
-		return NULL;
+	ret = pkgmgrinfo_appinfo_filter_create(&appinfo_filter_h);
+	retvm_if(ret != PMINFO_R_OK, NULL, "pkgmgrinfo_appinfo_filter_create fail");
 
-	ret = ail_filter_new(&filter);
-	if (ret != AIL_ERROR_OK) {
-		return NULL;
-	}
+	ret = pkgmgrinfo_appinfo_filter_add_string(appinfo_filter_h, PMINFO_APPINFO_PROP_APP_EXEC, apppath);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "PMINFO_APPINFO_PROP_APP_EXEC failed, ret=%d", ret);
 
-	ret = ail_filter_add_str(filter, AIL_PROP_X_SLP_EXE_PATH, apppath);
-	if (ret != AIL_ERROR_OK) {
-		ail_filter_destroy(filter);
-		return NULL;
-	}
-	
-	if(uid != GLOBAL_USER)
-		ret = ail_filter_count_usr_appinfo(filter, &count, uid);
-	else
-		ret = ail_filter_count_appinfo(filter, &count);
+	ret = pkgmgrinfo_appinfo_usr_filter_foreach_appinfo(appinfo_filter_h, __appinfo_cb, &caller_appid, uid);
+	tryvm_if(ret < 0, ret = PKGMGR_R_ECOMM, "foreach_appinfo failed, ret=%d", ret);
 
-	if (ret != AIL_ERROR_OK) {
-		ail_filter_destroy(filter);
-		return NULL;
-	}
-	if (count < 1) {
-		ail_filter_destroy(filter);
-		return NULL;
-	}
-	if(uid != GLOBAL_USER)
-		ail_filter_list_usr_appinfo_foreach(filter, __appinfo_cb, &caller_appid,uid);
-	else
-		ail_filter_list_appinfo_foreach(filter, __appinfo_cb, &caller_appid);	
+catch:
 
-	ail_filter_destroy(filter);
-
+	pkgmgrinfo_appinfo_filter_destroy(appinfo_filter_h);
 	return caller_appid;
 }
 
@@ -575,7 +550,7 @@ static char *__get_caller_pkgid(uid_t uid)
 		ERR("get appid fail!!!\n");
 		return NULL;
 	}
-	if (__get_pkgid_by_appid(caller_appid, &caller_pkgid) < 0){
+	if (__get_pkgid_by_appid(caller_appid, &caller_pkgid, uid) < 0){
 		ERR("get pkgid fail!!!\n");
 		return NULL;
 	}
