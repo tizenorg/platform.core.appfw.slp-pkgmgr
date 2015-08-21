@@ -33,8 +33,6 @@
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
-#include <ail.h>
-#include <db-util.h>
 #include <pkgmgr-info.h>
 #include <iniparser.h>
 /* For multi-user support */
@@ -258,25 +256,6 @@ static req_cb_info *__find_op_cbinfo(pkgmgr_client_t *pc, const char *req_key)
 	return NULL;
 }
 
-static void __remove_op_cbinfo(pkgmgr_client_t *pc, req_cb_info *info)
-{
-	req_cb_info *tmp;
-
-	if (pc == NULL || pc->info.request.rhead == NULL || info == NULL)
-		return;
-
-	tmp = pc->info.request.rhead;
-	while (tmp) {
-		if (tmp->next == info) {
-			tmp->next = info->next;
-			free(info);
-			return;
-		}
-		tmp = tmp->next;
-	}
-}
-
-
 static void __add_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
 			      pkgmgr_handler event_cb, void *data)
 {
@@ -336,13 +315,6 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 					pkg_type, pkgid, key, val, NULL,
 					cb_info->data);
 	}
-
-	/*remove callback for last call 
-	   if (strcmp(key, "end") == 0) {
-	   __remove_op_cbinfo(pc, cb_info);
-	   DBG("__remove_op_cbinfo");
-	   }
-	 */
 
 	return;
 }
@@ -448,61 +420,41 @@ err:
 	return ret;
 }
 
-static inline ail_cb_ret_e __appinfo_cb(const ail_appinfo_h appinfo, void *user_data)
+static int __appinfo_cb(pkgmgrinfo_appinfo_h handle, void *user_data)
 {
-	char *package;
-	ail_cb_ret_e ret = AIL_CB_RET_CONTINUE;
+	char **appid = (char **)user_data;
 
-	ail_appinfo_get_str(appinfo, AIL_PROP_PACKAGE_STR, &package);
-
-	if (package) {
-		(* (char **) user_data) = strdup(package);
-		ret = AIL_CB_RET_CANCEL;
-	}
-
-	return ret;
+	return pkgmgrinfo_appinfo_get_appid(handle, appid);
 }
 
 static char *__get_app_info_from_db_by_apppath(const char *apppath, uid_t uid)
 {
+	int ret;
 	char *caller_appid = NULL;
-	ail_filter_h filter;
-	ail_error_e ret;
-	int count;
+	pkgmgrinfo_appinfo_filter_h filter;
 
 	if (apppath == NULL)
 		return NULL;
 
-	ret = ail_filter_new(&filter);
-	if (ret != AIL_ERROR_OK) {
+	ret = pkgmgrinfo_appinfo_filter_create(&filter) != PMINFO_R_OK;
+	if (ret != PMINFO_R_OK)
+		return NULL;
+
+	ret = pkgmgrinfo_appinfo_filter_add_string(filter,
+			PMINFO_APPINFO_PROP_APP_EXEC, apppath);
+	if (ret != PMINFO_R_OK) {
+		pkgmgrinfo_appinfo_filter_destroy(filter);
 		return NULL;
 	}
 
-	ret = ail_filter_add_str(filter, AIL_PROP_X_SLP_EXE_PATH, apppath);
-	if (ret != AIL_ERROR_OK) {
-		ail_filter_destroy(filter);
+	ret = pkgmgrinfo_appinfo_usr_filter_foreach_appinfo(filter,
+			__appinfo_cb, &caller_appid, uid);
+	if (ret != PMINFO_R_OK) {
+		pkgmgrinfo_appinfo_filter_destroy(filter);
 		return NULL;
 	}
-	
-	if(uid != GLOBAL_USER)
-		ret = ail_filter_count_usr_appinfo(filter, &count, uid);
-	else
-		ret = ail_filter_count_appinfo(filter, &count);
 
-	if (ret != AIL_ERROR_OK) {
-		ail_filter_destroy(filter);
-		return NULL;
-	}
-	if (count < 1) {
-		ail_filter_destroy(filter);
-		return NULL;
-	}
-	if(uid != GLOBAL_USER)
-		ail_filter_list_usr_appinfo_foreach(filter, __appinfo_cb, &caller_appid,uid);
-	else
-		ail_filter_list_appinfo_foreach(filter, __appinfo_cb, &caller_appid);	
-
-	ail_filter_destroy(filter);
+	pkgmgrinfo_appinfo_filter_destroy(filter);
 
 	return caller_appid;
 }
@@ -568,7 +520,7 @@ static int __get_appid_bypid(int pid, char *pkgname, int len, uid_t uid)
 
 static char *__get_caller_pkgid(uid_t uid)
 {
-	char *caller_appid[PKG_STRING_LEN_MAX] = {0, };
+	char caller_appid[PKG_STRING_LEN_MAX] = {0, };
 	char *caller_pkgid = NULL;
 
 	if (__get_appid_bypid(getpid(), caller_appid, sizeof(caller_appid), uid) < 0) {
@@ -621,52 +573,7 @@ static inline int __pkgmgr_find_pid_by_cmdline(const char *dname,
 	return pid;
 }
 
-
-static int __pkgmgr_proc_iter_kill_cmdline(const char *apppath)
-{
-	DIR *dp;
-	struct dirent *dentry;
-	int pid;
-	int ret;
-	char buf[PKG_STRING_LEN_MAX];
-
-	dp = opendir("/proc");
-	if (dp == NULL) {
-		return -1;
-	}
-
-	while ((dentry = readdir(dp)) != NULL) {
-		if (!isdigit(dentry->d_name[0]))
-			continue;
-
-		snprintf(buf, sizeof(buf), "/proc/%s/cmdline", dentry->d_name);
-		ret = __pkgmgr_read_proc(buf, buf, sizeof(buf));
-		if (ret <= 0)
-			continue;
-
-		pid = __pkgmgr_find_pid_by_cmdline(dentry->d_name, buf, apppath);
-
-		if (pid > 0) {
-			int pgid;
-
-			pgid = getpgid(pid);
-			if (pgid <= 1) {
-				closedir(dp);
-				return -1;
-			}
-
-			if (killpg(pgid, SIGKILL) < 0) {
-				closedir(dp);
-				return -1;
-			}
-		}
-	}
-
-	closedir(dp);
-	return 0;
-}
-
-static int __sync_process(char *req_key)
+static int __sync_process(const char *req_key)
 {
 	int ret;
 	char info_file[PKG_STRING_LEN_MAX] = {'\0', };
@@ -682,13 +589,17 @@ static int __sync_process(char *req_key)
 
 		if (access(info_file, F_OK) == 0) {
 			fp = fopen(info_file, "r");
-			if (fp == NULL){
+			if (fp == NULL) {
 				DBG("file is not generated yet.... wait\n");
 				usleep(100 * 1000);	/* 100ms sleep*/
 				continue;
 			}
 
-			fgets(buf, PKG_STRING_LEN_MAX, fp);
+			if (fgets(buf, PKG_STRING_LEN_MAX, fp) == NULL) {
+				ERR("failed to read info file");
+				fclose(fp);
+				break;
+			}
 			fclose(fp);
 
 			DBG("info_file file is generated, result = %s. \n", buf);
@@ -711,6 +622,7 @@ static int __sync_process(char *req_key)
 
 	return result;
 }
+
 static int __csc_process(const char *csc_path, char *result_path)
 {
 	int ret = 0;
@@ -864,7 +776,6 @@ catch:
 static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, pkgmgr_move_type move_type, pkgmgr_handler event_cb, void *data)
 {
 	char *req_key = NULL;
-	int req_id = 0;
 	int ret =0;
 	pkgmgrinfo_pkginfo_h handle;
 	char *pkgtype = NULL;
@@ -891,7 +802,6 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 
 	installer_path = _get_backend_path_with_type(pkgtype);
 	req_key = __get_req_key(pkgid);
-	req_id = _get_request_id();
 
 	/* generate argv */
 	snprintf(buf, 128, "%d", move_type);
@@ -952,8 +862,8 @@ catch:
 
 static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_client * pc, const char *pkgid, uid_t uid, void *data)
 {
-	const char *pkgtype;
-	char *req_key;
+	char *pkgtype;
+	char *req_key = NULL;
 	int ret;
 	pkgmgrinfo_pkginfo_h handle;
 	int pid = -1;
@@ -987,7 +897,8 @@ static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_
 	* (int *) data = pid;
 
 catch:
-	free(req_key);
+	if (req_key)
+		free(req_key);
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 
 	return ret;
@@ -1698,7 +1609,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkgid, uid);
+		pkgtype = _get_pkg_type(pkgid, uid);
 		if (pkgtype == NULL)
 			return PKGMGR_R_EINVAL;
 	} else
@@ -1784,13 +1695,6 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 		free(args);
 
 	return req_id;
-}
-
-API int pkgmgr_client_move_pkg(pkgmgr_client *pc, const char *pkg_type,
-				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode,
-				pkgmgr_handler event_cb, void *data)
-{
-	return pkgmgr_client_move_usr_pkg(pc, pkg_type, pkgid, GLOBAL_USER, move_type, mode, event_cb, data);
 }
 
 API int pkgmgr_client_move_usr_pkg(pkgmgr_client *pc, const char *pkg_type,
@@ -1909,10 +1813,11 @@ catch:
 	return ret;
 }
 
-API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
-			       const char *pkgid)
+API int pkgmgr_client_move_pkg(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode,
+				pkgmgr_handler event_cb, void *data)
 {
-	return pkgmgr_client_usr_activate(pc, pkg_type, pkgid, GLOBAL_USER);
+	return pkgmgr_client_move_usr_pkg(pc, pkg_type, pkgid, GLOBAL_USER, move_type, mode, event_cb, data);
 }
 
 API int pkgmgr_client_usr_activate(pkgmgr_client * pc, const char *pkg_type,
@@ -1934,7 +1839,7 @@ API int pkgmgr_client_usr_activate(pkgmgr_client * pc, const char *pkg_type,
 	retvm_if(strlen(pkgid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkgid, uid);
+		pkgtype = _get_pkg_type(pkgid, uid);
 		retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 	} else
 		pkgtype = pkg_type;
@@ -1954,10 +1859,10 @@ catch:
 	return ret;
 }
 
-API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
-				 const char *pkgid)
+API int pkgmgr_client_activate(pkgmgr_client * pc, const char *pkg_type,
+			       const char *pkgid)
 {
-	return pkgmgr_client_usr_deactivate(pc, pkg_type, pkgid, GLOBAL_USER);
+	return pkgmgr_client_usr_activate(pc, pkg_type, pkgid, GLOBAL_USER);
 }
 
 API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
@@ -1979,7 +1884,7 @@ API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
 	retvm_if(strlen(pkgid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkgid, uid);
+		pkgtype = _get_pkg_type(pkgid, uid);
 		if (pkgtype == NULL)
 			return PKGMGR_R_EINVAL;
 	} else
@@ -2000,9 +1905,10 @@ catch:
 	return ret;
 }
 
-API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid)
+API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
+				 const char *pkgid)
 {
-	return pkgmgr_client_usr_activate_app(pc,appid, GLOBAL_USER);
+	return pkgmgr_client_usr_deactivate(pc, pkg_type, pkgid, GLOBAL_USER);
 }
 
 API int pkgmgr_client_usr_activate_app(pkgmgr_client * pc, const char *appid, uid_t uid)
@@ -2022,7 +1928,7 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client * pc, const char *appid, ui
 	retvm_if(appid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
 	retvm_if(strlen(appid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
-	pkgtype = _get_pkg_type_from_desktop_file(appid, uid);
+	pkgtype = _get_pkg_type(appid, uid);
 	retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 
 	/* 2. generate req_key */
@@ -2040,9 +1946,9 @@ catch:
 	return ret;
 }
 
-API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[])
+API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid)
 {
-	return pkgmgr_client_usr_activate_appv(pc, appid,  argv, GLOBAL_USER);
+	return pkgmgr_client_usr_activate_app(pc,appid, GLOBAL_USER);
 }
 
 API int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[], uid_t uid)
@@ -2068,7 +1974,7 @@ API int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, c
 	retvm_if(appid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
 	retvm_if(strlen(appid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
-	pkgtype = _get_pkg_type_from_desktop_file(appid, uid);
+	pkgtype = _get_pkg_type(appid, uid);
 	retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 
 	/* 2. generate req_key */
@@ -2125,10 +2031,9 @@ catch:
 	return ret;
 }
 
-
-API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid)
+API int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[])
 {
-	return pkgmgr_client_usr_deactivate_app(pc, appid, GLOBAL_USER);
+	return pkgmgr_client_usr_activate_appv(pc, appid,  argv, GLOBAL_USER);
 }
 
 API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid, uid_t uid)
@@ -2148,7 +2053,7 @@ API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid, u
 	retvm_if(appid == NULL, PKGMGR_R_EINVAL, "pkgid is NULL");
 	retvm_if(strlen(appid) >= PKG_STRING_LEN_MAX, PKGMGR_R_EINVAL, "pkgid length over PKG_STRING_LEN_MAX ");
 
-	pkgtype = _get_pkg_type_from_desktop_file(appid, uid);
+	pkgtype = _get_pkg_type(appid, uid);
 	retvm_if(pkgtype == NULL, PKGMGR_R_EINVAL, "pkgtype is NULL");
 
 	/* 2. generate req_key */
@@ -2166,11 +2071,11 @@ catch:
 	return ret;
 }
 
-API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
-				      const char *appid, pkgmgr_mode mode)
+API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid)
 {
-	return pkgmgr_client_usr_clear_user_data(pc, pkg_type, appid,mode, GLOBAL_USER);
+	return pkgmgr_client_usr_deactivate_app(pc, appid, GLOBAL_USER);
 }
+
 API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 				      const char *appid, pkgmgr_mode mode, uid_t uid)
 {
@@ -2202,7 +2107,7 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_typ
 
 
 	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(appid, uid);
+		pkgtype = _get_pkg_type(appid, uid);
 		if (pkgtype == NULL)
 			return PKGMGR_R_EINVAL;
 	} else
@@ -2281,6 +2186,11 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc, const char *pkg_typ
 	return PKGMGR_R_OK;
 }
 
+API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
+				      const char *appid, pkgmgr_mode mode)
+{
+	return pkgmgr_client_usr_clear_user_data(pc, pkg_type, appid,mode, GLOBAL_USER);
+}
 
 API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
 {
@@ -2381,27 +2291,6 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, mpc->info.broadcast.bc,
 						 getuid(), PKG_STATUS,
 						 pkg_type, pkgid, key, val);
-
-	return PKGMGR_R_OK;
-}
-
-API pkgmgr_info *pkgmgr_client_check_pkginfo_from_file(const char *pkg_path)
-{
-	return pkgmgr_info_new_from_file(NULL, pkg_path);
-}
-
-API int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info)
-{
-	if (pkg_info == NULL)
-		return PKGMGR_R_EINVAL;
-
-	package_manager_pkg_detail_info_t *info = (package_manager_pkg_detail_info_t *)pkg_info;
-
-	if (info->icon_buf)
-		free(info->icon_buf);
-
-	free(info);
-	info = NULL;
 
 	return PKGMGR_R_OK;
 }
@@ -2687,221 +2576,5 @@ API int pkgmgr_client_usr_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_
 
 API int pkgmgr_client_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_total_pkg_size_info_receive_cb event_cb, void *user_data)
 {
-	return pkgmgr_client_usr_get_package_size_info(pc, PKG_SIZE_INFO_TOTAL, event_cb, user_data, GLOBAL_USER);
+	return pkgmgr_client_usr_get_package_size_info(pc, PKG_SIZE_INFO_TOTAL, (pkgmgr_pkg_size_info_receive_cb)event_cb, user_data, GLOBAL_USER);
 }
-
-#define __START_OF_OLD_API
-ail_cb_ret_e __appinfo_func(const ail_appinfo_h appinfo, void *user_data)
-{
-	char *type;
-	char *package;
-	char *version;
-
-	iter_data *udata = (iter_data *) user_data;
-
-	ail_appinfo_get_str(appinfo, AIL_PROP_X_SLP_PACKAGETYPE_STR, &type);
-	if (type == NULL)
-		type = "";
-	ail_appinfo_get_str(appinfo, AIL_PROP_PACKAGE_STR, &package);
-	if (package == NULL)
-		package = "";
-	ail_appinfo_get_str(appinfo, AIL_PROP_VERSION_STR, &version);
-	if (version == NULL)
-		version = "";
-
-	if (udata->iter_fn(type, package, version, udata->data) != 0)
-		return AIL_CB_RET_CANCEL;
-
-	return AIL_CB_RET_CONTINUE;
-}
-
-API int pkgmgr_get_pkg_list(pkgmgr_iter_fn iter_fn, void *data, uid_t uid)
-{
-	int cnt = -1;
-	ail_filter_h filter;
-	ail_error_e ret;
-
-	if (iter_fn == NULL)
-		return PKGMGR_R_EINVAL;
-
-	ret = ail_filter_new(&filter);
-	if (ret != AIL_ERROR_OK) {
-		return PKGMGR_R_ERROR;
-	}
-
-	ret = ail_filter_add_str(filter, AIL_PROP_TYPE_STR, "Application");
-	if (ret != AIL_ERROR_OK) {
-		ail_filter_destroy(filter);
-		return PKGMGR_R_ERROR;
-	}
-
-	ret = ail_filter_add_bool(filter, AIL_PROP_X_SLP_REMOVABLE_BOOL, true);
-	if (ret != AIL_ERROR_OK) {
-		ail_filter_destroy(filter);
-		return PKGMGR_R_ERROR;
-	}
-	
-	if(uid != GLOBAL_USER)
-		ret = ail_filter_count_usr_appinfo(filter, &cnt, uid);
-	else
-		ret = ail_filter_count_appinfo(filter, &cnt);
-	if (ret != AIL_ERROR_OK) {
-		ail_filter_destroy(filter);
-		return PKGMGR_R_ERROR;
-	}
-
-	iter_data *udata = calloc(1, sizeof(iter_data));
-	if (udata == NULL) {
-		ERR("calloc failed");
-		ail_filter_destroy(filter);
-
-		return PKGMGR_R_ERROR;
-	}
-	udata->iter_fn = iter_fn;
-	udata->data = data;
-	
-	if(uid != GLOBAL_USER)
-		ail_filter_list_usr_appinfo_foreach(filter, __appinfo_func, udata, uid);
-	else
-		ail_filter_list_appinfo_foreach(filter, __appinfo_func, udata);
-	free(udata);
-
-	ret = ail_filter_destroy(filter);
-	if (ret != AIL_ERROR_OK) {
-		return PKGMGR_R_ERROR;
-	}
-
-	return PKGMGR_R_OK;
-}
-
-API pkgmgr_info *pkgmgr_info_new(const char *pkg_type, const char *pkgid)
-{
-	return pkgmgr_info_usr_new(pkg_type, pkgid, GLOBAL_USER);
-}
-API pkgmgr_info *pkgmgr_info_usr_new(const char *pkg_type, const char *pkgid, uid_t uid)
-{
-	const char *pkgtype;
-	pkg_plugin_set *plugin_set = NULL;
-	package_manager_pkg_detail_info_t *pkg_detail_info = NULL;
-
-	/* 1. check argument */
-	if (pkgid == NULL)
-		return NULL;
-
-	if (pkg_type == NULL) {
-		pkgtype = _get_pkg_type_from_desktop_file(pkgid, uid);
-		if (pkgtype == NULL)
-			return NULL;
-	} else
-		pkgtype = pkg_type;
-
-	if (strlen(pkgid) >= PKG_STRING_LEN_MAX)
-		return NULL;
-
-	pkg_detail_info = calloc(1, sizeof(package_manager_pkg_detail_info_t));
-	if (pkg_detail_info == NULL) {
-		ERR("*** Failed to alloc package_handler_info.\n");
-		return NULL;
-	}
-
-	plugin_set = _package_manager_load_library(pkgtype);
-	if (plugin_set == NULL) {
-		ERR("*** Failed to load library");
-		free(pkg_detail_info);
-		return NULL;
-	}
-
-	if (plugin_set->pkg_is_installed) {
-		if (plugin_set->pkg_is_installed(pkgid) != 0) {
-			ERR("*** Failed to call pkg_is_installed()");
-			free(pkg_detail_info);
-			return NULL;
-		}
-
-		if (plugin_set->get_pkg_detail_info) {
-			if (plugin_set->get_pkg_detail_info(pkgid,
-							    pkg_detail_info) != 0) {
-				ERR("*** Failed to call get_pkg_detail_info()");
-				free(pkg_detail_info);
-				return NULL;
-			}
-		}
-	}
-
-	return (pkgmgr_info *) pkg_detail_info;
-}
-
-API char * pkgmgr_info_get_string(pkgmgr_info * pkg_info, const char *key)
-{
-	package_manager_pkg_detail_info_t *pkg_detail_info;
-
-	if (pkg_info == NULL)
-		return NULL;
-	if (key == NULL)
-		return NULL;
-
-	pkg_detail_info = (package_manager_pkg_detail_info_t *) pkg_info;
-
-	return _get_info_string(key, pkg_detail_info);
-}
-
-API pkgmgr_info *pkgmgr_info_new_from_file(const char *pkg_type,
-					   const char *pkg_path)
-{
-	pkg_plugin_set *plugin_set = NULL;
-	package_manager_pkg_detail_info_t *pkg_detail_info = NULL;
-	char *pkgtype;
-	if (pkg_path == NULL) {
-		ERR("pkg_path is NULL\n");
-		return NULL;
-	}
-
-	if (strlen(pkg_path) > PKG_URL_STRING_LEN_MAX) {
-		ERR("length of pkg_path is too long - %d.\n",
-		      strlen(pkg_path));
-		return NULL;
-	}
-
-	pkg_detail_info = calloc(1, sizeof(package_manager_pkg_detail_info_t));
-	if (pkg_detail_info == NULL) {
-		ERR("*** Failed to alloc package_handler_info.\n");
-		return NULL;
-	}
-
-	if (pkg_type == NULL)
-		pkgtype = __get_type_from_path(pkg_path);
-	else
-		pkgtype = strdup(pkg_type);
-
-	plugin_set = _package_manager_load_library(pkgtype);
-	if (plugin_set == NULL) {
-		free(pkg_detail_info);
-		free(pkgtype);
-		return NULL;
-	}
-
-	if (plugin_set->get_pkg_detail_info_from_package) {
-		if (plugin_set->get_pkg_detail_info_from_package(pkg_path,
-								 pkg_detail_info) != 0) {
-			free(pkg_detail_info);
-			free(pkgtype);
-			return NULL;
-		}
-	}
-
-	free(pkgtype);
-	return (pkgmgr_info *) pkg_detail_info;
-}
-
-API int pkgmgr_info_free(pkgmgr_info * pkg_info)
-{
-	if (pkg_info == NULL)
-		return PKGMGR_R_EINVAL;
-
-	free(pkg_info);
-	pkg_info = NULL;
-
-	return 0;
-}
-
-#define __END_OF_OLD_API

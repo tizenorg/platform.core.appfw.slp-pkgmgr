@@ -36,7 +36,6 @@
 #include <unistd.h>
 #include <dlfcn.h>
 #include <sys/time.h>
-#include <ail.h>
 #include <tzplatform_config.h>
 
 #include "package-manager.h"
@@ -261,35 +260,24 @@ int _get_mime_extension(const char *mimetype, char *ext, int len)
 	return 0;
 }
 
-char *_get_pkg_type_from_desktop_file(const char *pkgid, uid_t uid)
+const char *_get_pkg_type(const char *pkgid, uid_t uid)
 {
+	int ret;
+	pkgmgrinfo_pkginfo_h pkginfo;
+	char *val;
 	static char pkg_type[PKG_EXT_LEN_MAX];
-	
-	ail_appinfo_h handle;
-	ail_error_e ret;
-	char *str;
-	if(uid != GLOBAL_USER)
-	{
-		ret = ail_package_get_usr_appinfo(pkgid, uid, &handle);
-	}else
-	{
-		ret = ail_package_get_appinfo(pkgid, &handle);
-	}
-	if (ret != AIL_ERROR_OK) {
-		return NULL;
-	}
 
-	ret = ail_appinfo_get_str(handle, AIL_PROP_X_SLP_PACKAGETYPE_STR, &str);
-	if (ret != AIL_ERROR_OK) {
-		ail_package_destroy_appinfo(handle);
+	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &pkginfo);
+	if (ret != PMINFO_R_OK)
 		return NULL;
-	}
-	snprintf(pkg_type, sizeof(pkg_type) - 1, str);
 
-	ret = ail_package_destroy_appinfo(handle);
-	if (ret != AIL_ERROR_OK) {
+	ret = pkgmgrinfo_pkginfo_get_type(pkginfo, &val);
+	if (ret != PMINFO_R_OK)
 		return NULL;
-	}
+
+	snprintf(pkg_type, sizeof(pkg_type), "%s", val);
+
+	pkgmgrinfo_pkginfo_destroy_pkginfo(pkginfo);
 
 	return pkg_type;
 }

@@ -27,10 +27,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/time.h>
 
-#include <vconf.h>
-//Work around for https://bugs.tizen.org/jira/browse/TC-2399
-#include <ail_vconf.h>
 #include <pkgmgr_parser.h>
 #include <pkgmgr-info.h>
 
@@ -208,9 +206,8 @@ static void __get_pkgmgrinfo_pkginfo(const pkgmgrinfo_pkginfo_h handle, void *us
 	}
 	else
 		printf("system: %d\n", system);
-
-	return 0;
 }
+
 int __get_app_id(const pkgmgrinfo_appinfo_h handle, void *user_data)
 {
 	char *appid = NULL;
@@ -1411,7 +1408,6 @@ static int __insert_manifest_in_db(char *manifest, uid_t uid)
 static int __fota_insert_manifest_in_db(char *manifest, uid_t uid)
 {
 	int ret = 0;
-	char *temp[] = {"fota=true", NULL};
 
 	if (manifest == NULL) {
 		printf("Manifest file is NULL\n");
@@ -1987,7 +1983,6 @@ static int __check_manifest_validation(char *manifest)
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-	char *locale = NULL;
 	long starttime;
 	long endtime;
 	struct timeval tv;
@@ -1995,19 +1990,6 @@ int main(int argc, char *argv[])
 	gettimeofday(&tv, NULL);
 	starttime = tv.tv_sec * 1000l + tv.tv_usec / 1000l;
 
-	locale = ail_vconf_get_str(VCONFKEY_LANGSET); 
-	//Work around for https://bugs.tizen.org/jira/browse/TC-2399
-	if (locale == NULL) {
-		printf("locale is NULL\n");
-		ret = -1;
-		goto end;
-	}
-	else
-		printf("Locale is %s\n", locale);
-
-
-	free(locale);
-	locale = NULL;
 	if (argc == 2) {
 		if (strcmp(argv[1], "--listpkg") == 0) {
 			ret = __get_pkg_list(getuid());

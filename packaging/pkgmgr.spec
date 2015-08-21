@@ -27,7 +27,6 @@ BuildRequires:  pkgconfig(gio-unix-2.0)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(dlog)
-BuildRequires:  pkgconfig(ail)
 BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(iniparser)
@@ -35,13 +34,10 @@ BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgconfig(security-manager)
 BuildRequires:  pkgconfig(xdgmime)
 BuildRequires:  pkgconfig(db-util)
+BuildRequires:  pkgconfig(libsmack)
 BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
-BuildRequires:  libsmack
 BuildRequires:  fdupes
-
-## 	Work around for https://bugs.tizen.org/jira/browse/TC-2399
-BuildRequires:  ail-vconf-devel
 
 %description
 Packager Manager client library package for packaging
@@ -129,8 +125,6 @@ chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
 
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 
-%find_lang package-manager
-
 %fdupes %{buildroot}
 
 %post
@@ -161,14 +155,8 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %{_sysconfdir}/package-manager/backend/*
 %{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
 %{_bindir}/pkgcmd
-%attr(06755,root,root) %{_bindir}/pkg_createdb
-%attr(755,root,root) %{_bindir}/pkg_createdb_user
-%attr(06755,root,root) %{_bindir}/pkg_syncdb
-%attr(755,root,root) %{_bindir}/pkg_syncdb_user
-#obsolete tools
 %attr(06755,root,root) %{_bindir}/pkg_initdb
 %attr(755,root,root) %{_sysconfdir}/gumd/useradd.d/10_package-manager-add.post
-%attr(755,root,root) %{_bindir}/pkg_initdb_user
 %{_bindir}/pkg_getsize
 %{_bindir}/pkg_clearcache
 %{_bindir}/pkg_privilege
@@ -195,7 +183,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %{_libdir}/pkgconfig/pkgmgr.pc
 %{_libdir}/libpkgmgr-client.so
 
-%files server -f package-manager.lang
+%files server
 %manifest %{name}-server.manifest
 %defattr(-,root,root,-)
 %{_datadir}/dbus-1/system-services/org.tizen.slp.pkgmgr.service

@@ -23,22 +23,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
+#include <pwd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <glib.h>
 #include <signal.h>
-#include <ail.h>
+
+#include <glib.h>
+
 #include <pkgmgr-info.h>
 #include <pkgmgr/pkgmgr_parser.h>
-
 #include <cynara-client.h>
-
-/* For multi-user support */
 #include <tzplatform_config.h>
 
 #include "pkgmgr_installer.h"
@@ -50,6 +50,9 @@
 
 #define BUFMAX 128
 #define NO_MATCHING_FILE 11
+
+#define OWNER_ROOT 0
+#define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
 static int backend_flag = 0;	/* 0 means that backend process is not running */
 
@@ -107,13 +110,11 @@ typedef enum {
 	PMSVC_SVC_APP
 }pkgmgr_svc_app_component;
 
-static int __check_backend_status_for_exit();
-static int __check_queue_status_for_exit();
-static int __check_backend_mode();
+static int __check_backend_status_for_exit(void);
+static int __check_queue_status_for_exit(void);
 static int __is_backend_busy(int position);
 static void __set_backend_busy(int position);
 static void __set_backend_free(int position);
-static int __is_backend_mode_quiet(int position);
 static void __set_backend_mode(int position);
 static void __unset_backend_mode(int position);
 static void sighandler(int signo);
@@ -138,11 +139,6 @@ static void __set_backend_busy(int position)
 static void __set_backend_free(int position)
 {
 	backend_busy = backend_busy & ~(1<<position);
-}
-/* To check whether a particular backend is running in quiet mode*/
-static int __is_backend_mode_quiet(int position)
-{
-	return backend_mode & 1<<position;
 }
 /*To set a particular backend mode as quiet*/
 static void __set_backend_mode(int position)
@@ -170,7 +166,7 @@ static const char *__get_recovery_file_path(uid_t uid)
 	path = tzplatform_getenv(__is_global(uid)
 			? TZ_SYS_RW_PACKAGES : TZ_USER_PACKAGES);
 
-	tzplatform_reset_user(uid);
+	tzplatform_reset_user();
 
 	return path;
 }
@@ -392,45 +388,6 @@ err:
         __xsystem(delete_argv);
         return ret;
 }
-
-#if 0
-static char *__get_exe_path(const char *pkgid)
-{
-	ail_appinfo_h handle;
-	ail_error_e ret;
-	char *str;
-	char *exe_path;
-
-	ret = ail_package_get_appinfo(pkgid, &handle);
-	if (ret != AIL_ERROR_OK) {
-		ERR("ail_package_get_appinfo() failed");
-		return NULL;
-	}
-
-	ret = ail_appinfo_get_str(handle, AIL_PROP_X_SLP_EXE_PATH, &str);
-	if (ret != AIL_ERROR_OK) {
-		ERR("ail_appinfo_get_str() failed");
-		ail_package_destroy_appinfo(handle);
-		return NULL;
-	}
-
-	exe_path = strdup(str);
-	if (exe_path == NULL) {
-		ERR("strdup() failed");
-		ail_package_destroy_appinfo(handle);
-		return NULL;
-	}
-
-	ret = ail_package_destroy_appinfo(handle);
-	if (ret != AIL_ERROR_OK) {
-		ERR("ail_package_destroy_appinfo() failed");
-		free(exe_path);
-		return NULL;
-	}
-
-	return exe_path;
-}
-#endif
 
 static void send_fail_signal(char *pname, char *ptype, char *args)
 {
@@ -765,20 +722,7 @@ err:
 	}
 	return;
 }
-
-static int __check_backend_mode()
-{
-	int i = 0;
-	for(i = 0; i < num_of_backends; i++)
-	{
-		if (__is_backend_mode_quiet(i))
-			continue;
-		else
-			return 0;
-	}
-	return 1;
-}
-static int __check_backend_status_for_exit()
+static int __check_backend_status_for_exit(void)
 {
 	int i = 0;
 	for(i = 0; i < num_of_backends; i++)
@@ -791,7 +735,7 @@ static int __check_backend_status_for_exit()
 	return 1;
 }
 
-static int __check_queue_status_for_exit()
+static int __check_queue_status_for_exit(void)
 {
 	pm_queue_data *head[MAX_QUEUE_NUM] = {NULL,};
 	queue_info_map *ptr = NULL;
@@ -833,34 +777,6 @@ gboolean exit_server(void *data)
 		}
 	}
 	return TRUE;
-}
-
-int __app_func(const pkgmgrinfo_appinfo_h handle, void *user_data)
-{
-	int ret = 0;
-	char *appid = NULL;
-	int *data = (int *)user_data;
-
-	ret = pkgmgrinfo_appinfo_get_appid(handle, &appid);
-	if (ret != PMINFO_R_OK) {
-		perror("fail to activate/deactivte package");
-		exit(1);
-	}
-
-	ret = pkgmgrinfo_appinfo_set_state_enabled(appid, (*data));
-	if (ret != PMINFO_R_OK) {
-		perror("fail to activate/deactivte package");
-		exit(1);
-	}
-
-	ret = ail_desktop_appinfo_modify_bool(appid,
-				AIL_PROP_X_SLP_ENABLED_BOOL,
-				(*data), TRUE);
-	if (ret != AIL_ERROR_OK) {
-		perror("fail to activate/deactivte package");
-		exit(1);
-	}
-	return 0;
 }
 
 static int __pkgcmd_read_proc(const char *path, char *buf, int size)
@@ -1018,19 +934,25 @@ void free_user_context(user_ctx* ctx)
 	free(ctx);
 }
 
-int set_environement(user_ctx* ctx)
+int set_environement(user_ctx *ctx)
 {
 	int i = 0;
 	int res = 0;
 	char **env = NULL;
 	if (!ctx)
-		return;
-	setgid(ctx->gid);
-	setuid(ctx->uid);
+		return -1;;
+	if (setgid(ctx->gid)) {
+		ERR("setgid failed: %d", errno);
+		return -1;
+	}
+	if (setuid(ctx->uid)) {
+		ERR("setuid failed: %d", errno);
+		return -1;
+	}
 	env = ctx->env;
 	//env variable ends by NULL element
 	while (env[i]) {
-		if( putenv(env[i]) != 0 )
+		if (putenv(env[i]) != 0)
 			res = -1;
 		i++;
 	}
@@ -1045,7 +967,7 @@ user_ctx* get_user_context(uid_t uid)
 	 * returned by getpwuid
 	 */
 	user_ctx *context_res;
-	char ** env;
+	char **env = NULL;
 	struct passwd * pwd;
 	int len;
 	int ret = 0;
@@ -1084,7 +1006,7 @@ user_ctx* get_user_context(uid_t uid)
 		env[2] = NULL;
 	} while (0);
 
-	if(ret == -1) {
+	if (ret == -1) {
 		free(context_res);
 		context_res = NULL;
 		int i = 0;
@@ -1310,25 +1232,7 @@ gboolean queue_job(void *data)
 						perror("fail to activate/deactivte package");
 						exit(1);
 					}
-
-					ret = ail_desktop_appinfo_modify_usr_str(item->pkgid,
-								item->uid,
-								AIL_PROP_NAME_STR,
-								label, FALSE);
-					if (ret != AIL_ERROR_OK) {
-						perror("fail to activate/deactivte package");
-						exit(1);
-					}
 					free(label);
-				}
-
-				ret = ail_desktop_appinfo_modify_usr_bool(item->pkgid,
-							item->uid,
-							AIL_PROP_X_SLP_ENABLED_BOOL,
-							val, TRUE);
-				if (ret != AIL_ERROR_OK) {
-					perror("fail to activate/deactivte package");
-					exit(1);
 				}
 			} else { /* in case of package */
 				ERR("(De)activate PKG[pkgid=%s, val=%d]", item->pkgid, val);
@@ -1348,11 +1252,6 @@ gboolean queue_job(void *data)
 						if (ret < 0) {
 							ERR("insert in db failed\n");
 						}
-
-						ret = ail_usr_desktop_add(item->pkgid, item->uid);
-						if (ret != AIL_ERROR_OK) {
-							ERR("fail to ail_desktop_add");
-						}
 					} else {
 						pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 					}
@@ -1360,15 +1259,6 @@ gboolean queue_job(void *data)
 					ret = pkgmgrinfo_appinfo_set_usr_state_enabled(item->pkgid, val, item->uid);
 					if (ret != PMINFO_R_OK) {
 						perror("fail to activate/deactivte package");
-						exit(1);
-					}
-
-					ret = ail_desktop_appinfo_modify_usr_bool(item->pkgid,
-								item->uid,
-								AIL_PROP_X_SLP_ENABLED_BOOL,
-								val, TRUE);
-					if (ret != AIL_ERROR_OK) {
-						perror("fail to ail_desktop_appinfo");
 						exit(1);
 					}
 				}
@@ -1535,48 +1425,44 @@ int main(int argc, char *argv[])
 
 	DBG("server start");
 
-	if (argv[1]) {
-		if (strcmp(argv[1], "init") == 0) {
-			/* if current status is "processing",
-			   execute related backend with '-r' option */
-			if (!(fp_status = fopen(STATUS_FILE, "r")))
-				return 0;	/*if file is not exist, terminated. */
-
-			fgets(buf, 32, fp_status);
-			/* if processing <-- unintended termination */
-			if (strcmp(buf, "processing") == 0) {
-				pid = fork();
-
-				if (pid == 0) {	/* child */
-					fgets(buf, 32, fp_status);
+	if (argv[1] && (strcmp(argv[1], "init") == 0)) {
+		/* if current status is "processing",
+		   execute related backend with '-r' option */
+		if (!(fp_status = fopen(STATUS_FILE, "r")))
+			return 0;	/*if file is not exist, terminated. */
+		/* if processing <-- unintended termination */
+		if (fgets(buf, 32, fp_status) &&
+				strcmp(buf, "processing") == 0) {
+			pid = fork();
+			if (pid == 0) {	/* child */
+				if (fgets(buf, 32, fp_status))
 					backend_cmd = _get_backend_cmd(buf);
-					if (!backend_cmd) {	/* if NULL, */
-						DBG("fail to get"
-						    " backend command");
-						goto err;
-					}
-					backend_name =
-					    strrchr(backend_cmd, '/');
-
-					execl(backend_cmd, backend_name, "-r",
-					      NULL);
-					if (backend_cmd)
-						free(backend_cmd);
-					fprintf(fp_status, " ");
- err:
-					fclose(fp_status);
-					exit(13);
-				} else if (pid < 0) {	/* error */
-					DBG("fork fail");
-					fclose(fp_status);
-					return 0;
-				} else {	/* parent */
-
-					DBG("parent end\n");
-					fprintf(fp_status, " ");
-					fclose(fp_status);
-					return 0;
+				if (!backend_cmd) {	/* if NULL, */
+					DBG("fail to get"
+							" backend command");
+					goto err;
 				}
+				backend_name =
+					strrchr(backend_cmd, '/');
+
+				execl(backend_cmd, backend_name, "-r",
+						NULL);
+				if (backend_cmd)
+					free(backend_cmd);
+				fprintf(fp_status, " ");
+err:
+				fclose(fp_status);
+				exit(13);
+			} else if (pid < 0) {	/* error */
+				DBG("fork fail");
+				fclose(fp_status);
+				return 0;
+			} else {	/* parent */
+
+				DBG("parent end\n");
+				fprintf(fp_status, " ");
+				fclose(fp_status);
+				return 0;
 			}
 		}
 	}
@@ -1599,7 +1485,9 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+#if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init();
+#endif
 	mainloop = g_main_loop_new(NULL, FALSE);
 	if (!mainloop) {
 		ERR("g_main_loop_new failed");
