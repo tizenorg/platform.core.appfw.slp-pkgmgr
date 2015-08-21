@@ -15,7 +15,6 @@ static int _install_ug(const char *manifest)
 {
 	manifest_x *mfx;
 	uiapplication_x *tmp;
-	const char *exec;
 	int ret;
 
 	mfx = pkgmgr_parser_process_manifest_xml(manifest);

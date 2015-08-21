@@ -27,6 +27,7 @@
 #include "comm_config.h"
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-bindings.h>
+#include <dbus/dbus-glib-lowlevel.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -209,7 +210,8 @@ pkgmgr_request(PkgMgrObject *obj,
 			break;
 		}
 
-		r = cynara_creds_dbus_get_user(con, sender, USER_METHOD_DEFAULT, &user);
+		r = cynara_creds_dbus_get_user(con, sender,
+				USER_METHOD_DEFAULT, &user);
 		if (r != CYNARA_API_SUCCESS) {
 			cynara_strerror(r, buf, BUFMAX);
 			ERR("cynara_creds_dbus_get_user failed: %s", buf);

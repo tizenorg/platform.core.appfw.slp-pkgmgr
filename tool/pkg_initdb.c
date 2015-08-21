@@ -31,6 +31,7 @@
 #include <errno.h>
 
 #include <pkgmgr_parser.h>
+#include <pkgmgr_parser_db.h>
 #include <pkgmgr-info.h>
 
 #include <sys/smack.h>
@@ -93,14 +94,25 @@ static int _initdb_load_directory(uid_t uid, const char *directory)
 			continue;
 		}
 
-		setresuid(uid, uid, OWNER_ROOT);
+		if (setresuid(uid, uid, OWNER_ROOT)) {
+			_E("Failed to setresuid: %s",
+					strerror_r(errno, buf, sizeof(buf)));
+			return -1;
+		}
 		snprintf(buf2, sizeof(buf2), "%s %s", PKGINFO_CMD, buf);
-		system(buf2);
+		if (system(buf2))
+			_E("[%s %s] returns error", PKGINFO_CMD, buf);
 		snprintf(buf2, sizeof(buf2), "%s %s", PKGINSTALLUG_CMD, buf);
-		system(buf2);
+		if (system(buf2))
+			_E("[%s %s] returns error", PKGINSTALLUG_CMD, buf);
 		snprintf(buf2, sizeof(buf2), "%s %s", PKGPRIVILEGE_CMD, buf);
-		system(buf2);
-		setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT);
+		if (system(buf2))
+			_E("[%s %s] returns error", PKGPRIVILEGE_CMD, buf);
+		if (setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT)) {
+			_E("Failed to setresuid: %s",
+					strerror_r(errno, buf, sizeof(buf)));
+			return -1;
+		}
 	}
 
 	closedir(dir);

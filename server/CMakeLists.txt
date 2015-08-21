@@ -27,5 +27,3 @@ INSTALL(TARGETS ${PKGMGR_SERVER} DESTINATION bin)
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/queue_status DESTINATION ${SYSCONFDIR}/package-manager/server/)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.service DESTINATION ${PREFIX}/share/dbus-1/system-services/)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.tizen.slp.pkgmgr.conf DESTINATION ${SYSCONFDIR}/dbus-1/system.d/)
-
-ADD_SUBDIRECTORY(po)
