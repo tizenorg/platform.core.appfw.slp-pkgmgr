@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include <glib.h>
 #include <glib-object.h>
@@ -53,7 +54,6 @@
 static int __process_request(uid_t uid);
 static void __print_usage();
 static int __is_app_installed(char *pkgid, uid_t uid);
-static void __print_pkg_info(pkgmgr_info * pkg_info);
 static int __return_cb(uid_t target_uid, int req_id, const char *pkg_type,
 		       const char *pkgid, const char *key, const char *val,
 		       const void *pmsg, void *data);
@@ -199,17 +199,16 @@ static int __return_cb(uid_t target_uid, int req_id, const char *pkg_type,
 		       const char *pkgid, const char *key, const char *val,
 		       const void *pmsg, void *priv_data)
 {
-	if (strncmp(key, "error", strlen("error")) == 0) {
-		int ret_val;
-		char delims[] = ":";
-		char *extra_str = NULL;
-		char *ret_result = NULL;
+	int ret_val;
+	char delims[] = ":";
+	char *extra_str = NULL;
+	char *ret_result = NULL;
 
+	if (strncmp(key, "error", strlen("error")) == 0) {
 		ret_val = atoi(val);
 		data.result = ret_val;
 
-		strtok(val, delims);
-		ret_result = strtok(NULL, delims);
+		ret_result = strstr((char *)val, delims);
 		if (ret_result){
 			extra_str = strdup(ret_result);
 			printf("__return_cb req_id[%d] pkg_type[%s] pkgid[%s] key[%s] val[%d] error message: %s\n",
@@ -245,8 +244,7 @@ static int __convert_to_absolute_path(char *path)
 	}
 	strncpy(temp, path, PKG_NAME_STRING_LEN_MAX - 1);
 	if (strchr(path, '/') == NULL) {
-		getcwd(abs, PKG_NAME_STRING_LEN_MAX - 1);
-		if (abs[0] == '\0') {
+		if (getcwd(abs, PKG_NAME_STRING_LEN_MAX - 1) == NULL) {
 			printf("getcwd() failed\n");
 			return -1;
 		}
@@ -256,8 +254,7 @@ static int __convert_to_absolute_path(char *path)
 	}
 	if (strncmp(path, "./", 2) == 0) {
 		ptr = temp;
-		getcwd(abs, PKG_NAME_STRING_LEN_MAX - 1);
-		if (abs[0] == '\0') {
+		if (getcwd(abs, PKG_NAME_STRING_LEN_MAX - 1) == NULL) {
 			printf("getcwd() failed\n");
 			return -1;
 		}
@@ -340,108 +337,6 @@ static void __print_usage()
 
 }
 
-static void __print_pkg_info(pkgmgr_info *pkg_info)
-{
-	char *temp = NULL;
-
-	temp = pkgmgr_info_get_string(pkg_info, "pkg_type");
-	if (temp) {
-		printf("pkg_type : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "pkgid");
-	if (temp) {
-		printf("pkgid : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "version");
-	if (temp) {
-		printf("version : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "pkg_vendor");
-	if (temp) {
-		printf("pkg_vendor : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "pkg_description");
-	if (temp) {
-		printf("pkg_description : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "pkg_mimetype");
-	if (temp) {
-		printf("pkg_mimetype : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "pkg_installed_path_package");
-	if (temp) {
-		printf("pkg_installed_path_package : %s\n", temp);
-		free(temp);
-	}
-
-	temp =
-	    pkgmgr_info_get_string(pkg_info, "pkg_installed_path_descriptor");
-	if (temp) {
-		printf("pkg_installed_path_descriptor : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "category");
-	if (temp) {
-		printf("category : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "min_platform_version");
-	if (temp) {
-		printf("min_platform_version : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "visible");
-	if (temp) {
-		printf("visible : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "removable");
-	if (temp) {
-		printf("removable : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "installed_size");
-	if (temp) {
-		printf("installed_size : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "installed_time");
-	if (temp) {
-		printf("installed_time : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "data_size");
-	if (temp) {
-		printf("data_size : %s\n", temp);
-		free(temp);
-	}
-
-	temp = pkgmgr_info_get_string(pkg_info, "optional_id");
-	if (temp) {
-		printf("optional_id : %s\n", temp);
-		free(temp);
-	}
-}
-
 static int __pkgmgr_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 {
 	int ret = -1;
@@ -449,10 +344,7 @@ static int __pkgmgr_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 	char *pkg_type = NULL;
 	char *pkg_version = NULL;
 	char *pkg_label = NULL;
-	char *icon_path = NULL;
 	bool for_all_users = 0;
-
-	pkgmgrinfo_uidinfo_t *uid_info = (pkgmgrinfo_uidinfo_t *) handle;
 
 	ret = pkgmgrinfo_pkginfo_get_pkgid(handle, &pkgid);
 	if (ret == -1) {
@@ -483,10 +375,9 @@ static int __pkgmgr_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data)
 	return ret;
 }
 
-static int __pkg_list_cb (const pkgmgrinfo_pkginfo_h handle, void *user_data, uid_t uid)
+static int __pkg_list_cb(const pkgmgrinfo_pkginfo_h handle, void *user_data)
 {
 	int ret = -1;
-	int size = 0;
 	char *pkgid;
 	pkgmgrinfo_uidinfo_t *uid_info = (pkgmgrinfo_uidinfo_t *) handle;
 
@@ -514,6 +405,9 @@ static int __process_request(uid_t uid)
 	pkgmgr_client *pc = NULL;
 	char buf[1024] = {'\0'};
 	int pid = -1;
+#if !GLIB_CHECK_VERSION(2,35,0)
+	g_type_init();
+#endif
 	switch (data.request) {
 	case INSTALL_REQ:
 		if (data.pkg_type[0] == '\0' || data.pkg_path[0] == '\0') {
@@ -522,7 +416,6 @@ static int __process_request(uid_t uid)
 			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
 			break;
 		}
-		g_type_init();
 		main_loop = g_main_loop_new(NULL, FALSE);
 		pc = pkgmgr_client_new(PC_REQUEST);
 		if (pc == NULL) {
@@ -560,7 +453,6 @@ static int __process_request(uid_t uid)
 			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
 			break;
 		}
-		g_type_init();
 		main_loop = g_main_loop_new(NULL, FALSE);
 		pc = pkgmgr_client_new(PC_REQUEST);
 		if (pc == NULL) {
@@ -595,7 +487,6 @@ static int __process_request(uid_t uid)
 			data.result = PKGCMD_ERR_ARGUMENT_INVALID;
 			break;
 		}
-		g_type_init();
 		main_loop = g_main_loop_new(NULL, FALSE);
 		pc = pkgmgr_client_new(PC_REQUEST);
 		if (pc == NULL) {
@@ -791,7 +682,7 @@ static int __process_request(uid_t uid)
 		}
 
 		if (data.request == KILLAPP_REQ) {
-			ret = pkgmgr_client_usr_request_service(PM_REQUEST_KILL_APP, NULL, pc, NULL, data.pkgid, uid, NULL, NULL, &pid);
+			ret = pkgmgr_client_usr_request_service(PM_REQUEST_KILL_APP, 0, pc, NULL, data.pkgid, uid, NULL, NULL, &pid);
 			if (ret < 0){
 				data.result = PKGCMD_ERR_FATAL_ERROR;
 				break;
@@ -802,7 +693,7 @@ static int __process_request(uid_t uid)
 				printf("Pkgid: %s is already Terminated\n", data.pkgid);
 
 		} else if (data.request == CHECKAPP_REQ) {
-			ret = pkgmgr_client_usr_request_service(PM_REQUEST_CHECK_APP, NULL, pc, NULL, data.pkgid, uid, NULL, NULL, &pid);
+			ret = pkgmgr_client_usr_request_service(PM_REQUEST_CHECK_APP, 0, pc, NULL, data.pkgid, uid, NULL, NULL, &pid);
 			if (ret < 0){
 				data.result = PKGCMD_ERR_FATAL_ERROR;
 				break;
@@ -852,52 +743,7 @@ static int __process_request(uid_t uid)
 		}
 
 	case SHOW_REQ:
-		if (data.pkgid[0] != '\0') {
-			pkgmgr_info *pkg_info = NULL;
-			pkgmgr_info *pkg_info_GLobal = NULL;
-
-			if(uid != GLOBAL_USER) {
-				pkg_info =
-					pkgmgr_info_usr_new(data.pkg_type, data.pkgid, uid);
-				if ( pkg_info == NULL ) {
-					printf("Failed to get pkginfo handle in USER Apps, try in SYSTEM Apps\n");
-					ret = -1;
-				} else {
-					printf("USER APPS \n");
-					__print_pkg_info(pkg_info);
-					ret = pkgmgr_info_free(pkg_info);
-					break;
-				}
-			}
-			pkg_info_GLobal =
-					pkgmgr_info_new(data.pkg_type, data.pkgid);
-			if ( pkg_info_GLobal == NULL ) {
-				printf("Failed to get pkginfo handle\n");
-				ret = -1;
-				break;
-			}
-
-			printf("GLOBAL APPS \n");
-			__print_pkg_info(pkg_info_GLobal);
-			if(pkg_info_GLobal)
-				ret = pkgmgr_info_free(pkg_info_GLobal);
-
-			break;
-		}
-		if (data.pkg_path[0] != '\0') {
-			pkgmgr_info *pkg_info =
-			    pkgmgr_info_new_from_file(data.pkg_type,
-						      data.pkg_path);
-			if (pkg_info == NULL) {
-				printf("Failed to get pkginfo handle\n");
-				ret = -1;
-				break;
-			}
-			__print_pkg_info(pkg_info);
-			ret = pkgmgr_info_free(pkg_info);
-			break;
-		}
-		printf("Either pkgid or pkgpath should be supplied\n");
+		/* unsupported */
 		ret = -1;
 		break;
 

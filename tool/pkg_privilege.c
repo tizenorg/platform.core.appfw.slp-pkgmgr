@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -28,7 +29,7 @@ static const char *_get_path(const char *pkgid, const char *appid, uid_t uid)
 static app_inst_req *_prepare_request(manifest_x *mfx, uid_t uid)
 {
 	app_inst_req *req;
-	char *path;
+	const char *path;
 	struct uiapplication_x *uiapp;
 	struct serviceapplication_x *svcapp;
 
@@ -100,7 +101,6 @@ static int _remove_privilege(char *manifest, uid_t uid)
 	int ret;
 	app_inst_req *req;
 	manifest_x *mfx;
-	privilege_x *priv;
 
 	mfx = pkgmgr_parser_process_manifest_xml(manifest);
 	if (mfx == NULL) {
