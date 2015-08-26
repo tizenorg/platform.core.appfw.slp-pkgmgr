@@ -23,7 +23,7 @@ SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES VERSION ${VERSION})
 TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT}
 		pkgmgr_installer_client
-		pkgmgr_installer_status_broadcast_server pkgmgr-info
+		pkgmgr-info
 		${CLIENT_DEPS_LDFLAGS})
 
 CONFIGURE_FILE(pkgmgr.pc.in pkgmgr.pc @ONLY)

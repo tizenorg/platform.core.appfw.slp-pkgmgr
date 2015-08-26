@@ -33,50 +33,19 @@
 
 /* from comm_pkg_mgr.xml
  */
-#define COMM_PKG_MGR_DBUS_SERVICE "org.tizen.slp.pkgmgr"
-#define COMM_PKG_MGR_DBUS_PATH "/org/tizen/slp/pkgmgr"
-#define COMM_PKG_MGR_DBUS_INTERFACE "org.tizen.slp.pkgmgr"
-#define COMM_PKG_MGR_METHOD_REQUEST "Request"
-#define COMM_PKG_MGR_METHOD_ECHO_STRING "EchoString"
+#define COMM_PKGMGR_DBUS_SERVICE "org.tizen.pkgmgr"
+#define COMM_PKGMGR_DBUS_OBJECT_PATH "/org/tizen/pkgmgr"
+#define COMM_PKGMGR_DBUS_INTERFACE "org.tizen.pkgmgr"
 
 /* from comm_status_broadcast
  */
-#define COMM_STATUS_BROADCAST_DBUS_SERVICE_PREFIX \
-	"org.tizen.slp.pkgmgr_status"
-#define COMM_STATUS_BROADCAST_DBUS_PATH \
-	"/org/tizen/slp/pkgmgr_status"
-#define COMM_STATUS_BROADCAST_DBUS_INTERFACE \
-	"org.tizen.slp.pkgmgr_status"
+#define COMM_STATUS_BROADCAST_INTERFACE "org.tizen.pkgmgr.signal"
 #define COMM_STATUS_BROADCAST_SIGNAL_STATUS "status"
-
-#define COMM_STATUS_BROADCAST_DBUS_INSTALL_SERVICE_PREFIX "org.tizen.slp.pkgmgr.install"
-#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PATH	"/org/tizen/slp/pkgmgr/install"
-#define COMM_STATUS_BROADCAST_DBUS_INSTALL_INTERFACE "org.tizen.slp.pkgmgr.install"
 #define COMM_STATUS_BROADCAST_EVENT_INSTALL "install"
-
-#define COMM_STATUS_BROADCAST_DBUS_UNINSTALL_SERVICE_PREFIX "org.tizen.slp.pkgmgr.uninstall"
-#define COMM_STATUS_BROADCAST_DBUS_UNINSTALL_PATH	"/org/tizen/slp/pkgmgr/uninstall"
-#define COMM_STATUS_BROADCAST_DBUS_UNINSTALL_INTERFACE "org.tizen.slp.pkgmgr.uninstall"
 #define COMM_STATUS_BROADCAST_EVENT_UNINSTALL "uninstall"
-
-#define COMM_STATUS_BROADCAST_DBUS_MOVE_SERVICE_PREFIX "org.tizen.slp.pkgmgr.move"
-#define COMM_STATUS_BROADCAST_DBUS_MOVE_PATH	"/org/tizen/slp/pkgmgr/move"
-#define COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE "org.tizen.slp.pkgmgr.move"
 #define COMM_STATUS_BROADCAST_EVENT_MOVE "move"
-
-#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_SERVICE_PREFIX "org.tizen.slp.pkgmgr.install.progress"
-#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_PATH	"/org/tizen/slp/pkgmgr/install/progress"
-#define COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE "org.tizen.slp.pkgmgr.install.progress"
 #define COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS "install_progress"
-
-#define COMM_STATUS_BROADCAST_DBUS_UPGRADE_SERVICE_PREFIX "org.tizen.slp.pkgmgr.upgrade"
-#define COMM_STATUS_BROADCAST_DBUS_UPGRADE_PATH	"/org/tizen/slp/pkgmgr/upgrade"
-#define COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE "org.tizen.slp.pkgmgr.upgrade"
 #define COMM_STATUS_BROADCAST_EVENT_UPGRADE "upgrade"
-
-#define COMM_STATUS_BROADCAST_DBUS_GET_SIZE_SERVICE_PREFIX "org.tizen.pkgmgr.get.size"
-#define COMM_STATUS_BROADCAST_DBUS_GET_SIZE_PATH "/org/tizen/pkgmgr/get/size"
-#define COMM_STATUS_BROADCAST_DBUS_GET_SIZE_INTERFACE "org.tizen.pkgmgr.get.size"
 #define COMM_STATUS_BROADCAST_EVENT_GET_SIZE "get_size"
 
 /********
@@ -127,14 +96,13 @@ enum {
 
 /* broadcast type */
 enum {
-	COMM_STATUS_BROADCAST_ALL = 1,
-	COMM_STATUS_BROADCAST_INSTALL,
-	COMM_STATUS_BROADCAST_UNINSTALL,
-	COMM_STATUS_BROADCAST_MOVE,
-	COMM_STATUS_BROADCAST_INSTALL_PROGRESS,
-	COMM_STATUS_BROADCAST_UPGRADE,
-	COMM_STATUS_BROADCAST_GET_SIZE,
-	COMM_STATUS_BROADCAST_MAX
+	COMM_STATUS_BROADCAST_ALL = 0x3F,
+	COMM_STATUS_BROADCAST_INSTALL = 0x01,
+	COMM_STATUS_BROADCAST_UNINSTALL = 0x02,
+	COMM_STATUS_BROADCAST_MOVE = 0x04,
+	COMM_STATUS_BROADCAST_INSTALL_PROGRESS = 0x08,
+	COMM_STATUS_BROADCAST_UPGRADE = 0x10,
+	COMM_STATUS_BROADCAST_GET_SIZE = 0x20,
 };
 
 #endif				/* __COMM_CONFIG_H__ */
