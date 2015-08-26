@@ -37,7 +37,6 @@
 
 #include "comm_config.h"
 #include "comm_client.h"
-#include "comm_pkg_mgr_client_gdbus_generated.h"
 #include "comm_debug.h"
 
 /*******************
@@ -46,6 +45,7 @@
 
 /* Storing status_cb */
 struct signal_callback_data {
+	int type;
 	status_cb cb;
 	void *cb_data;
 };
@@ -57,76 +57,27 @@ struct comm_client {
 	struct signal_callback_data *sig_cb_data;
 };
 
-#define COMM_CLIENT_RETRY_MAX 	5
-
-static int __retry_request(comm_client *cc,
-	const gchar *req_id,
-	gint req_type,
-	const gchar *pkg_type,
-	const gchar *pkgid,
-	const gchar *args,
-	uid_t uid,
-	gint *ret)
+static int __get_signal_type(const char *name)
 {
-	OrgTizenSlpPkgmgr *proxy;
-	GError *error = NULL;
-	int rc = 0;
+	if (name == NULL)
+		return -1;
 
-	proxy = org_tizen_slp_pkgmgr_proxy_new_sync(cc->conn,
-			G_DBUS_PROXY_FLAGS_NONE, COMM_PKG_MGR_DBUS_SERVICE,
-			COMM_PKG_MGR_DBUS_PATH,
-			NULL, &error);
-	if (proxy == NULL) {
-		ERR("Unable to create proxy[rc=%d, err=%s]\n", rc, error->message);
-		return FALSE;
-	}
-
-	rc = org_tizen_slp_pkgmgr_call_request_sync(proxy,
-			req_id, req_type, pkg_type, pkgid, args, uid, ret, NULL, &error);
-	if (!rc) {
-		ERR("Failed to send request[rc=%d, err=%s]\n", rc, error->message);
-		return FALSE;
-	}
-	return TRUE;
-}
-
-static const gchar *__get_interface(int status_type)
-{
-	char *ifc = NULL;
-
-	switch (status_type) {
-		case COMM_STATUS_BROADCAST_ALL:
-			ifc = COMM_STATUS_BROADCAST_DBUS_INTERFACE;
-			break;
-
-		case COMM_STATUS_BROADCAST_INSTALL:
-			ifc = COMM_STATUS_BROADCAST_DBUS_INSTALL_INTERFACE;
-			break;
-
-		case COMM_STATUS_BROADCAST_UNINSTALL:
-			ifc = COMM_STATUS_BROADCAST_DBUS_UNINSTALL_INTERFACE;
-			break;
-
-		case COMM_STATUS_BROADCAST_MOVE:
-			ifc = COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE;
-			break;
-
-		case COMM_STATUS_BROADCAST_INSTALL_PROGRESS:
-			ifc = COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE;
-			break;
-
-		case COMM_STATUS_BROADCAST_UPGRADE:
-			ifc = COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE;
-			break;
-
-		case COMM_STATUS_BROADCAST_GET_SIZE:
-			ifc = COMM_STATUS_BROADCAST_DBUS_GET_SIZE_INTERFACE;
-			break;
-
-		default:
-			break;
-	}
-	return ifc;
+	if (strcmp(name, COMM_STATUS_BROADCAST_SIGNAL_STATUS) == 0)
+		return COMM_STATUS_BROADCAST_ALL;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_INSTALL) == 0)
+		return COMM_STATUS_BROADCAST_INSTALL;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_UNINSTALL) == 0)
+		return COMM_STATUS_BROADCAST_UNINSTALL;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_MOVE) == 0)
+		return COMM_STATUS_BROADCAST_MOVE;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS) == 0)
+		return COMM_STATUS_BROADCAST_INSTALL_PROGRESS;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_UPGRADE) == 0)
+		return COMM_STATUS_BROADCAST_UPGRADE;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_GET_SIZE) == 0)
+		return COMM_STATUS_BROADCAST_GET_SIZE;
+	else
+		return -1;
 }
 
 /**
@@ -141,26 +92,12 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 		GVariant *parameters,
 		gpointer user_data)
 {
-	if (interface_name && strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_INTERFACE) &&
-		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_INSTALL_INTERFACE) &&
-		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_UNINSTALL_INTERFACE) &&
-		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_UPGRADE_INTERFACE) &&
-		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_MOVE_INTERFACE) &&
-		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_INSTALL_PROGRESS_INTERFACE) &&
-		strcmp(interface_name, COMM_STATUS_BROADCAST_DBUS_GET_SIZE_INTERFACE)) {
+	if (interface_name && strcmp(interface_name, "org.tizen.pkgmgr.signal")) {
 		DBG("Interface name did not match. Drop the message");
 		return;
 	}
-	if (signal_name && strcmp(signal_name, COMM_STATUS_BROADCAST_SIGNAL_STATUS) &&
-		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_INSTALL) &&
-		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_UNINSTALL) &&
-		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_UPGRADE) &&
-		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_MOVE) &&
-		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS) &&
-		strcmp(signal_name, COMM_STATUS_BROADCAST_EVENT_GET_SIZE)) {
-		DBG("Signal name did not match. Drop the message");
-		return;
-	}
+
+	int status_type;
 	/* Values to be received by signal */
 	uid_t target_uid;
 	char *req_id = NULL;
@@ -174,6 +111,10 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 	if (user_data)
 		sig_cb_data = (struct signal_callback_data *)user_data;
 	else
+		return;
+
+	status_type = __get_signal_type(signal_name);
+	if (status_type < 0 || !(status_type & sig_cb_data->type))
 		return;
 
 	g_variant_get(parameters, "(u&s&s&s&s&s)",
@@ -276,33 +217,22 @@ int comm_client_free(comm_client *cc)
  * Request a message
  */
 int
-comm_client_request(
-		comm_client *cc,
-		const char *req_id,
-		const int req_type,
-		const char *pkg_type,
-		const char *pkgid,
-		const char *args,
-		uid_t uid,
-		int is_block)
+comm_client_request(comm_client *cc, const char *req_id, const int req_type,
+		const char *pkg_type, const char *pkgid, const char *args,
+		uid_t uid, int is_block)
 {
 	GError *error = NULL;
-	int rc = 0;
-	int ret = 0;
-	int retry_cnt = 0;
+	gint rc = -1;
+	GDBusProxy *proxy;
+	GVariant *result;
 
-	OrgTizenSlpPkgmgr *proxy;
-	if (!cc){
-		ERR("Invalid gdbus input");
-		return COMM_RET_ERROR;
-	}
-	proxy = org_tizen_slp_pkgmgr_proxy_new_sync(cc->conn,
-			G_DBUS_PROXY_FLAGS_NONE, COMM_PKG_MGR_DBUS_SERVICE,
-			COMM_PKG_MGR_DBUS_PATH,
-			NULL, &error);
+	proxy = g_dbus_proxy_new_sync(cc->conn, G_DBUS_PROXY_FLAGS_NONE, NULL,
+			COMM_PKGMGR_DBUS_SERVICE, COMM_PKGMGR_DBUS_OBJECT_PATH,
+			COMM_PKGMGR_DBUS_INTERFACE, NULL, &error);
 	if (proxy == NULL) {
-		ERR("Unable to create proxy[rc=%d, err=%s]\n", rc, error->message);
-		return COMM_RET_ERROR;
+		ERR("failed to get proxy object: %s", error->message);
+		g_error_free(error);
+		return -1;
 	}
 
 	/* Assign default values if NULL (NULL is not allowed) */
@@ -315,22 +245,18 @@ comm_client_request(
 	if (args == NULL)
 		args = "";
 
-	rc = org_tizen_slp_pkgmgr_call_request_sync(proxy,
-			req_id, req_type, pkg_type, pkgid, args, uid, &ret, NULL, &error);
-
-	while ((rc == FALSE) && (retry_cnt < COMM_CLIENT_RETRY_MAX)) {
-		ERR("Failed to send request, sleep and retry[rc=%d, err=%s]\n", rc, error->message);
-		sleep(1);
-
-		retry_cnt++;
-
-		rc = __retry_request(cc, req_id, req_type, pkg_type, pkgid, args, uid, &ret);
-		if(rc == TRUE) {
-			ERR("__retry_request is success[retry_cnt=%d]\n", retry_cnt);
-		}
+	result = g_dbus_proxy_call_sync(proxy, "Request", g_variant_new("(sisssi)", req_id, req_type, pkg_type, pkgid, args, uid),
+			G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
+	if (result == NULL) {
+		ERR("failed to call %s", error->message);
+		g_error_free(error);
+		g_object_unref(proxy);
+		return -1;
 	}
-	
-	return rc == TRUE ? COMM_RET_OK : COMM_RET_ERROR;
+
+	g_variant_get(result, "(i)", &rc);
+
+	return rc == 0 ? COMM_RET_OK : COMM_RET_ERROR;
 }
 
 /**
@@ -340,20 +266,14 @@ int
 comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb cb, void *cb_data)
 {
 	int r = COMM_RET_ERROR;
-	const char *ifc = NULL;
 
 	if (NULL == cc)
 		return COMM_RET_ERROR;
 
-	ifc = __get_interface(comm_status_type);
-	if (ifc == NULL) {
-		ERR("Invalid interface name\n");
-		return COMM_RET_ERROR;
-	}
-
 	/* Create new sig_cb_data */
 	cc->sig_cb_data = calloc(1, sizeof(struct signal_callback_data));
 	if ( cc->sig_cb_data ) {
+		(cc->sig_cb_data)->type = comm_status_type;
 		(cc->sig_cb_data)->cb = cb;
 		(cc->sig_cb_data)->cb_data = cb_data;
 	} else {
@@ -361,7 +281,7 @@ comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb
 		goto ERROR_CLEANUP;
 	}
 	/* Add a filter for signal */
-	cc->subscription_id = g_dbus_connection_signal_subscribe(cc->conn, NULL, ifc,
+	cc->subscription_id = g_dbus_connection_signal_subscribe(cc->conn, NULL, "org.tizen.pkgmgr.signal",
 		NULL, NULL, NULL, G_DBUS_SIGNAL_FLAGS_NONE,
 		_on_signal_handle_filter, (gpointer)cc->sig_cb_data, _free_sig_cb_data);
 	if (!cc->subscription_id) {

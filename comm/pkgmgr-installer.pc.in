@@ -11,6 +11,6 @@ includedir=@INCLUDEDIR@
 Name: package manager installer library
 Description: SLP package manager's installer lib for each backends
 Version: @VERSION@
-Requires: pkgmgr-installer-status-broadcast-server
+Requires:
 Libs: -L${libdir} -lpkgmgr_installer
 Cflags: -I${includedir}/pkgmgr
