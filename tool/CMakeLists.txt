@@ -6,12 +6,12 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 
 INCLUDE(FindPkgConfig)
 
-pkg_check_modules(pkgs_initdb REQUIRED libsmack dbus-1 libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config)
+pkg_check_modules(pkgs_initdb REQUIRED libsmack libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config)
 FOREACH(flag ${pkgs_initdb_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-pkg_check_modules(pkgs_test REQUIRED dlog dbus-1 libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config security-manager)
+pkg_check_modules(pkgs_test REQUIRED dlog libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${pkgs_test_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)

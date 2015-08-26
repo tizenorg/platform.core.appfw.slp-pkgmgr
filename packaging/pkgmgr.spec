@@ -19,13 +19,10 @@ BuildRequires:  cmake
 BuildRequires:  unzip
 BuildRequires:  gettext-tools
 BuildRequires:  pkgconfig(cynara-client)
-BuildRequires:  pkgconfig(cynara-creds-dbus)
+BuildRequires:  pkgconfig(cynara-creds-gdbus)
 BuildRequires:  pkgconfig(cynara-session)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gio-2.0)
-BuildRequires:  pkgconfig(gio-unix-2.0)
-BuildRequires:  pkgconfig(dbus-1)
-BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(pkgmgr-info)
@@ -166,7 +163,6 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %{_datadir}/mime/packages/mime.tpk.xml
 %exclude %{_includedir}/pkgmgr/comm_client.h
 %exclude %{_includedir}/pkgmgr/comm_config.h
-%exclude %{_includedir}/pkgmgr/comm_status_broadcast_server.h
 %exclude %{_sysconfdir}/package-manager/server/queue_status
 
 %files client
@@ -186,8 +182,8 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %files server
 %manifest %{name}-server.manifest
 %defattr(-,root,root,-)
-%{_datadir}/dbus-1/system-services/org.tizen.slp.pkgmgr.service
-%config %{_sysconfdir}/dbus-1/system.d/org.tizen.slp.pkgmgr.conf
+%{_datadir}/dbus-1/system-services/org.tizen.pkgmgr.service
+%config %{_sysconfdir}/dbus-1/system.d/org.tizen.pkgmgr.conf
 %{_bindir}/pkgmgr-server
 %{_sysconfdir}/package-manager/server
 
@@ -195,7 +191,6 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %manifest %{name}-installer.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libpkgmgr_installer.so.*
-%{_libdir}/libpkgmgr_installer_status_broadcast_server.so.*
 %{_libdir}/libpkgmgr_installer_client.so.*
 
 %files installer-devel
@@ -203,12 +198,10 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %defattr(-,root,root,-)
 %dir %{_includedir}/pkgmgr
 %{_includedir}/pkgmgr/pkgmgr_installer.h
-%{_libdir}/pkgconfig/pkgmgr-installer-status-broadcast-server.pc
 %{_libdir}/pkgconfig/pkgmgr-installer.pc
 %{_libdir}/pkgconfig/pkgmgr-installer-client.pc
 %{_libdir}/libpkgmgr_installer.so
 %{_libdir}/libpkgmgr_installer_client.so
-%{_libdir}/libpkgmgr_installer_status_broadcast_server.so
 
 %files types-devel
 %manifest %{name}-types-devel.manifest
