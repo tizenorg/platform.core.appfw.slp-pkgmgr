@@ -3,7 +3,6 @@
 SET(SRCS src/pkgmgr-internal.c src/pkgmgr.c)
 
 pkg_check_modules(CLIENT_DEPS REQUIRED
-		dbus-glib-1
 		dlog
 		pkgmgr-parser
 		pkgmgr-info
@@ -23,7 +22,7 @@ SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES VERSION ${VERSION})
 TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT}
 		pkgmgr_installer_client
-		pkgmgr_installer_status_broadcast_server pkgmgr-info
+		pkgmgr-info
 		${CLIENT_DEPS_LDFLAGS})
 
 CONFIGURE_FILE(pkgmgr.pc.in pkgmgr.pc @ONLY)

@@ -30,9 +30,6 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib-lowlevel.h>
-
 #include <pkgmgr-info.h>
 #include <iniparser.h>
 /* For multi-user support */
@@ -43,7 +40,6 @@
 #include "pkgmgr-debug.h"
 #include "pkgmgr-api.h"
 #include "comm_client.h"
-#include "comm_status_broadcast_server.h"
 
 #define PKG_TMP_PATH tzplatform_mkpath(TZ_USER_APP, "tmp")
 
@@ -86,9 +82,6 @@ typedef struct _pkgmgr_client_t {
 			comm_client *cc;
 			listen_cb_info *lhead;
 		} listening;
-		struct _broadcast {
-			DBusConnection *bc;
-		} broadcast;
 	} info;
 	void *new_event_cb;
 } pkgmgr_client_t;
@@ -1144,8 +1137,8 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ALL, pc->info.listening.cc, __status_callback, pc);
 		trym_if(ret < 0L, "comm_client_set_status_callback() failed - %d", ret);
 	} else if (pc->ctype == PC_BROADCAST) {
-		pc->info.broadcast.bc = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
-		trym_if(pc->info.broadcast.bc == NULL, "client creation failed");
+		/* client cannot broadcast signal */
+		return NULL;
 	}
 
 	return (pkgmgr_client *) pc;
@@ -1185,7 +1178,6 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 			ret = comm_client_free(mpc->info.listening.cc);
 			tryvm_if(ret < 0, ret = PKGMGR_R_ERROR, "comm_client_free() failed");
 	} else if (mpc->ctype == PC_BROADCAST) {
-		comm_status_broadcast_server_disconnect(mpc->info.broadcast.bc);
 		ret = 0;
 	} else {
 		ERR("Invalid client type\n");
@@ -2282,26 +2274,7 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 				       const char *pkgid, const char *key,
 				       const char *val)
 {
-	/* Check for NULL value of pc */
-	if (pc == NULL) {
-		DBG("package manager client handle is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
-	/* Check for valid arguments. NULL parameter causes DBUS to abort */
-	if (pkgid == NULL || pkg_type == NULL || key == NULL || val == NULL) {
-		DBG("Argument supplied is NULL\n");
-		return PKGMGR_R_EINVAL;
-	}
-	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
-
-	/* 0. check the pc type */
-	if (mpc->ctype != PC_BROADCAST)
-		return PKGMGR_R_EINVAL;
-
-	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, mpc->info.broadcast.bc,
-						 getuid(), PKG_STATUS,
-						 pkg_type, pkgid, key, val);
-
+	/* client cannot broadcast signal */
 	return PKGMGR_R_OK;
 }
 

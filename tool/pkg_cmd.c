@@ -974,11 +974,7 @@ int main(int argc, char *argv[])
 	if (ret != 0) {
 		__error_no_to_string(data.result, &errstr);
 		printf("processing result : %s [%d] failed\n", errstr, data.result);
-	} else {
-		if (data.request == INSTALL_REQ)
-			sleep(2);
 	}
-
 
 	gettimeofday(&tv, NULL);
 	endtime = tv.tv_sec * 1000l + tv.tv_usec / 1000l;

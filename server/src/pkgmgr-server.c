@@ -35,14 +35,16 @@
 #include <signal.h>
 
 #include <glib.h>
+#include <gio/gio.h>
 
 #include <pkgmgr-info.h>
 #include <pkgmgr/pkgmgr_parser.h>
 #include <cynara-client.h>
+#include <cynara-creds-gdbus.h>
+#include <cynara-session.h>
 #include <tzplatform_config.h>
 
 #include "pkgmgr_installer.h"
-#include "comm_pkg_mgr_server.h"
 #include "pkgmgr-server.h"
 #include "pm-queue.h"
 #include "comm_config.h"
@@ -104,12 +106,6 @@ typedef enum {
 	OPERATION_MAX
 } OPERATION_TYPE;
 
-typedef enum {
-	PMSVC_ALL_APP = 0,
-	PMSVC_UI_APP,
-	PMSVC_SVC_APP
-}pkgmgr_svc_app_component;
-
 static int __check_backend_status_for_exit(void);
 static int __check_queue_status_for_exit(void);
 static int __is_backend_busy(int position);
@@ -119,8 +115,6 @@ static void __set_backend_mode(int position);
 static void __unset_backend_mode(int position);
 static void sighandler(int signo);
 static int __get_position_from_pkg_type(char *pkgtype);
-static int __is_efl_tpk_app(char *pkgpath);
-static int __xsystem(const char *argv[]);
 
 gboolean queue_job(void *data);
 gboolean exit_server(void *data);
@@ -299,96 +293,6 @@ static int __get_position_from_pkg_type(char *pkgtype)
 
 	}
 	return -1;
-}
-
-static int __xsystem(const char *argv[])
-{
-        int err = 0;
-        int status = 0;
-        pid_t pid;
-
-        pid = fork();
-
-        switch (pid) {
-        case -1:
-                DBG("fork() failed");
-                return -1;
-        case 0:
-                if (execvp(argv[0], (char *const *)argv) == -1) {
-                        DBG("execvp() failed");
-                }
-                _exit(100);
-        default:
-                /* parent */
-		do {
-			err = waitpid(pid, &status, WUNTRACED | WCONTINUED);
-			if (err == -1) {
-				DBG("waitpid failed\n");
-				return -1;
-			}
-		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
-                break;
-        }
-	if (WIFEXITED(status))
-	        return WEXITSTATUS(status);
-	else
-		return -1;
-}
-
-static int __is_efl_tpk_app(char *pkgid)
-{
-        int ret = 0;
-        char *type = NULL;
-	const char *unzip_argv[] = { "/usr/bin/unzip", "-j", pkgid, "usr/share/packages/*", "-d", "/tmp/efltpk-unzip", NULL };
-	const char *unzip_opt_argv[] = { "/usr/bin/unzip", "-j", pkgid, "opt/share/packages/*", "-d", "/tmp/efltpk-unzip", NULL };
-	const char *delete_argv[] = { "/bin/rm", "-rf", "/tmp/efltpk-unzip", NULL };
-        pkgmgrinfo_pkginfo_h handle;
-        /*Check for uninstall case. If we fail to get handle then request is for installation*/
-        ret = pkgmgrinfo_pkginfo_get_pkginfo(pkgid, &handle);
-        if (ret == PMINFO_R_OK) {
-                ret = pkgmgrinfo_pkginfo_get_type(handle, &type);
-                if (ret != PMINFO_R_OK) {
-                        DBG("Failed to get package type\n");
-                        pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-                        return -1;
-                }
-                if (strcmp(type, "efltpk") == 0) {
-                        pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-                        return 1;
-                } else {
-                        pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-                        return 0;
-                }
-        }
-        /*Install request*/
-	if (strstr(pkgid, ".tpk") == NULL) {
-		DBG("TPK package");
-		return 0;
-	}
-        __xsystem(delete_argv);
-        ret = mkdir("/tmp/efltpk-unzip", 0755);
-        if (ret != 0) {
-                DBG("Failed to create temporary directory to unzip tpk package\n");
-                return -1;
-        }
-	/*In case of installation request, pkgid contains the pkgpath*/
-	ret = __xsystem(unzip_argv);
-	if (ret) {
-		ret = __xsystem(unzip_opt_argv);
-		if (ret) {
-			DBG("Unzip of tpk package failed. error:%d\n", ret);
-			if (ret == NO_MATCHING_FILE) /*no matching file found*/
-				ret = 0;
-			else
-				ret = -1;
-			goto err;
-		} else
-			ret = 1;
-	} else
-		ret = 1;
-err:
-        __xsystem(delete_argv);
-        return ret;
 }
 
 static void send_fail_signal(char *pname, char *ptype, char *args)
@@ -1149,15 +1053,6 @@ gboolean queue_job(void *data)
 			if (backend_cmd == NULL)
 				break;
 
-			if (strcmp(item->pkg_type, "tpk") == 0) {
-				ret = __is_efl_tpk_app(item->pkgid);
-				if (ret == 1) {
-					if (backend_cmd)
-						free(backend_cmd);
-					backend_cmd = _get_backend_cmd("efltpk");
-				}
-			}
-
 			DBG("Try to exec [%s][%s]", item->pkg_type, backend_cmd);
 			fprintf(stdout, "Try to exec [%s][%s]\n", item->pkg_type, backend_cmd);
 
@@ -1306,14 +1201,14 @@ gboolean queue_job(void *data)
 			}
 
 			if (item->req_type == COMM_REQ_KILL_APP) {
-				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_ALL_APP, __pkgcmd_app_cb, "kill", item->uid);
+				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_ALL_APP, __pkgcmd_app_cb, "kill", item->uid);
 				if (ret < 0) {
 					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
 					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 					exit(1);
 				}
 			} else if (item->req_type == COMM_REQ_CHECK_APP) {
-				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMSVC_ALL_APP, __pkgcmd_app_cb, "check", item->uid);
+				ret = pkgmgrinfo_appinfo_get_usr_list(handle, PMINFO_ALL_APP, __pkgcmd_app_cb, "check", item->uid);
 				if (ret < 0) {
 					DBG("pkgmgrinfo_appinfo_get_list() failed\n");
 					pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
@@ -1419,6 +1314,181 @@ char *_get_backend_cmd(char *type)
 	return NULL;		/* cannot find proper command */
 }
 
+static int __get_caller_info(GDBusConnection *connection,
+		GDBusMethodInvocation *invocation,
+		char **client, char **user, char **session)
+{
+	const gchar *sender = NULL;
+	pid_t pid;
+	int ret = 0;
+	int r;
+	char buf[BUFMAX] = {0, };
+
+	do {
+		sender = g_dbus_method_invocation_get_sender(invocation);
+		if (sender == NULL) {
+			ERR("get sender failed");
+			ret = COMM_RET_ERROR;
+			break;
+		}
+
+		r = cynara_creds_gdbus_get_client(connection, sender,
+				CLIENT_METHOD_DEFAULT, client);
+		if (r != CYNARA_API_SUCCESS) {
+			cynara_strerror(r, buf, BUFMAX);
+			ERR("cynara_creds_dbus_get_client failed: %s", buf);
+			ret = COMM_RET_ERROR;
+			break;
+		}
+
+		r = cynara_creds_gdbus_get_user(connection, sender,
+				USER_METHOD_DEFAULT, user);
+		if (r != CYNARA_API_SUCCESS) {
+			cynara_strerror(r, buf, BUFMAX);
+			ERR("cynara_creds_dbus_get_user failed: %s", buf);
+			ret = COMM_RET_ERROR;
+			break;
+		}
+
+		r = cynara_creds_gdbus_get_pid(connection, sender, &pid);
+		if (r != CYNARA_API_SUCCESS) {
+			cynara_strerror(r, buf, BUFMAX);
+			ERR("cynara_creds_dbus_get_pid failed: %s", buf);
+			ret = COMM_RET_ERROR;
+			break;
+		}
+
+		*session = cynara_session_from_pid(pid);
+		if (*session == NULL) {
+			ERR("cynara_session_from_pid failed");
+			ret = COMM_RET_ERROR;
+			break;
+		}
+		DBG("session: %s", session);
+	} while (0);
+
+	return ret;
+}
+
+static void __handle_method_call(GDBusConnection *connection,
+		const gchar *sender, const gchar *object_path,
+		const gchar *interface_name, const gchar *method_name,
+		GVariant *parameters, GDBusMethodInvocation *invocation,
+		gpointer user_data)
+{
+	gchar *req_id = NULL;
+	gint req_type = -1;
+	gchar *pkg_type = NULL;
+	gchar *pkgid = NULL;
+	gchar *args = NULL;
+	gint uid = -1;
+	gint ret = -1;
+	char *client;
+	char *user;
+	char *session;
+
+	if (g_strcmp0(method_name, "Request") != 0) {
+		ERR("unknown method call");
+		return;
+	}
+
+	if (__get_caller_info(connection, invocation, &client, &user,
+				&session)) {
+		g_dbus_method_invocation_return_value(invocation,
+			g_variant_new("(i)", ret));
+		return;
+	}
+
+	g_variant_get(parameters, "(&si&s&s&si)", &req_id, &req_type, &pkg_type,
+			&pkgid, &args, &uid);
+	if (req_id == NULL || req_type == -1 || pkg_type == NULL ||
+			pkgid == NULL || args == NULL || uid == -1) {
+		ERR("failed to get parameters");
+		free(client);
+		free(user);
+		free(session);
+		return;
+	}
+
+	req_cb(NULL, uid, req_id, req_type, pkg_type, pkgid, args,
+			client, user, session, &ret);
+
+	g_dbus_method_invocation_return_value(invocation,
+			g_variant_new("(i)", ret));
+
+	free(client);
+	free(user);
+	free(session);
+}
+
+static const char instropection_xml[] =
+	"<node>"
+	"  <interface name='org.tizen.pkgmgr'>"
+	"    <method name='Request'>"
+	"      <arg type='s' name='req_id' direction='in'/>"
+	"      <arg type='i' name='req_type' direction='in'/>"
+	"      <arg type='s' name='pkg_type' direction='in'/>"
+	"      <arg type='s' name='pkg_id' direction='in'/>"
+	"      <arg type='s' name='args' direction='in'/>"
+	"      <arg type='i' name='uid' direction='in'/>"
+	"      <arg type='i' name='ret' direction='out'/>"
+	"    </method>"
+	"  </interface>"
+	"</node>";
+static const GDBusInterfaceVTable interface_vtable =
+{
+	__handle_method_call,
+	NULL,
+	NULL,
+};
+static GDBusNodeInfo *instropection_data;
+static guint reg_id;
+static guint owner_id;
+
+static void __on_bus_acquired(GDBusConnection *connection, const gchar *name,
+		gpointer user_data)
+{
+
+	DBG("on bus acquired");
+
+	reg_id = g_dbus_connection_register_object(connection,
+			COMM_PKGMGR_DBUS_OBJECT_PATH,
+			instropection_data->interfaces[0],
+			&interface_vtable, NULL, NULL, NULL);
+
+	if (reg_id < 0)
+		ERR("failed to register object");
+}
+
+static void __on_name_acquired(GDBusConnection *connection, const gchar *name,
+		gpointer user_data)
+{
+	DBG("on name acquired: %s", name);
+}
+
+static void __on_name_lost(GDBusConnection *connection, const gchar *name,
+		gpointer user_data)
+{
+	DBG("on name lost: %s", name);
+}
+
+static int __init_dbus(void)
+{
+	instropection_data = g_dbus_node_info_new_for_xml(instropection_xml, NULL);
+
+	owner_id = g_bus_own_name(G_BUS_TYPE_SYSTEM, COMM_PKGMGR_DBUS_SERVICE,
+			G_BUS_NAME_OWNER_FLAGS_NONE, __on_bus_acquired,
+			__on_name_acquired, __on_name_lost, NULL, NULL);
+
+	return 0;
+}
+
+static void __fini_dbus(void)
+{
+	g_bus_unown_name(owner_id);
+	g_dbus_node_info_unref(instropection_data);
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *fp_status = NULL;
@@ -1490,6 +1560,12 @@ err:
 		return -1;
 	}
 
+	r = __init_dbus();
+	if (r) {
+		ERR("dbus init failed");
+		return -1;
+	}
+
 #if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init();
 #endif
@@ -1501,17 +1577,13 @@ err:
 
 	DBG("Main loop is created.");
 
-	PkgMgrObject *pkg_mgr;
-	pkg_mgr = g_object_new(PKG_MGR_TYPE_OBJECT, NULL);
-	pkg_mgr_set_request_callback(pkg_mgr, req_cb, NULL);
-	DBG("pkg_mgr object is created, and request callback is registered.");
-
 	g_main_loop_run(mainloop);
 
 	DBG("Quit main loop.");
-	_pm_queue_final();
-	__fini_backend_info();
+	__fini_dbus();
 	cynara_finish(p_cynara);
+	__fini_backend_info();
+	_pm_queue_final();
 
 	DBG("package manager server terminated.");
 
