@@ -27,13 +27,13 @@
 #include <string.h>
 #include <getopt.h>
 
+#include <gio/gio.h>
+
 #include "pkgmgr_installer.h"
 #include "pkgmgr_installer_config.h"
 
 #include "comm_config.h"
-#include "comm_status_broadcast_server.h"
 #include "comm_debug.h"
-#include "error_report.h"
 
 #include <pkgmgr-info.h>
 
@@ -48,7 +48,6 @@
 #define CHK_PI_RET(r) \
 	do { if (NULL == pi) return (r); } while (0)
 
-/* ADT */
 struct pkgmgr_installer {
 	int request_type;
 	int move_type;
@@ -59,26 +58,63 @@ struct pkgmgr_installer {
 	char *caller_pkgid;
 	uid_t target_uid;
 
-	DBusConnection *conn;
+	GDBusConnection *conn;
 };
 
-/* API */
+static const char *__get_signal_name(int status_type)
+{
+	switch (status_type) {
+	case COMM_STATUS_BROADCAST_ALL:
+		return COMM_STATUS_BROADCAST_SIGNAL_STATUS;
+	case COMM_STATUS_BROADCAST_INSTALL:
+		return COMM_STATUS_BROADCAST_EVENT_INSTALL;
+	case COMM_STATUS_BROADCAST_UNINSTALL:
+		return COMM_STATUS_BROADCAST_EVENT_UNINSTALL;
+	case COMM_STATUS_BROADCAST_MOVE:
+		return COMM_STATUS_BROADCAST_EVENT_MOVE;
+	case COMM_STATUS_BROADCAST_INSTALL_PROGRESS:
+		return COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS;
+	case COMM_STATUS_BROADCAST_UPGRADE:
+		return COMM_STATUS_BROADCAST_EVENT_UPGRADE;
+	case COMM_STATUS_BROADCAST_GET_SIZE:
+		return COMM_STATUS_BROADCAST_EVENT_GET_SIZE;
+	default:
+		return NULL;
+	}
+}
 
 static int __send_signal_for_event(int comm_status_type, pkgmgr_installer *pi,
 			     const char *pkg_type,
 			     const char *pkgid,
 			     const char *key, const char *val)
 {
-	if (!pi)
+	char *sid;
+	const char *name;
+	GError *err = NULL;
+
+	if (!pi || pi->conn == NULL)
 		return -1;
 
-	if (!pi->conn)
-		pi->conn = comm_status_broadcast_server_connect(comm_status_type);
-
-	char *sid = pi->session_id;
+	sid = pi->session_id;
 	if (!sid)
 		sid = "";
-	comm_status_broadcast_server_send_signal(comm_status_type, pi->conn, pi->target_uid, sid, pkg_type, pkgid, key, val);
+
+	name = __get_signal_name(comm_status_type);
+	if (name == NULL) {
+		ERR("unknown signal type");
+		return -1;
+	}
+
+	if (g_dbus_connection_emit_signal(pi->conn, NULL,
+				COMM_STATUS_BROADCAST_OBJECT_PATH,
+				COMM_STATUS_BROADCAST_INTERFACE, name,
+				g_variant_new("(usssss)", getuid(), sid,
+					pkg_type, pkgid, key, val), &err)
+			!= TRUE) {
+		ERR("failed to send dbus signal: %s", err->message);
+		g_error_free(err);
+		return -1;
+	}
 
 	return 0;
 }
@@ -117,10 +153,20 @@ API int __send_event(pkgmgr_installer *pi,
 
 API pkgmgr_installer *pkgmgr_installer_new(void)
 {
-	pkgmgr_installer *pi = NULL;
+	pkgmgr_installer *pi;
+	GError *err = NULL;
+
 	pi = calloc(1, sizeof(struct pkgmgr_installer));
-	if (NULL == pi)
-		return ERR_PTR(-ENOMEM);
+	if (pi == NULL)
+		return NULL;
+
+	pi->conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &err);
+	if (pi->conn == NULL) {
+		ERR("failed to get bus: %s", err->message);
+		g_error_free(err);
+		free(pi);
+		return NULL;
+	}
 
 	pi->request_type = PKGMGR_REQ_INVALID;
 
@@ -142,7 +188,7 @@ API int pkgmgr_installer_free(pkgmgr_installer *pi)
 		free(pi->caller_pkgid);
 
 	if (pi->conn)
-		comm_status_broadcast_server_disconnect(pi->conn);
+		g_dbus_connection_close_sync(pi->conn, NULL, NULL);
 
 	free(pi);
 
@@ -338,22 +384,23 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 			     const char *key, const char *val)
 {
 	int r = 0;
+	char *sid;
+
+	if (!pi->conn) {
+		ERR("connection is NULL");
+		return -1;
+	}
 
 	if (strcmp(pkg_type,PKGMGR_INSTALLER_GET_SIZE_KEY_STR) == 0) {
 		r = __send_signal_for_event(COMM_STATUS_BROADCAST_GET_SIZE, pi, pkg_type, pkgid, key, val);
 		return r;
 	}
 
-	if (!pi->conn)
-		pi->conn = comm_status_broadcast_server_connect(COMM_STATUS_BROADCAST_ALL);
-
-	char *sid = pi->session_id;
+	sid = pi->session_id;
 	if (!sid)
 		sid = "";
-	comm_status_broadcast_server_send_signal(COMM_STATUS_BROADCAST_ALL, pi->conn, pi->target_uid, sid, pkg_type,
-						 pkgid, key, val);
 
-	__send_event(pi, pkg_type, pkgid, key, val);
+	r = __send_event(pi, pkg_type, pkgid, key, val);
 
 	return r;
 }

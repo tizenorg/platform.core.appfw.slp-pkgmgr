@@ -4,12 +4,10 @@
 
 <busconfig>
         <policy user="root">
-		<allow own="org.tizen.slp.pkgmgr"/>
+		<allow own="org.tizen.pkgmgr"/>
 	</policy>
 	<policy context="default">
-                <allow own="org.tizen.pkgmgr.get.size"/>
-                <allow own="org.tizen.slp.pkgmgr_status"/>
-                <allow receive_sender="org.tizen.slp.pkgmgr"/>
-                <allow send_destination="org.tizen.slp.pkgmgr"/>
+                <allow receive_sender="org.tizen.pkgmgr"/>
+                <allow send_destination="org.tizen.pkgmgr"/>
         </policy>
 </busconfig>

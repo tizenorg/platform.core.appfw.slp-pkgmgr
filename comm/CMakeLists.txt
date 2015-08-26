@@ -25,50 +25,15 @@ message(STATUS "version/major : ${VERSION} / ${VERSION_MAJOR}")
 ### Get required CFLAGS, LDFLAGS from pkg-config
 
 include(FindPkgConfig)
-pkg_check_modules(installer_client_pkgs REQUIRED glib-2.0 gio-2.0 gio-unix-2.0 dlog)
+pkg_check_modules(installer_client_pkgs REQUIRED glib-2.0 gio-2.0 dlog)
 foreach(flag ${installer_client_pkgs_CFLAGS})
 	set(installer_client_pkgs_CFLAGS_str "${installer_client_pkgs_CFLAGS_str} ${flag}")
 endforeach()
 
-pkg_check_modules(comm_pkgs REQUIRED glib-2.0 dbus-glib-1 dlog cynara-client cynara-creds-dbus cynara-session)
-foreach(flag ${comm_pkgs_CFLAGS})
-	set(comm_pkgs_CFLAGS_str "${comm_pkgs_CFLAGS_str} ${flag}")
-endforeach()
-
-pkg_check_modules(broadcast_server_pkgs REQUIRED dbus-1 dlog)
-foreach(flag ${broadcast_server_pkgs_CFLAGS})
-	set(broadcast_server_pkgs_CFLAGS_str "${broadcast_server_pkgs_CFLAGS_str} ${flag}")
-endforeach()
-
-pkg_check_modules(installer_pkgs REQUIRED glib-2.0 dbus-1 dlog pkgmgr-info)
+pkg_check_modules(installer_pkgs REQUIRED glib-2.0 gio-2.0 dlog pkgmgr-info)
 foreach(flag ${installer_pkgs_CFLAGS})
 	set(installer_pkgs_CFLAGS_str "${installer_pkgs_CFLAGS_str} ${flag}")
 endforeach()
-
-### Set current binary dir to be included (for generated *.h files)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
-
-### Create dbus-glib bindings headers (client/server) from xml by dbus-binding-tool
-
-# comm_pkg_mgr : package manger interface (client - package manager process)
-add_custom_target(comm_pkg_mgr_server_dbus_bindings.h
-	COMMAND dbus-binding-tool --prefix=pkgmgr --mode=glib-server
-			${CMAKE_CURRENT_SOURCE_DIR}/comm_pkg_mgr.xml 
-			--output=${CMAKE_CURRENT_BINARY_DIR}/comm_pkg_mgr_server_dbus_bindings.h
-	)
-
-#GDBUS specific code
-add_custom_command(OUTPUT comm_pkg_mgr_client_gdbus_generated.c comm_pkg_mgr_client_gdbus_generated.h
-	COMMAND gdbus-codegen --generate-c-code comm_pkg_mgr_client_gdbus_generated
-			--interface-prefix pkgmgr ${CMAKE_CURRENT_SOURCE_DIR}/comm_pkg_mgr.xml
-	)
-
-add_custom_target(comm_status_broadcast_server_dbus_bindings.h
-	COMMAND dbus-binding-tool --prefix=status_broadcast --mode=glib-server
-			${CMAKE_CURRENT_SOURCE_DIR}/comm_status_broadcast.xml 
-			--output=${CMAKE_CURRENT_BINARY_DIR}/comm_status_broadcast_server_dbus_bindings.h
-	)
-
 
 ### Build modules
 
@@ -76,35 +41,11 @@ add_custom_target(comm_status_broadcast_server_dbus_bindings.h
 # Send request, get status signal
 add_library(pkgmgr_installer_client SHARED
 		comm_client_gdbus.c
-		comm_pkg_mgr_client_gdbus_generated.c
 		)
 set_target_properties(pkgmgr_installer_client PROPERTIES SOVERSION ${VERSION_MAJOR})
 set_target_properties(pkgmgr_installer_client PROPERTIES VERSION ${VERSION})
 set_target_properties(pkgmgr_installer_client PROPERTIES COMPILE_FLAGS "${installer_client_pkgs_CFLAGS_str}")
 target_link_libraries(pkgmgr_installer_client ${installer_client_pkgs_LDFLAGS})
-add_dependencies(pkgmgr_installer_client comm_pkg_mgr_client_gdbus_generated.h comm_pkg_mgr_client_gdbus_generated.c)
-
-## pkg-mgr server for PMS
-# Get request
-add_library(pkgmgr_installer_pkg_mgr_server STATIC
-		comm_pkg_mgr_server.c)
-set_target_properties(pkgmgr_installer_pkg_mgr_server PROPERTIES SOVERSION ${VERSION_MAJOR})
-set_target_properties(pkgmgr_installer_pkg_mgr_server PROPERTIES VERSION ${VERSION})
-set_target_properties(pkgmgr_installer_pkg_mgr_server PROPERTIES COMPILE_FLAGS "${comm_pkgs_CFLAGS_str}")
-target_link_libraries(pkgmgr_installer_pkg_mgr_server ${comm_pkgs_LDFLAGS})
-add_dependencies(pkgmgr_installer_pkg_mgr_server comm_pkg_mgr_server_dbus_bindings.h)
-
-## status-broadcast server for backend/downloader
-# Send signal
-add_library(pkgmgr_installer_status_broadcast_server SHARED
-		comm_status_broadcast_server_dbus.c
-	)
-set_target_properties(pkgmgr_installer_status_broadcast_server PROPERTIES SOVERSION ${VERSION_MAJOR})
-set_target_properties(pkgmgr_installer_status_broadcast_server PROPERTIES VERSION ${VERSION})
-set_target_properties(pkgmgr_installer_status_broadcast_server PROPERTIES COMPILE_FLAGS "${broadcast_server_pkgs_CFLAGS_str}")
-target_link_libraries(pkgmgr_installer_status_broadcast_server ${broadcast_server_pkgs_LDFLAGS})
-add_dependencies(pkgmgr_installer_status_broadcast_server comm_status_broadcast_server_dbus_bindings.h)
-
 
 ## pkgmgr_installer object (by youmin.ha)
 # This library is for installer backend
@@ -112,25 +53,22 @@ add_library(pkgmgr_installer SHARED pkgmgr_installer.c)
 set_target_properties(pkgmgr_installer PROPERTIES SOVERSION ${VERSION_MAJOR})
 set_target_properties(pkgmgr_installer PROPERTIES VERSION ${VERSION})
 set_target_properties(pkgmgr_installer PROPERTIES COMPILE_FLAGS "${installer_pkgs_CFLAGS_str}")
-target_link_libraries(pkgmgr_installer pkgmgr_installer_status_broadcast_server ${installer_pkgs_LDFLAGS})
+target_link_libraries(pkgmgr_installer ${installer_pkgs_LDFLAGS})
 
 
 ### Create pc file
 configure_file(pkgmgr-installer-client.pc.in ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-client.pc @ONLY)
-configure_file(pkgmgr-installer-status-broadcast-server.pc.in ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-status-broadcast-server.pc @ONLY)
 configure_file(pkgmgr-installer.pc.in ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc @ONLY)
 
 
 ## Install
 INSTALL(TARGETS 
 			pkgmgr_installer_client 
-			pkgmgr_installer_status_broadcast_server
 			pkgmgr_installer
             DESTINATION ${LIB_INSTALL_DIR}
 		COMPONENT RuntimeLibraries)
 INSTALL(FILES 
 			comm_client.h 
-			comm_status_broadcast_server.h
 			comm_config.h
 			pkgmgr_installer.h
 		DESTINATION include/pkgmgr)
@@ -138,6 +76,5 @@ INSTALL(FILES
 
 INSTALL(FILES 
 		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-client.pc 
-		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-status-broadcast-server.pc 
 		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc 
         DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
