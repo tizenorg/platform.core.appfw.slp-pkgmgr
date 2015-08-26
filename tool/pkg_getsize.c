@@ -33,7 +33,6 @@
 
 #include <sys/types.h>
 #include <fcntl.h>
-#include <dbus/dbus.h>
 
 /* For multi-user support */
 #include <tzplatform_config.h>
