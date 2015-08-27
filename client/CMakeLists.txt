@@ -3,6 +3,7 @@
 SET(SRCS src/pkgmgr-internal.c src/pkgmgr.c)
 
 pkg_check_modules(CLIENT_DEPS REQUIRED
+		glib-2.0
 		dlog
 		pkgmgr-parser
 		pkgmgr-info
