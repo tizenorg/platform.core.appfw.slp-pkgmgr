@@ -46,7 +46,9 @@ typedef struct queue_info_map_t {
 
 #define MAX_QUEUE_NUM 128
 
-int _pm_queue_init();
+int _pm_queue_init(void);
+pm_dbus_msg *_pm_queue_create_item(uid_t uid, const char *req_id, int req_type,
+		const char *pkg_type, const char *pkgid, const char *args);
 int _pm_queue_push(pm_dbus_msg *item);
 /*position specifies the queue from which to pop request*/
 pm_dbus_msg *_pm_queue_pop(int position);
