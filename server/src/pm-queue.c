@@ -136,7 +136,7 @@ static pm_queue_data *__get_head_from_pkgtype(pm_dbus_msg *item)
 
 }
 
-int _pm_queue_init()
+int _pm_queue_init(void)
 {
 	/*Find the num of backends currently supported and initialize
 	that many queues. It is dynamically determined.*/
@@ -255,6 +255,28 @@ int _pm_queue_init()
 #endif
 
 	return 0;
+}
+
+pm_dbus_msg *_pm_queue_create_item(uid_t uid, const char *req_id,
+		int req_type, const char *pkg_type, const char *pkgid,
+		const char *args)
+{
+	pm_dbus_msg *item;
+
+	item = calloc(1, sizeof(pm_dbus_msg));
+	if (item == NULL) {
+		ERR("Fail to allocate memory");
+		return NULL;
+	}
+
+	item->uid = uid;
+	snprintf(item->req_id, sizeof(item->req_id), "%s", req_id);
+	item->req_type = req_type;
+	snprintf(item->pkg_type, sizeof(item->pkg_type), "%s", pkg_type);
+	snprintf(item->pkgid, sizeof(item->pkgid), "%s", pkgid);
+	snprintf(item->args, sizeof(item->args), "%s", args);
+
+	return item;
 }
 
 int _pm_queue_push(pm_dbus_msg *item)
