@@ -1,13 +1,10 @@
 # package manager server
 
 SET(PKGMGR_SERVER "pkgmgr-server")
-SET(SRCS src/pkgmgr-server.c src/pm-queue.c)
+SET(SRCS src/pkgmgr-server.c src/request.c src/pm-queue.c)
 
 pkg_check_modules(SERVER_DEPS REQUIRED
 		gio-2.0
-		cynara-client
-		cynara-creds-gdbus
-		cynara-session
 		dlog
 		pkgmgr-parser
 		pkgmgr-info
