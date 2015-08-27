@@ -300,7 +300,7 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 	/* find callback info */
 	cb_info = __find_op_cbinfo(pc, req_id);
 	if (cb_info == NULL) {
-		ERR("cannot fint cb_info for req_id:%d", req_id);
+		ERR("cannot fint cb_info for req_id:%s", req_id);
 		return;
 	}
 
@@ -740,6 +740,7 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 	snprintf(buf, 128, "%d", get_type);
 	argv[argcnt++] = strdup(pkgid);
 	argv[argcnt++] = strdup(buf);
+	argv[argcnt++] = strdup("-k");
 	argv[argcnt++] = strdup(req_key);
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
@@ -937,7 +938,8 @@ static int __request_size_info(pkgmgr_client *pc, uid_t uid)
 	snprintf(buf, 128, "%d", get_type);
 	argv[argcnt++] = strdup(pkgid);
 	argv[argcnt++] = strdup(buf);
-	argv[argcnt++] = strdup(buf);
+	argv[argcnt++] = strdup("-k");
+	argv[argcnt++] = req_key;
 
 	/*** add quote in all string for special charactor like '\n'***   FIX */
 	for (i = 0; i < argcnt; i++) {

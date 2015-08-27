@@ -545,8 +545,9 @@ static int __send_result_to_signal(pkgmgr_installer *pi, const char *req_key,
 	if (info_str == NULL)
 		return -1;
 
-	ret = pkgmgr_installer_send_signal(pi, req_key, pkgid, "get_size",
-			info_str);
+	ret = pkgmgr_installer_send_signal(pi,
+			PKGMGR_INSTALLER_GET_SIZE_KEY_STR,
+			pkgid, PKGMGR_INSTALLER_GET_SIZE_KEY_STR, info_str);
 	free(info_str);
 
 	return ret;
@@ -565,7 +566,7 @@ int main(int argc, char *argv[])
 	// argv has bellowed meaning
 	// argv[0] = pkgid
 	// argv[1] = get type
-	// argv[2] = req_key
+	// argv[3] = req_key
 
 	if (argv[0] == NULL) {
 		ERR("pkgid is NULL\n");
@@ -574,7 +575,7 @@ int main(int argc, char *argv[])
 
 	pkgid = argv[0];
 	get_type = atoi(argv[1]);
-	req_key = argv[2];
+	req_key = argv[3];
 
 	DBG("start get size : [pkgid=%s, request type=%d]", pkgid, get_type);
 
@@ -583,6 +584,7 @@ int main(int argc, char *argv[])
 		ERR("failed to create installer");
 		return -1;
 	}
+	pkgmgr_installer_receive_request(pi, argc, argv);
 
 	switch (get_type) {
 	case PM_GET_TOTAL_SIZE:
@@ -628,7 +630,7 @@ int main(int argc, char *argv[])
 		if (ret == 0)
 			ret = __send_result_to_signal(pi, req_key,
 					PKG_SIZE_INFO_TOTAL, &info);
-		__make_size_info_file(req_key, 0);
+		ret = __make_size_info_file(req_key, 0);
 		break;
 	default:
 		ret = -1;

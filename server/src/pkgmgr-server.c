@@ -237,6 +237,7 @@ static void __unset_recovery_mode(uid_t uid, char *pkgid, char *pkg_type)
 
 #define PRIVILEGE_PACKAGEMANAGER_ADMIN "http://tizen.org/privilege/packagemanager.admin"
 #define PRIVILEGE_PACKAGEMANAGER_INFO  "http://tizen.org/privilege/packagemanager.info"
+#define PRIVILEGE_PACKAGEMANAGER_CLEARCACHE  "http://tizen.org/privilege/packagemanager.clearcache"
 #define PRIVILEGE_PACKAGEMANAGER_NONE  "NONE"
 
 static const char *__convert_req_type_to_privilege(int req_type)
@@ -247,11 +248,12 @@ static const char *__convert_req_type_to_privilege(int req_type)
 	case COMM_REQ_TO_CLEARER:
 	case COMM_REQ_TO_MOVER:
 	case COMM_REQ_KILL_APP:
-	case COMM_REQ_CLEAR_CACHE_DIR:
 		return PRIVILEGE_PACKAGEMANAGER_ADMIN;
 	case COMM_REQ_GET_SIZE:
 	case COMM_REQ_CHECK_APP:
 		return PRIVILEGE_PACKAGEMANAGER_INFO;
+	case COMM_REQ_CLEAR_CACHE_DIR:
+		return PRIVILEGE_PACKAGEMANAGER_CLEARCACHE;
 	case COMM_REQ_CANCEL:
 	default:
 		return PRIVILEGE_PACKAGEMANAGER_NONE;
@@ -1291,7 +1293,7 @@ gboolean queue_job(void *data)
 			break;
 		case COMM_REQ_GET_SIZE:
 			DBG("before run _get_backend_cmd()");
-			__exec_with_arg_vector("usr/bin/pkg_getsize", __generate_argv(item->args), item->uid);
+			__exec_with_arg_vector("/usr/bin/pkg_getsize", __generate_argv(item->args), item->uid);
 			break;
 		case COMM_REQ_KILL_APP:
 		case COMM_REQ_CHECK_APP:
@@ -1319,6 +1321,9 @@ gboolean queue_job(void *data)
 				}
 			}
 			pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+			break;
+		case COMM_REQ_CLEAR_CACHE_DIR:
+			__exec_with_arg_vector("/usr/bin/pkg_clearcache", __generate_argv(item->args), item->uid);
 			break;
 		}
 		/* exit child */
