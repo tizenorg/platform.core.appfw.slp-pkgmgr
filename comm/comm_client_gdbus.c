@@ -217,9 +217,7 @@ int comm_client_free(comm_client *cc)
  * Request a message
  */
 int
-comm_client_request(comm_client *cc, const char *req_id, const int req_type,
-		const char *pkg_type, const char *pkgid, const char *args,
-		uid_t uid, int is_block)
+comm_client_request(comm_client *cc, const char *method, GVariant *params)
 {
 	GError *error = NULL;
 	gint rc = -1;
@@ -235,17 +233,7 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 		return -1;
 	}
 
-	/* Assign default values if NULL (NULL is not allowed) */
-	if (req_id == NULL)
-		req_id = "tmp_reqid";
-	if (pkg_type == NULL)
-		pkg_type = "none";
-	if (pkgid == NULL)
-		pkgid = "";
-	if (args == NULL)
-		args = "";
-
-	result = g_dbus_proxy_call_sync(proxy, "Request", g_variant_new("(sisssi)", req_id, req_type, pkg_type, pkgid, args, uid),
+	result = g_dbus_proxy_call_sync(proxy, method, params,
 			G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
 	if (result == NULL) {
 		ERR("failed to call %s", error->message);
@@ -255,6 +243,8 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 	}
 
 	g_variant_get(result, "(i)", &rc);
+	if (rc != 0)
+		ERR("request return code: %d", rc);
 
 	return rc == 0 ? COMM_RET_OK : COMM_RET_ERROR;
 }
