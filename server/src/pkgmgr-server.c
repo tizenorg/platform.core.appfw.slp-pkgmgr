@@ -39,9 +39,6 @@
 
 #include <pkgmgr-info.h>
 #include <pkgmgr/pkgmgr_parser.h>
-#include <cynara-client.h>
-#include <cynara-creds-gdbus.h>
-#include <cynara-session.h>
 #include <tzplatform_config.h>
 
 #include "pkgmgr_installer.h"
@@ -71,13 +68,6 @@ Each bit position corresponds to a queue slot which
 is dynamically determined.
 */
 char backend_busy = 0;
-/*
-8 bit value to represent quiet mode operation for maximum 8 backends
-1->quiet 0->non-quiet
-Each bit position corresponds to a queue slot which
-is dynamically determined.
-*/
-char backend_mode = 63; /*00111111*/
 extern int num_of_backends;
 
 struct signal_info_t {
@@ -92,7 +82,6 @@ static guint pipe_wid;
 backend_info *begin;
 extern queue_info_map *start;
 extern int entries;
-static cynara *p_cynara;
 
 GMainLoop *mainloop = NULL;
 
@@ -111,12 +100,9 @@ static int __check_queue_status_for_exit(void);
 static int __is_backend_busy(int position);
 static void __set_backend_busy(int position);
 static void __set_backend_free(int position);
-static void __set_backend_mode(int position);
-static void __unset_backend_mode(int position);
 static void sighandler(int signo);
 static int __get_position_from_pkg_type(char *pkgtype);
 
-gboolean queue_job(void *data);
 gboolean exit_server(void *data);
 
 /* To check whether a particular backend is free/busy*/
@@ -133,16 +119,6 @@ static void __set_backend_busy(int position)
 static void __set_backend_free(int position)
 {
 	backend_busy = backend_busy & ~(1<<position);
-}
-/*To set a particular backend mode as quiet*/
-static void __set_backend_mode(int position)
-{
-	backend_mode = backend_mode | 1<<position;
-}
-/*To unset a particular backend mode */
-static void __unset_backend_mode(int position)
-{
-	backend_mode = backend_mode & ~(1<<position);
 }
 
 static int __is_global(uid_t uid)
@@ -229,56 +205,6 @@ static void __unset_recovery_mode(uid_t uid, char *pkgid, char *pkg_type)
 		DBG("remove recovery_file[%s] fail\n", recovery_file);
 }
 
-#define PRIVILEGE_PACKAGEMANAGER_ADMIN "http://tizen.org/privilege/packagemanager.admin"
-#define PRIVILEGE_PACKAGEMANAGER_INFO  "http://tizen.org/privilege/packagemanager.info"
-#define PRIVILEGE_PACKAGEMANAGER_CLEARCACHE  "http://tizen.org/privilege/packagemanager.clearcache"
-#define PRIVILEGE_PACKAGEMANAGER_NONE  "NONE"
-
-static const char *__convert_req_type_to_privilege(int req_type)
-{
-	switch (req_type) {
-	case COMM_REQ_TO_INSTALLER:
-	case COMM_REQ_TO_ACTIVATOR:
-	case COMM_REQ_TO_CLEARER:
-	case COMM_REQ_TO_MOVER:
-	case COMM_REQ_KILL_APP:
-		return PRIVILEGE_PACKAGEMANAGER_ADMIN;
-	case COMM_REQ_GET_SIZE:
-	case COMM_REQ_CHECK_APP:
-		return PRIVILEGE_PACKAGEMANAGER_INFO;
-	case COMM_REQ_CLEAR_CACHE_DIR:
-		return PRIVILEGE_PACKAGEMANAGER_CLEARCACHE;
-	case COMM_REQ_CANCEL:
-	default:
-		return PRIVILEGE_PACKAGEMANAGER_NONE;
-	}
-}
-
-static int __check_privilege_by_cynara(const char *client, const char *session, const char *user, int req_type)
-{
-	int ret;
-	const char *privilege;
-	char buf[BUFMAX] = {0, };
-
-	privilege = __convert_req_type_to_privilege(req_type);
-	if (!strcmp(privilege, PRIVILEGE_PACKAGEMANAGER_NONE))
-		return 0;
-
-	ret = cynara_check(p_cynara, client, session, user, privilege);
-	switch (ret) {
-	case CYNARA_API_ACCESS_ALLOWED:
-		DBG("%s(%s) from user %s privilege %s allowed", client, session, user, privilege);
-		return 0;
-	case CYNARA_API_ACCESS_DENIED:
-		ERR("%s(%s) from user %s privilege %s denied", client, session, user, privilege);
-		return -1;
-	default:
-		cynara_strerror(ret, buf, BUFMAX);
-		ERR("cynara_check failed: %s", buf);
-		return -1;
-	}
-}
-
 static int __get_position_from_pkg_type(char *pkgtype)
 {
 	int i = 0;
@@ -350,7 +276,6 @@ static gboolean pipe_io_handler(GIOChannel *io, GIOCondition cond, gpointer data
 	}
 
 	__set_backend_free(x);
-	__set_backend_mode(x);
 	__unset_recovery_mode(ptr->uid, ptr->pkgid, ptr->pkgtype);
 	if (WIFSIGNALED(info.status) || WEXITSTATUS(info.status)) {
 		send_fail_signal(ptr->pkgid, ptr->pkgtype, ptr->args);
@@ -431,203 +356,6 @@ static int __register_signal_handler(void)
 	return 0;
 }
 
-void req_cb(void *cb_data, uid_t uid, const char *req_id, const int req_type,
-	    const char *pkg_type, const char *pkgid, const char *args,
-	    const char *client, const char *session, const char *user, int *ret)
-{
-	int p;
-
-	DBG(">> in callback >> Got request: [%s] [%d] [%s] [%s] [%s] [%s] [%s] [%s]",
-	    req_id, req_type, pkg_type, pkgid, args, client, session, user);
-
-	pm_dbus_msg *item = calloc(1, sizeof(pm_dbus_msg));
-	memset(item, 0x00, sizeof(pm_dbus_msg));
-
-	strncpy(item->req_id, req_id, sizeof(item->req_id) - 1);
-	item->req_type = req_type;
-	strncpy(item->pkg_type, pkg_type, sizeof(item->pkg_type) - 1);
-	strncpy(item->pkgid, pkgid, sizeof(item->pkgid) - 1);
-	strncpy(item->args, args, sizeof(item->args) - 1);
-	item->uid = uid;
-	/* uid equals to GLOBALUSER means that the installation or action is made at Global level.
-	 * At this time, we are not able to check the credentials of this dbus message (due to gdbus API to implement the pkgmgr-server)
-	 * So we cannot check if the user that makes request has permisssion to do it.
-	 * Note theses CAPI could be used by deamon (user is root or system user) or web/native API framework (user id is one of regular users)
-	 * In consequence a bug is filed :
-	 *
-	 * Logic has to be implmemented:
-	 * RUID means the id of the user that make the request (retreived from credential of the message)
-	 * UID is the uid in argument of the request
-	 *
-	 * if RUID == UID & UID is regular user == TRUE ==> Granted
-	 * if UID == GLOBAL_USER & RUID is ADMIN == TRUE ==> Granted
-	 * if RUID == (ROOT or System USER) & UID is Regular USER ==> Granted
-	 * if UID != Regular USER & UID != GLOBAL USER  == TRUE ==> NOT GRANTED
-	 * if RUID == Regular USER & UID != RUID == True ==> NOT GRANTED
-	 *  */
-
-	if (__register_signal_handler()) {
-		ERR("failed to register signal handler");
-		*ret = COMM_RET_ERROR;
-		goto err;
-	}
-	g_idle_add(queue_job, NULL);
-
-	DBG("req_type=(%d) backend_flag=(%d)\n", req_type, backend_flag);
-
-	if (__check_privilege_by_cynara(client, session, user, item->req_type)) {
-		*ret = PKGMGR_R_EPRIV;
-		goto err;
-	}
-
-	switch (item->req_type) {
-	case COMM_REQ_TO_INSTALLER:
-		/* quiet mode */
-		if (_pm_queue_push(item)) {
-			ERR("failed to push queue item");
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-		p = __get_position_from_pkg_type(item->pkg_type);
-		__set_backend_mode(p);
-		/* Free resource */
-		free(item);
-		*ret = COMM_RET_OK;
-		break;
-	case COMM_REQ_TO_ACTIVATOR:
-		/* In case of activate, there is no popup */
-		if (_pm_queue_push(item)) {
-			ERR("failed to push queue item");
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-		p = __get_position_from_pkg_type(item->pkg_type);
-		__set_backend_mode(p);
-		/* Free resource */
-		free(item);
-
-		*ret = COMM_RET_OK;
-		break;
-	case COMM_REQ_TO_CLEARER:
-		/* In case of clearer, there is no popup */
-		if (_pm_queue_push(item)) {
-			ERR("failed to push queue item");
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-		p = __get_position_from_pkg_type(item->pkg_type);
-		/*the backend shows the success/failure popup
-		so this request is non quiet*/
-		__unset_backend_mode(p);
-		/* Free resource */
-		free(item);
-
-		*ret = COMM_RET_OK;
-		break;
-	case COMM_REQ_TO_MOVER:
-		/* In case of mover, there is no popup */
-		if (_pm_queue_push(item)) {
-			ERR("failed to push queue item");
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-		p = __get_position_from_pkg_type(item->pkg_type);
-		/*the backend shows the success/failure popup
-		so this request is non quiet*/
-		__unset_backend_mode(p);
-		/* Free resource */
-		free(item);
-		*ret = COMM_RET_OK;
-		break;
-	case COMM_REQ_CANCEL:
-		_pm_queue_delete(item);
-		p = __get_position_from_pkg_type(item->pkg_type);
-		__unset_backend_mode(p);
-		free(item);
-		*ret = COMM_RET_OK;
-		break;
-	case COMM_REQ_GET_SIZE:
-		if (_pm_queue_push(item)) {
-			ERR("failed to push queue item");
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-		p = __get_position_from_pkg_type(item->pkg_type);
-		__set_backend_mode(p);
-		/* Free resource */
-		free(item);
-		*ret = COMM_RET_OK;
-		break;
-
-	case COMM_REQ_CHECK_APP:
-	case COMM_REQ_KILL_APP:
-		/* In case of activate, there is no popup */
-		if (_pm_queue_push(item)) {
-			ERR("failed to push queue item");
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-		p = __get_position_from_pkg_type(item->pkg_type);
-		__set_backend_mode(p);
-		/* Free resource */
-		free(item);
-
-		*ret = COMM_RET_OK;
-		break;
-	case COMM_REQ_CLEAR_CACHE_DIR:
-		if (_pm_queue_push(item)) {
-			ERR("failed to push queue item");
-			*ret = COMM_RET_ERROR;
-			goto err;
-		}
-		p = __get_position_from_pkg_type(item->pkg_type);
-		__set_backend_mode(p);
-
-		*ret = PKGMGR_R_OK;
-		break;
-
-	default:
-		DBG("Check your request..\n");
-		*ret = COMM_RET_ERROR;
-		break;
-	}
-err:
-	if (*ret != COMM_RET_OK) {
-		DBG("Failed to handle request %s %s\n",item->pkg_type, item->pkgid);
-		pkgmgr_installer *pi;
-		gboolean ret_parse;
-		gint argcp;
-		gchar **argvp;
-		GError *gerr = NULL;
-
-		pi = pkgmgr_installer_new();
-		if (!pi) {
-			DBG("Failure in creating the pkgmgr_installer object");
-			free(item);
-			return;
-		}
-
-		ret_parse = g_shell_parse_argv(args, &argcp, &argvp, &gerr);
-		if (FALSE == ret_parse) {
-			DBG("Failed to split args: %s", args);
-			DBG("messsage: %s", gerr->message);
-			pkgmgr_installer_free(pi);
-			free(item);
-			return;
-		}
-
-		pkgmgr_installer_receive_request(pi, argcp, argvp);
-
-		pkgmgr_installer_send_signal(pi, item->pkg_type,
-					     item->pkgid, "end",
-					     "fail");
-
-		pkgmgr_installer_free(pi);
-
-		free(item);
-	}
-	return;
-}
 static int __check_backend_status_for_exit(void)
 {
 	int i = 0;
@@ -1314,181 +1042,6 @@ char *_get_backend_cmd(char *type)
 	return NULL;		/* cannot find proper command */
 }
 
-static int __get_caller_info(GDBusConnection *connection,
-		GDBusMethodInvocation *invocation,
-		char **client, char **user, char **session)
-{
-	const gchar *sender = NULL;
-	pid_t pid;
-	int ret = 0;
-	int r;
-	char buf[BUFMAX] = {0, };
-
-	do {
-		sender = g_dbus_method_invocation_get_sender(invocation);
-		if (sender == NULL) {
-			ERR("get sender failed");
-			ret = COMM_RET_ERROR;
-			break;
-		}
-
-		r = cynara_creds_gdbus_get_client(connection, sender,
-				CLIENT_METHOD_DEFAULT, client);
-		if (r != CYNARA_API_SUCCESS) {
-			cynara_strerror(r, buf, BUFMAX);
-			ERR("cynara_creds_dbus_get_client failed: %s", buf);
-			ret = COMM_RET_ERROR;
-			break;
-		}
-
-		r = cynara_creds_gdbus_get_user(connection, sender,
-				USER_METHOD_DEFAULT, user);
-		if (r != CYNARA_API_SUCCESS) {
-			cynara_strerror(r, buf, BUFMAX);
-			ERR("cynara_creds_dbus_get_user failed: %s", buf);
-			ret = COMM_RET_ERROR;
-			break;
-		}
-
-		r = cynara_creds_gdbus_get_pid(connection, sender, &pid);
-		if (r != CYNARA_API_SUCCESS) {
-			cynara_strerror(r, buf, BUFMAX);
-			ERR("cynara_creds_dbus_get_pid failed: %s", buf);
-			ret = COMM_RET_ERROR;
-			break;
-		}
-
-		*session = cynara_session_from_pid(pid);
-		if (*session == NULL) {
-			ERR("cynara_session_from_pid failed");
-			ret = COMM_RET_ERROR;
-			break;
-		}
-		DBG("session: %s", session);
-	} while (0);
-
-	return ret;
-}
-
-static void __handle_method_call(GDBusConnection *connection,
-		const gchar *sender, const gchar *object_path,
-		const gchar *interface_name, const gchar *method_name,
-		GVariant *parameters, GDBusMethodInvocation *invocation,
-		gpointer user_data)
-{
-	gchar *req_id = NULL;
-	gint req_type = -1;
-	gchar *pkg_type = NULL;
-	gchar *pkgid = NULL;
-	gchar *args = NULL;
-	gint uid = -1;
-	gint ret = -1;
-	char *client;
-	char *user;
-	char *session;
-
-	if (g_strcmp0(method_name, "Request") != 0) {
-		ERR("unknown method call");
-		return;
-	}
-
-	if (__get_caller_info(connection, invocation, &client, &user,
-				&session)) {
-		g_dbus_method_invocation_return_value(invocation,
-			g_variant_new("(i)", ret));
-		return;
-	}
-
-	g_variant_get(parameters, "(&si&s&s&si)", &req_id, &req_type, &pkg_type,
-			&pkgid, &args, &uid);
-	if (req_id == NULL || req_type == -1 || pkg_type == NULL ||
-			pkgid == NULL || args == NULL || uid == -1) {
-		ERR("failed to get parameters");
-		free(client);
-		free(user);
-		free(session);
-		return;
-	}
-
-	req_cb(NULL, uid, req_id, req_type, pkg_type, pkgid, args,
-			client, user, session, &ret);
-
-	g_dbus_method_invocation_return_value(invocation,
-			g_variant_new("(i)", ret));
-
-	free(client);
-	free(user);
-	free(session);
-}
-
-static const char instropection_xml[] =
-	"<node>"
-	"  <interface name='org.tizen.pkgmgr'>"
-	"    <method name='Request'>"
-	"      <arg type='s' name='req_id' direction='in'/>"
-	"      <arg type='i' name='req_type' direction='in'/>"
-	"      <arg type='s' name='pkg_type' direction='in'/>"
-	"      <arg type='s' name='pkg_id' direction='in'/>"
-	"      <arg type='s' name='args' direction='in'/>"
-	"      <arg type='i' name='uid' direction='in'/>"
-	"      <arg type='i' name='ret' direction='out'/>"
-	"    </method>"
-	"  </interface>"
-	"</node>";
-static const GDBusInterfaceVTable interface_vtable =
-{
-	__handle_method_call,
-	NULL,
-	NULL,
-};
-static GDBusNodeInfo *instropection_data;
-static guint reg_id;
-static guint owner_id;
-
-static void __on_bus_acquired(GDBusConnection *connection, const gchar *name,
-		gpointer user_data)
-{
-
-	DBG("on bus acquired");
-
-	reg_id = g_dbus_connection_register_object(connection,
-			COMM_PKGMGR_DBUS_OBJECT_PATH,
-			instropection_data->interfaces[0],
-			&interface_vtable, NULL, NULL, NULL);
-
-	if (reg_id < 0)
-		ERR("failed to register object");
-}
-
-static void __on_name_acquired(GDBusConnection *connection, const gchar *name,
-		gpointer user_data)
-{
-	DBG("on name acquired: %s", name);
-}
-
-static void __on_name_lost(GDBusConnection *connection, const gchar *name,
-		gpointer user_data)
-{
-	DBG("on name lost: %s", name);
-}
-
-static int __init_dbus(void)
-{
-	instropection_data = g_dbus_node_info_new_for_xml(instropection_xml, NULL);
-
-	owner_id = g_bus_own_name(G_BUS_TYPE_SYSTEM, COMM_PKGMGR_DBUS_SERVICE,
-			G_BUS_NAME_OWNER_FLAGS_NONE, __on_bus_acquired,
-			__on_name_acquired, __on_name_lost, NULL, NULL);
-
-	return 0;
-}
-
-static void __fini_dbus(void)
-{
-	g_bus_unown_name(owner_id);
-	g_dbus_node_info_unref(instropection_data);
-}
-
 int main(int argc, char *argv[])
 {
 	FILE *fp_status = NULL;
@@ -1554,15 +1107,14 @@ err:
 		return -1;
 	}
 
-	r = cynara_initialize(&p_cynara, NULL);
-	if (r != CYNARA_API_SUCCESS) {
-		ERR("cynara initialize failed with code=%d", r);
+	r = __init_request_handler();
+	if (r) {
+		ERR("dbus init failed");
 		return -1;
 	}
 
-	r = __init_dbus();
-	if (r) {
-		ERR("dbus init failed");
+	if (__register_signal_handler()) {
+		ERR("failed to register signal handler");
 		return -1;
 	}
 
@@ -1580,8 +1132,7 @@ err:
 	g_main_loop_run(mainloop);
 
 	DBG("Quit main loop.");
-	__fini_dbus();
-	cynara_finish(p_cynara);
+	__fini_request_handler();
 	__fini_backend_info();
 	_pm_queue_final();
 

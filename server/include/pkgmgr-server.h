@@ -23,6 +23,8 @@
 #ifndef _PKGMGR_SERVER_H_
 #define _PKGMGR_SERVER_H_
 
+#include <glib.h>
+
 #ifdef LOG_TAG
 #undef LOG_TAG
 #endif /* LOG_TAG */
@@ -68,5 +70,9 @@ char *_get_backend_cmd(char *type);
 void _pm_desktop_file_monitor_init();
 void _pm_desktop_file_monitor_fini();
 int _pm_desktop_file_dir_search(pm_inotify_paths *paths, int number);
+
+gboolean queue_job(void *data);
+int __init_request_handler(void);
+void __fini_request_handler(void);
 
 #endif/*  _PKGMGR_SERVER_H_ */
