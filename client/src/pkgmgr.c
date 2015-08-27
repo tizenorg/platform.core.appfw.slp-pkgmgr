@@ -422,9 +422,17 @@ err:
 
 static int __appinfo_cb(pkgmgrinfo_appinfo_h handle, void *user_data)
 {
+	int ret;
 	char **appid = (char **)user_data;
+	char *val;
 
-	return pkgmgrinfo_appinfo_get_appid(handle, appid);
+	ret = pkgmgrinfo_appinfo_get_appid(handle, &val);
+	if (ret != PMINFO_R_OK)
+		return ret;
+
+	*appid = strdup(val);
+
+	return 0;
 }
 
 static char *__get_app_info_from_db_by_apppath(const char *apppath, uid_t uid)
