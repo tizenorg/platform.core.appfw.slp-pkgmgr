@@ -100,7 +100,7 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 	int status_type;
 	/* Values to be received by signal */
 	uid_t target_uid;
-	char *req_id = NULL;
+	char *req_id;
 	char *pkg_type = NULL;
 	char *pkgid = NULL;
 	char *key = NULL;
@@ -216,11 +216,9 @@ int comm_client_free(comm_client *cc)
 /**
  * Request a message
  */
-int
-comm_client_request(comm_client *cc, const char *method, GVariant *params)
+GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *params)
 {
 	GError *error = NULL;
-	gint rc = -1;
 	GDBusProxy *proxy;
 	GVariant *result;
 
@@ -230,7 +228,7 @@ comm_client_request(comm_client *cc, const char *method, GVariant *params)
 	if (proxy == NULL) {
 		ERR("failed to get proxy object: %s", error->message);
 		g_error_free(error);
-		return -1;
+		return NULL;
 	}
 
 	result = g_dbus_proxy_call_sync(proxy, method, params,
@@ -239,14 +237,10 @@ comm_client_request(comm_client *cc, const char *method, GVariant *params)
 		ERR("failed to call %s", error->message);
 		g_error_free(error);
 		g_object_unref(proxy);
-		return -1;
+		return NULL;
 	}
 
-	g_variant_get(result, "(i)", &rc);
-	if (rc != 0)
-		ERR("request return code: %d", rc);
-
-	return rc == 0 ? COMM_RET_OK : COMM_RET_ERROR;
+	return result;
 }
 
 /**
