@@ -11,7 +11,7 @@
 #define OWNER_ROOT 0
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
-static const char *_get_path(const char *pkgid, const char *appid, uid_t uid)
+static const char *_get_path(const char *pkgid, uid_t uid)
 {
 	char buf[BUFSIZE];
 	const char *path;
@@ -26,36 +26,39 @@ static const char *_get_path(const char *pkgid, const char *appid, uid_t uid)
 	return path;
 }
 
-static app_inst_req *_prepare_request(manifest_x *mfx, uid_t uid)
+static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
+		uid_t uid)
 {
+	int ret;
 	app_inst_req *req;
 	const char *path;
-	struct uiapplication_x *uiapp;
-	struct serviceapplication_x *svcapp;
 
 	if (security_manager_app_inst_req_new(&req)) {
 		printf("security_manager_app_inst_req_new failed\n");
 		return NULL;
 	}
 
-	security_manager_app_inst_req_set_pkg_id(req, mfx->package);
-
-	uiapp = mfx->uiapplication;
-	while (uiapp) {
-		security_manager_app_inst_req_set_app_id(req, uiapp->appid);
-		path = _get_path(mfx->package, uiapp->appid, uid);
-		security_manager_app_inst_req_add_path(req, path,
-				SECURITY_MANAGER_PATH_RO);
-		uiapp = uiapp->next;
+	ret = security_manager_app_inst_req_set_pkg_id(req, pkgid);
+	if (ret != SECURITY_MANAGER_SUCCESS) {
+		printf("set pkgid failed: %d\n", ret);
+		security_manager_app_inst_req_free(req);
+		return NULL;
 	}
 
-	svcapp = mfx->serviceapplication;
-	while (svcapp) {
-		security_manager_app_inst_req_set_app_id(req, svcapp->appid);
-		path = _get_path(mfx->package, svcapp->appid, uid);
-		security_manager_app_inst_req_add_path(req, path,
-				SECURITY_MANAGER_PATH_RO);
-		svcapp = svcapp->next;
+	ret = security_manager_app_inst_req_set_app_id(req, appid);
+	if (ret != SECURITY_MANAGER_SUCCESS) {
+		printf("set appid failed: %d\n", ret);
+		security_manager_app_inst_req_free(req);
+		return NULL;
+	}
+
+	path = _get_path(pkgid, uid);
+	ret = security_manager_app_inst_req_add_path(req, path,
+			SECURITY_MANAGER_PATH_RO);
+	if (ret != SECURITY_MANAGER_SUCCESS) {
+		printf("set path failed: %d\n", ret);
+		security_manager_app_inst_req_free(req);
+		return NULL;
 	}
 
 	return req;
@@ -67,6 +70,8 @@ static int _insert_privilege(char *manifest, uid_t uid)
 	app_inst_req *req;
 	manifest_x *mfx;
 	privilege_x *priv;
+	struct uiapplication_x *uiapp;
+	struct serviceapplication_x *svcapp;
 
 	mfx = pkgmgr_parser_process_manifest_xml(manifest);
 	if (mfx == NULL) {
@@ -74,23 +79,48 @@ static int _insert_privilege(char *manifest, uid_t uid)
 		return -1;
 	}
 
-	req = _prepare_request(mfx, uid);
-	if (req == NULL) {
-		pkgmgr_parser_free_manifest_xml(mfx);
-		return -1;
+	uiapp = mfx->uiapplication;
+	while (uiapp) {
+		req = _prepare_request(mfx->package, uiapp->appid, uid);
+		if (req == NULL) {
+			pkgmgr_parser_free_manifest_xml(mfx);
+			return -1;
+		}
+		if (mfx->privileges != NULL) {
+			for (priv = mfx->privileges->privilege; priv;
+					priv = priv->next)
+				security_manager_app_inst_req_add_privilege(req,
+						priv->text);
+		}
+
+		ret = security_manager_app_install(req);
+		if (ret != SECURITY_MANAGER_SUCCESS)
+			printf("app install failed: %d\n", ret);
+		security_manager_app_inst_req_free(req);
+		uiapp = uiapp->next;
 	}
 
-	if (mfx->privileges != NULL) {
-		for (priv = mfx->privileges->privilege; priv; priv = priv->next)
-			security_manager_app_inst_req_add_privilege(req,
-					priv->text);
+	svcapp = mfx->serviceapplication;
+	while (svcapp) {
+		req = _prepare_request(mfx->package, svcapp->appid, uid);
+		if (req == NULL) {
+			pkgmgr_parser_free_manifest_xml(mfx);
+			return -1;
+		}
+		if (mfx->privileges != NULL) {
+			for (priv = mfx->privileges->privilege; priv;
+					priv = priv->next)
+				security_manager_app_inst_req_add_privilege(req,
+						priv->text);
+		}
+
+		ret = security_manager_app_install(req);
+		if (ret != SECURITY_MANAGER_SUCCESS)
+			printf("app install failed: %d\n", ret);
+		security_manager_app_inst_req_free(req);
+		svcapp = svcapp->next;
 	}
 
-	ret = security_manager_app_install(req);
-	if (ret != SECURITY_MANAGER_SUCCESS)
-		printf("security_manager_app_install failed: %d\n", ret);
-
-	security_manager_app_inst_req_free(req);
 	pkgmgr_parser_free_manifest_xml(mfx);
 
 	return 0;
@@ -101,6 +131,8 @@ static int _remove_privilege(char *manifest, uid_t uid)
 	int ret;
 	app_inst_req *req;
 	manifest_x *mfx;
+	struct uiapplication_x *uiapp;
+	struct serviceapplication_x *svcapp;
 
 	mfx = pkgmgr_parser_process_manifest_xml(manifest);
 	if (mfx == NULL) {
@@ -108,17 +140,38 @@ static int _remove_privilege(char *manifest, uid_t uid)
 		return -1;
 	}
 
-	req = _prepare_request(mfx, uid);
-	if (req == NULL) {
-		pkgmgr_parser_free_manifest_xml(mfx);
-		return -1;
+	uiapp = mfx->uiapplication;
+	while (uiapp) {
+		req = _prepare_request(mfx->package, uiapp->appid, uid);
+		if (req == NULL) {
+			pkgmgr_parser_free_manifest_xml(mfx);
+			return -1;
+		}
+
+		ret = security_manager_app_uninstall(req);
+		if (ret != SECURITY_MANAGER_SUCCESS)
+			printf("app uninstall failed: %d\n", ret);
+
+		security_manager_app_inst_req_free(req);
+		uiapp = uiapp->next;
 	}
 
-	ret = security_manager_app_uninstall(req);
-	if (ret != SECURITY_MANAGER_SUCCESS)
-		printf("security_manager_app_uninstall failed: %d\n", ret);
+	svcapp = mfx->serviceapplication;
+	while (svcapp) {
+		req = _prepare_request(mfx->package, svcapp->appid, uid);
+		if (req == NULL) {
+			pkgmgr_parser_free_manifest_xml(mfx);
+			return -1;
+		}
 
-	security_manager_app_inst_req_free(req);
+		ret = security_manager_app_uninstall(req);
+		if (ret != SECURITY_MANAGER_SUCCESS)
+			printf("app uninstall failed: %d\n", ret);
+
+		security_manager_app_inst_req_free(req);
+		svcapp = svcapp->next;
+	}
+
 	pkgmgr_parser_free_manifest_xml(mfx);
 
 	return 0;
