@@ -45,7 +45,7 @@ static app_inst_req *_prepare_request(manifest_x *mfx, uid_t uid)
 		security_manager_app_inst_req_set_app_id(req, uiapp->appid);
 		path = _get_path(mfx->package, uiapp->appid, uid);
 		security_manager_app_inst_req_add_path(req, path,
-				SECURITY_MANAGER_PATH_PRIVATE);
+				SECURITY_MANAGER_PATH_RO);
 		uiapp = uiapp->next;
 	}
 
@@ -54,7 +54,7 @@ static app_inst_req *_prepare_request(manifest_x *mfx, uid_t uid)
 		security_manager_app_inst_req_set_app_id(req, svcapp->appid);
 		path = _get_path(mfx->package, svcapp->appid, uid);
 		security_manager_app_inst_req_add_path(req, path,
-				SECURITY_MANAGER_PATH_PRIVATE);
+				SECURITY_MANAGER_PATH_RO);
 		svcapp = svcapp->next;
 	}
 
