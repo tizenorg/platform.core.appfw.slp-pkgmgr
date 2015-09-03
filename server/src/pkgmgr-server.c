@@ -626,7 +626,7 @@ user_ctx* get_user_context(uid_t uid)
 		context_res = NULL;
 		int i = 0;
 		//env variable ends by NULL element
-		while (env[i]) {
+		while (env && env[i]) {
 			free(env[i]);
 			i++;
 		}
@@ -1066,12 +1066,15 @@ int main(int argc, char *argv[])
 				if (fgets(buf, 32, fp_status))
 					backend_cmd = _get_backend_cmd(buf);
 				if (!backend_cmd) {	/* if NULL, */
-					DBG("fail to get"
-							" backend command");
+					DBG("fail to get backend command");
 					goto err;
 				}
 				backend_name =
 					strrchr(backend_cmd, '/');
+				if (!backend_name) {
+					DBG("fail to get backend name");
+					goto err;
+				}
 
 				execl(backend_cmd, backend_name, "-r",
 						NULL);
