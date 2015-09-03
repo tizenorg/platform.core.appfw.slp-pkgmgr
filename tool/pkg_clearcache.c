@@ -121,14 +121,9 @@ static int __clear_cache_dir(const char *pkgid)
 		return -1;
 	}
 
-	int internal_prefix_len = sizeof(INTERNAL_CACHE_PATH_PREFIX);
-	int cache_postfix_len = sizeof(CACHE_PATH_POSTFIX);
-	int shared_postfix_len = sizeof(SHARED_PATH_POSTFIX);
-
 	// cache internal
-	strcat(dirname, INTERNAL_CACHE_PATH_PREFIX);
-	strncat(dirname, pkgid, PATH_MAX - internal_prefix_len - cache_postfix_len - 1);
-	strcat(dirname, CACHE_PATH_POSTFIX);
+	snprintf(dirname, sizeof(dirname), "%s/%s%s",
+			INTERNAL_CACHE_PATH_PREFIX, pkgid, CACHE_PATH_POSTFIX);
 
 	ret = __clear_dir(dirname);
 	if (ret < 0) {
@@ -136,10 +131,8 @@ static int __clear_cache_dir(const char *pkgid)
 	}
 
 	// shared/cache internal
-	memset(dirname, 0x00, PATH_MAX);
-	strcat(dirname, INTERNAL_CACHE_PATH_PREFIX);
-	strncat(dirname, pkgid, PATH_MAX - internal_prefix_len - shared_postfix_len - 1);
-	strcat(dirname, SHARED_PATH_POSTFIX);
+	snprintf(dirname, sizeof(dirname), "%s/%s%s",
+			INTERNAL_CACHE_PATH_PREFIX, pkgid, SHARED_PATH_POSTFIX);
 
 	ret = __clear_dir(dirname);
 	if (ret < 0) {
