@@ -33,10 +33,10 @@
 
 #define BACKEND_INFO_DIR	"/etc/package-manager/backend"
 
-static pm_queue_data *__get_head_from_pkgtype(pm_dbus_msg *item);
+static pm_queue_data *__get_head_from_pkgtype(const char *pkg_type);
 static void __update_head_from_pkgtype(pm_queue_data *data);
 static int __entry_exist(char *backend);
-static int __is_pkg_supported(char *pkgtype);
+static int __is_pkg_supported(const char *pkgtype);
 
 queue_info_map *start = NULL;
 int entries = 0;
@@ -48,7 +48,7 @@ is supported or not. It parses the queue info map
 to get the information.
 It will prevent the accidental hanging of server.
 Returns 1 if found.*/
-static int __is_pkg_supported(char *pkgtype)
+static int __is_pkg_supported(const char *pkgtype)
 {
 	queue_info_map *ptr = NULL;
 	ptr = start;
@@ -118,14 +118,14 @@ static void __update_head_from_pkgtype(pm_queue_data *data)
 }
 
 /*Gets the queue head based on pkg type*/
-static pm_queue_data *__get_head_from_pkgtype(pm_dbus_msg *item)
+static pm_queue_data *__get_head_from_pkgtype(const char *pkg_type)
 {
 	queue_info_map *ptr = NULL;
 	ptr = start;
 	int i = 0;
 	for(i = 0; i < entries; i++)
 	{
-		if (!strncmp(ptr->pkgtype, item->pkg_type, MAX_PKG_TYPE_LEN))
+		if (!strncmp(ptr->pkgtype, pkg_type, MAX_PKG_TYPE_LEN))
 			return ptr->head;
 		else {
 			ptr++;
@@ -257,53 +257,33 @@ int _pm_queue_init(void)
 	return 0;
 }
 
-pm_dbus_msg *_pm_queue_create_item(uid_t uid, const char *req_id,
-		int req_type, const char *pkg_type, const char *pkgid,
-		const char *args)
-{
-	pm_dbus_msg *item;
-
-	item = calloc(1, sizeof(pm_dbus_msg));
-	if (item == NULL) {
-		ERR("Fail to allocate memory");
-		return NULL;
-	}
-
-	item->uid = uid;
-	snprintf(item->req_id, sizeof(item->req_id), "%s", req_id);
-	item->req_type = req_type;
-	snprintf(item->pkg_type, sizeof(item->pkg_type), "%s", pkg_type);
-	snprintf(item->pkgid, sizeof(item->pkgid), "%s", pkgid);
-	snprintf(item->args, sizeof(item->args), "%s", args);
-
-	return item;
-}
-
-int _pm_queue_push(pm_dbus_msg *item)
+int _pm_queue_push(uid_t uid, const char *req_id, int req_type,
+		const char *pkg_type, const char *pkgid)
 {
 	pm_queue_data *data = NULL;
 	pm_queue_data *cur = NULL;
 	pm_queue_data *tmp = NULL;
 	int ret = 0;
-	ret = __is_pkg_supported(item->pkg_type);
+	ret = __is_pkg_supported(pkg_type);
 	if (ret == 0)
 		return -1;
 
-	cur = __get_head_from_pkgtype(item);
+	cur = __get_head_from_pkgtype(pkg_type);
 	tmp = cur;
 
+	/* TODO: use glist */
 	data = _add_node();
 	if (!data) { /* fail to allocate mem */
 		ERR("Fail to allocate memory\n");
 		return -1;
 	}
 
-	strncpy(data->msg->req_id, item->req_id, strlen(item->req_id));
-	data->msg->req_type = item->req_type;
-	data->msg->uid = item->uid;
-	strncpy(data->msg->pkg_type, item->pkg_type, strlen(item->pkg_type));
-	strncpy(data->msg->pkgid, item->pkgid, strlen(item->pkgid));
-	strncpy(data->msg->args, item->args, strlen(item->args));
+	strncpy(data->msg->req_id, req_id, strlen(req_id));
+	data->msg->req_type = req_type;
+	data->msg->uid = uid;
+	strncpy(data->msg->pkg_type, pkg_type, strlen(pkg_type));
+	strncpy(data->msg->pkgid, pkgid, strlen(pkgid));
+	//strncpy(data->msg->args, args, strlen(args));
 
 	data->next = NULL;
 
@@ -470,7 +450,7 @@ void _pm_queue_delete(pm_dbus_msg *item)
 	/* Assume that pacakge name is unique */
 	pm_queue_data *cur = NULL;
 	pm_queue_data *prev = NULL;
-	cur = __get_head_from_pkgtype(item);
+	cur = __get_head_from_pkgtype(item->pkg_type);
 	prev = cur;
 	if (cur) {
 		while (cur->next) {
