@@ -103,7 +103,7 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 	int status_type;
 	/* Values to be received by signal */
 	uid_t target_uid;
-	char *req_id = NULL;
+	char *req_id;
 	char *pkg_type = NULL;
 	char *pkgid = NULL;
 	char *key = NULL;
@@ -219,11 +219,9 @@ int comm_client_free(comm_client *cc)
 /**
  * Request a message
  */
-int
-comm_client_request(comm_client *cc, const char *method, GVariant *params)
+GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *params)
 {
 	GError *error = NULL;
-	gint rc = -1;
 	GDBusProxy *proxy;
 	GVariant *result = NULL;
 	int retry_cnt = 0;
@@ -254,16 +252,7 @@ comm_client_request(comm_client *cc, const char *method, GVariant *params)
 		retry_cnt++;
 	} while (retry_cnt <= COMM_CLIENT_RETRY_MAX);
 
-	if (result == NULL)
-		return -1;
-
-	g_variant_get(result, "(i)", &rc);
-	g_variant_unref(result);
-
-	if (rc != 0)
-		ERR("request return code: %d", rc);
-
-	return rc == 0 ? COMM_RET_OK : COMM_RET_ERROR;
+	return result;
 }
 
 /**
