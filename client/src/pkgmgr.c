@@ -617,7 +617,7 @@ static int __move_pkg_process(pkgmgr_client *pc, const char *pkgid,
 static int __check_app_process(pkgmgr_request_service_type service_type,
 		pkgmgr_client *pc, const char *pkgid, uid_t uid, void *data)
 {
-	GVariant *result;
+	GVariant *result = NULL;
 	int ret = PKGMGR_R_ECOMM;
 	pkgmgrinfo_pkginfo_h handle;
 	int pid = -1;
@@ -737,16 +737,22 @@ static int __get_pkg_size_info_cb(uid_t target_uid, int req_id, const char *req_
 
 	char *save_ptr = NULL;
 	char *token = strtok_r((char*)value, ":", &save_ptr);
+	tryvm_if(token == NULL, ret = -1, "failed to parse sizeinfo");
 	size_info->data_size = atoll(token);
 	token = strtok_r(NULL, ":", &save_ptr);
+	tryvm_if(token == NULL, ret = -1, "failed to parse sizeinfo");
 	size_info->cache_size = atoll(token);
 	token = strtok_r(NULL, ":", &save_ptr);
+	tryvm_if(token == NULL, ret = -1, "failed to parse sizeinfo");
 	size_info->app_size = atoll(token);
 	token = strtok_r(NULL, ":", &save_ptr);
+	tryvm_if(token == NULL, ret = -1, "failed to parse sizeinfo");
 	size_info->ext_data_size = atoll(token);
 	token = strtok_r(NULL, ":", &save_ptr);
+	tryvm_if(token == NULL, ret = -1, "failed to parse sizeinfo");
 	size_info->ext_cache_size = atoll(token);
 	token = strtok_r(NULL, ":", &save_ptr);
+	tryvm_if(token == NULL, ret = -1, "failed to parse sizeinfo");
 	size_info->ext_app_size = atoll(token);
 
 	DBG("data: %lld, cache: %lld, app: %lld, ext_data: %lld, ext_cache: %lld, ext_app: %lld",
@@ -781,7 +787,8 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 	pkgmgr_client_t *pc = NULL;
 	int ret = -1;
 
-	retvm_if(ctype != PC_REQUEST && ctype != PC_LISTENING && ctype != PC_BROADCAST, NULL, "ctype is not client_type");
+	retvm_if(ctype == PC_BROADCAST, NULL, "broadcast type is not supported");
+	retvm_if(ctype != PC_REQUEST && ctype != PC_LISTENING, NULL, "ctype is not client_type");
 
 	/* Allocate memory for ADT:pkgmgr_client */
 	pc = calloc(1, sizeof(pkgmgr_client_t));
@@ -803,9 +810,6 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 
 		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ALL, pc->info.listening.cc, __status_callback, pc);
 		trym_if(ret < 0L, "comm_client_set_status_callback() failed - %d", ret);
-	} else if (pc->ctype == PC_BROADCAST) {
-		/* client cannot broadcast signal */
-		return NULL;
 	}
 
 	return (pkgmgr_client *) pc;

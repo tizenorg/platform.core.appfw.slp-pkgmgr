@@ -97,6 +97,7 @@ static int _initdb_load_directory(uid_t uid, const char *directory)
 		if (setresuid(uid, uid, OWNER_ROOT)) {
 			_E("Failed to setresuid: %s",
 					strerror_r(errno, buf, sizeof(buf)));
+			closedir(dir);
 			return -1;
 		}
 		snprintf(buf2, sizeof(buf2), "%s %s", PKGINFO_CMD, buf);
@@ -111,6 +112,7 @@ static int _initdb_load_directory(uid_t uid, const char *directory)
 		if (setresuid(OWNER_ROOT, OWNER_ROOT, OWNER_ROOT)) {
 			_E("Failed to setresuid: %s",
 					strerror_r(errno, buf, sizeof(buf)));
+			closedir(dir);
 			return -1;
 		}
 	}
