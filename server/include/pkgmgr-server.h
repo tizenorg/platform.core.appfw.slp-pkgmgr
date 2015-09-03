@@ -43,6 +43,20 @@
 #define MAX_PKG_ARGS_LEN 4096
 #define DESKTOP_FILE_DIRS_NUM 1024
 
+enum request_type {
+	PKGMGR_REQUEST_TYPE_INSTALL,
+	PKGMGR_REQUEST_TYPE_REINSTALL,
+	PKGMGR_REQUEST_TYPE_UNINSTALL,
+	PKGMGR_REQUEST_TYPE_MOVE,
+	PKGMGR_REQUEST_TYPE_ENABLE,
+	PKGMGR_REQUEST_TYPE_DISABLE,
+	PKGMGR_REQUEST_TYPE_GETSIZE,
+	PKGMGR_REQUEST_TYPE_CLEARDATA,
+	PKGMGR_REQUEST_TYPE_CLEARCACHE,
+	PKGMGR_REQUEST_TYPE_KILL,
+	PKGMGR_REQUEST_TYPE_CHECK,
+};
+
 typedef struct {
 	char req_id[MAX_REQ_ID_LEN];
 	int req_type;
@@ -60,16 +74,7 @@ typedef struct backend_info_t {
 	char args[MAX_PKG_ARGS_LEN];
 } backend_info;
 
-struct pm_inotify_paths_t {
-	int wd;
-	char *path;
-};
-typedef struct pm_inotify_paths_t pm_inotify_paths;
-
 char *_get_backend_cmd(char *type);
-void _pm_desktop_file_monitor_init();
-void _pm_desktop_file_monitor_fini();
-int _pm_desktop_file_dir_search(pm_inotify_paths *paths, int number);
 
 gboolean queue_job(void *data);
 int __init_request_handler(void);
