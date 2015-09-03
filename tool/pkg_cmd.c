@@ -866,7 +866,8 @@ int main(int argc, char *argv[])
 		case 'S': /* csc packages */
 			data.request = CSC_REQ;
 			if (optarg)
-				strncpy(data.des_path, optarg, PKG_NAME_STRING_LEN_MAX);
+				snprintf(data.des_path, sizeof(data.des_path),
+						"%s", optarg);
 			printf("csc file is %s\n", data.des_path);
 			break;
 
@@ -881,8 +882,8 @@ int main(int argc, char *argv[])
 		case 'L':	/* activate with Label */
 			data.request = ACTIVATE_REQ;
 			if (optarg)
-				strncpy(data.label, optarg,
-					PKG_NAME_STRING_LEN_MAX);
+				snprintf(data.pkg_path, sizeof(data.pkg_path),
+						"%s", optarg);
 			break;
 
 		case 'a':	/* app installation path */
@@ -907,8 +908,8 @@ int main(int argc, char *argv[])
 
 		case 'p':	/* package path */
 			if (optarg)
-				strncpy(data.pkg_path, optarg,
-					PKG_NAME_STRING_LEN_MAX);
+				snprintf(data.pkg_path, sizeof(data.pkg_path),
+						"%s", optarg);
 			ret = __convert_to_absolute_path(data.pkg_path);
 			if (ret == -1) {
 				printf("conversion of relative path to absolute path failed\n");
@@ -919,20 +920,20 @@ int main(int argc, char *argv[])
 
 		case 'd':	/* descriptor path */
 			if (optarg)
-				strncpy(data.des_path, optarg,
-					PKG_NAME_STRING_LEN_MAX);
+				snprintf(data.des_path, sizeof(data.des_path),
+						"%s", optarg);
 			break;
 
 		case 'n':	/* package name */
 			if (optarg)
-				strncpy(data.pkgid, optarg,
-					PKG_NAME_STRING_LEN_MAX);
+				snprintf(data.pkgid, sizeof(data.pkgid),
+						"%s", optarg);
 			break;
 
 		case 't':	/* package type */
 			if (optarg)
-				strncpy(data.pkg_type, optarg,
-					PKG_TYPE_STRING_LEN_MAX);
+				snprintf(data.pkg_type, sizeof(data.pkg_type),
+						"%s", optarg);
 			break;
 
 		case 'T':	/* move type */
