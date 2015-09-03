@@ -11,6 +11,6 @@ includedir=@INCLUDEDIR@
 Name: package manager installer
 Description: SLP package manager's installer library
 Version: @VERSION@
-Requires:
+Requires: dbus-glib-1
 Libs: -L${libdir} -lpkgmgr_installer_client
 Cflags: -I${includedir}/pkgmgr
