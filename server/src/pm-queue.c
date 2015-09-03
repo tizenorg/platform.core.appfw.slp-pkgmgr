@@ -278,12 +278,11 @@ int _pm_queue_push(uid_t uid, const char *req_id, int req_type,
 		return -1;
 	}
 
-	strncpy(data->msg->req_id, req_id, strlen(req_id));
+	snprintf(data->msg->req_id, sizeof(data->msg->req_id), "%s", req_id);
 	data->msg->req_type = req_type;
 	data->msg->uid = uid;
-	strncpy(data->msg->pkg_type, pkg_type, strlen(pkg_type));
-	strncpy(data->msg->pkgid, pkgid, strlen(pkgid));
-	strncpy(data->msg->args, args, strlen(args));
+	snprintf(data->msg->pkg_type, sizeof(data->msg->pkg_type), "%s", pkg_type);
+	snprintf(data->msg->pkgid, sizeof(data->msg->pkgid), "%s", pkgid);
 
 	data->next = NULL;
 

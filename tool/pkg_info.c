@@ -1140,9 +1140,9 @@ static int __get_certinfo_from_db(char *pkgid, uid_t uid)
 			ret = pkgmgrinfo_pkginfo_destroy_certinfo(handle);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_destroy_certinfo failed\n");
-				return -1;
+				ret = -1;
 			}
-			return 0;
+			break;
 		case 1:
 		case 2:
 		case 3:
@@ -1155,21 +1155,24 @@ static int __get_certinfo_from_db(char *pkgid, uid_t uid)
 			ret = pkgmgrinfo_pkginfo_get_cert_value(handle, choice - 1, &value);
 			if (value)
 				printf("cert type[%d] value = %s\n", choice - 1, value);
+			if (ret < 0)
+				ret = -1;
 			break;
 		case 10:
 			ret = pkgmgrinfo_pkginfo_destroy_certinfo(handle);
 			if (ret < 0) {
 				printf("pkgmgrinfo_pkginfo_destroy_certinfo failed\n");
-				return -1;
+				ret = -1;
 			}
-			return 0;
+			break;
 		default:
 			printf("Invalid choice entered\n");
-			return -1;
+			ret = -1;
+			break;
 		}
 	}
 
-	return -1;
+	return ret;
 }
 
 static int __compare_pkg_certinfo_from_db(char *lhs_pkgid, char *rhs_pkgid, uid_t uid)
