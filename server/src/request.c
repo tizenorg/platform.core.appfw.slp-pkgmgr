@@ -121,6 +121,8 @@ static int __handle_request_install(uid_t uid,
 	}
 
 	reqkey = __generate_reqkey(pkgpath);
+	if (reqkey == NULL)
+		return -1;
 	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_INSTALL, pkgtype,
 				pkgpath, "")) {
 		g_dbus_method_invocation_return_value(invocation,
@@ -151,6 +153,8 @@ static int __handle_request_reinstall(uid_t uid,
 	}
 
 	reqkey = __generate_reqkey(pkgid);
+	if (reqkey == NULL)
+		return -1;
 	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_REINSTALL, pkgtype,
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
@@ -181,6 +185,8 @@ static int __handle_request_uninstall(uid_t uid,
 	}
 
 	reqkey = __generate_reqkey(pkgid);
+	if (reqkey == NULL)
+		return -1;
 	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_UNINSTALL, pkgtype,
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
@@ -211,6 +217,8 @@ static int __handle_request_move(uid_t uid,
 	}
 
 	reqkey = __generate_reqkey(pkgid);
+	if (reqkey == NULL)
+		return -1;
 	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_MOVE, pkgtype,
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
@@ -292,6 +300,9 @@ static int __handle_request_getsize(uid_t uid,
 	}
 
 	reqkey = __generate_reqkey(pkgid);
+	if (reqkey == NULL)
+		return -1;
+
 	snprintf(buf, sizeof(buf), "%d", get_type);
 	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_GETSIZE, "getsize",
 				pkgid, buf)) {
@@ -485,16 +496,19 @@ static const GDBusInterfaceVTable interface_vtable =
 static void __on_bus_acquired(GDBusConnection *connection, const gchar *name,
 		gpointer user_data)
 {
+	GError *err = NULL;
 
 	DBG("on bus acquired");
 
 	reg_id = g_dbus_connection_register_object(connection,
 			COMM_PKGMGR_DBUS_OBJECT_PATH,
 			instropection_data->interfaces[0],
-			&interface_vtable, NULL, NULL, NULL);
+			&interface_vtable, NULL, NULL, &err);
 
-	if (reg_id < 0)
-		ERR("failed to register object");
+	if (reg_id == 0) {
+		ERR("failed to register object: %s", err->message);
+		g_error_free(err);
+	}
 }
 
 static void __on_name_acquired(GDBusConnection *connection, const gchar *name,

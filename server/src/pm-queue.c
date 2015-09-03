@@ -213,12 +213,12 @@ int _pm_queue_init(void)
 		}
 		/*executable*/
 		else {
-			strncpy(buf, abs_filename, MAX_PKG_NAME_LEN - 1);
+			snprintf(buf, sizeof(buf), "%s", abs_filename);
 		}
 		ret = __entry_exist(buf);
 		if (ret == -1) {
-			strncpy(ptr->backend, buf, MAX_PKG_NAME_LEN - 1);
-			strncpy(ptr->pkgtype, namelist[n]->d_name, MAX_PKG_TYPE_LEN - 1);
+			snprintf(ptr->backend, sizeof(ptr->backend), "%s", buf);
+			snprintf(ptr->pkgtype, sizeof(ptr->pkgtype), "%s", namelist[n]->d_name);
 			ptr->queue_slot = slot;
 			ptr->head = NULL;
 			entries++;
@@ -226,8 +226,8 @@ int _pm_queue_init(void)
 			ptr++;
 		}
 		else {
-			strncpy(ptr->backend, buf, MAX_PKG_NAME_LEN - 1);
-			strncpy(ptr->pkgtype, namelist[n]->d_name, MAX_PKG_TYPE_LEN - 1);
+			snprintf(ptr->backend, sizeof(ptr->backend), "%s", buf);
+			snprintf(ptr->pkgtype, sizeof(ptr->pkgtype), "%s", namelist[n]->d_name);
 			ptr->queue_slot = ret;
 			ptr->head = NULL;
 			entries++;
@@ -278,12 +278,12 @@ int _pm_queue_push(uid_t uid, const char *req_id, int req_type,
 		return -1;
 	}
 
-	strncpy(data->msg->req_id, req_id, strlen(req_id));
+	snprintf(data->msg->req_id, sizeof(data->msg->req_id), "%s", req_id);
 	data->msg->req_type = req_type;
 	data->msg->uid = uid;
-	strncpy(data->msg->pkg_type, pkg_type, strlen(pkg_type));
-	strncpy(data->msg->pkgid, pkgid, strlen(pkgid));
-	strncpy(data->msg->args, args, strlen(args));
+	snprintf(data->msg->pkg_type, sizeof(data->msg->pkg_type), "%s", pkg_type);
+	snprintf(data->msg->pkgid, sizeof(data->msg->pkgid), "%s", pkgid);
+	snprintf(data->msg->args, sizeof(data->msg->args), "%s", args);
 
 	data->next = NULL;
 
@@ -331,12 +331,12 @@ pm_dbus_msg *_pm_queue_pop(int position)
 		return ret;
 	}
 
-	strncpy(ret->req_id, cur->msg->req_id, strlen(cur->msg->req_id));
+	snprintf(ret->req_id, sizeof(ret->req_id), "%s", cur->msg->req_id);
 	ret->req_type = cur->msg->req_type;
 	ret->uid = cur->msg->uid;
-	strncpy(ret->pkg_type, cur->msg->pkg_type, strlen(cur->msg->pkg_type));
-	strncpy(ret->pkgid, cur->msg->pkgid, strlen(cur->msg->pkgid));
-	strncpy(ret->args, cur->msg->args, strlen(cur->msg->args));
+	snprintf(ret->pkg_type, sizeof(ret->pkg_type), "%s", cur->msg->pkg_type);
+	snprintf(ret->pkgid, sizeof(ret->pkgid), "%s", cur->msg->pkgid);
+	snprintf(ret->args, sizeof(ret->args), "%s", cur->msg->args);
 
 	ptr->head = cur->next;
 	saveptr = ptr->head;
