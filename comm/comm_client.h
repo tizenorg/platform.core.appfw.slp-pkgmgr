@@ -42,7 +42,7 @@ typedef void (*status_cb) (void *cb_data, uid_t target_uid, const char *req_id,
 API comm_client *comm_client_new(void);
 API int comm_client_free(comm_client *cc);
 
-API int comm_client_request(comm_client *cc, const char *method, GVariant *params);
+API GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *params);
 
 API int comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb cb, void *cb_data);
 #endif				/* __COMM_CLIENT_H__ */
