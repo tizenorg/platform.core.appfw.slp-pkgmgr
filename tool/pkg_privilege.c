@@ -53,6 +53,13 @@ static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
 	}
 
 	path = _get_path(pkgid, uid);
+	/* TODO: should be fixed */
+	if (access(path, F_OK) == -1) {
+		printf("cannot find %s, but the smack rule for %s "
+				"will be installed\n", path, appid);
+		return req;
+	}
+
 	ret = security_manager_app_inst_req_add_path(req, path,
 			SECURITY_MANAGER_PATH_RO);
 	if (ret != SECURITY_MANAGER_SUCCESS) {
