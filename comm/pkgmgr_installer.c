@@ -188,7 +188,7 @@ API int pkgmgr_installer_free(pkgmgr_installer *pi)
 		free(pi->caller_pkgid);
 
 	if (pi->conn)
-		g_dbus_connection_close_sync(pi->conn, NULL, NULL);
+		g_object_unref(pi->conn);
 
 	free(pi);
 
