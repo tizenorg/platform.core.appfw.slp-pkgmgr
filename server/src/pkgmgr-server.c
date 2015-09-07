@@ -1411,7 +1411,7 @@ static void __handle_method_call(GDBusConnection *connection,
 	}
 
 	req_cb(NULL, uid, req_id, req_type, pkg_type, pkgid, args,
-			client, user, session, &ret);
+			client, session, user, &ret);
 
 	g_dbus_method_invocation_return_value(invocation,
 			g_variant_new("(i)", ret));
