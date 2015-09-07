@@ -779,7 +779,7 @@ static int __move_pkg_process(pkgmgr_client * pc, const char *pkgid, uid_t uid, 
 {
 	char *req_key = NULL;
 	int ret =0;
-	pkgmgrinfo_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle = NULL;
 	char *pkgtype = NULL;
 	char *installer_path = NULL;
 	char *argv[PKG_ARGC_MAX] = { NULL, };
@@ -858,7 +858,8 @@ catch:
 	if(args)
 		free(args);
 
-	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+	if (handle)
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return ret;
 }
 
@@ -867,7 +868,7 @@ static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_
 	char *pkgtype;
 	char *req_key = NULL;
 	int ret;
-	pkgmgrinfo_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle = NULL;
 	int pid = -1;
 
 	/* Check for NULL value of pc */
@@ -901,7 +902,8 @@ static int __check_app_process(pkgmgr_request_service_type service_type, pkgmgr_
 catch:
 	if (req_key)
 		free(req_key);
-	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+	if (handle)
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 
 	return ret;
 
@@ -1487,7 +1489,7 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	/* 1. check argument */
 	retv_if(pkgid == NULL, PKGMGR_R_EINVAL);
 
-	pkgmgrinfo_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle = NULL;
 	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle); 
 
 	/*check package id	*/
@@ -1571,7 +1573,8 @@ catch:
 	if(args)
 		free(args);
 
-	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+	if (handle)
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return ret;
 }
 
@@ -1727,7 +1730,7 @@ API int pkgmgr_client_move_usr_pkg(pkgmgr_client *pc, const char *pkg_type,
 	/* 1. check argument */
 	retv_if(pkgid == NULL, PKGMGR_R_EINVAL);
 
-	pkgmgrinfo_pkginfo_h handle;
+	pkgmgrinfo_pkginfo_h handle = NULL;
   if (uid != GLOBAL_USER)
 	  ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
   else
@@ -1811,7 +1814,8 @@ catch:
 	if(args)
 		free(args);
 
-	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+	if (handle)
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	return ret;
 }
 
