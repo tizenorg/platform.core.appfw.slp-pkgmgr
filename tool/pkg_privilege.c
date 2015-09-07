@@ -2,36 +2,51 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <linux/limits.h>
 
 #include <tzplatform_config.h>
 #include <security-manager.h>
 #include <pkgmgr_parser.h>
 
-#define BUFSIZE 4096
 #define OWNER_ROOT 0
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
-static const char *_get_path(const char *pkgid, uid_t uid)
+static const char *_get_pkg_root_path(const char *pkgid, uid_t uid)
 {
-	char buf[BUFSIZE];
 	const char *path;
-
-	snprintf(buf, sizeof(buf), "%s", pkgid);
 
 	tzplatform_set_user(uid);
 	path = tzplatform_mkpath((uid == OWNER_ROOT || uid == GLOBAL_USER) ?
-			TZ_SYS_RO_APP : TZ_USER_APP, buf);
+			TZ_SYS_RO_APP : TZ_USER_APP, pkgid);
 	tzplatform_reset_user();
 
 	return path;
 }
+
+struct path_type {
+	const char *path;
+	enum app_install_path_type type;
+};
+
+struct path_type path_type_map[] = {
+	{"/", SECURITY_MANAGER_PATH_PUBLIC_RO},
+	{"/bin", SECURITY_MANAGER_PATH_RO},
+	{"/data", SECURITY_MANAGER_PATH_RW},
+	{"/cache", SECURITY_MANAGER_PATH_RW},
+	{"/lib", SECURITY_MANAGER_PATH_RO},
+	{"/res", SECURITY_MANAGER_PATH_RO},
+	{"/shared", SECURITY_MANAGER_PATH_PUBLIC_RO},
+	{NULL, SECURITY_MANAGER_ENUM_END}
+};
 
 static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
 		uid_t uid)
 {
 	int ret;
 	app_inst_req *req;
-	const char *path;
+	const char *root_path;
+	char buf[PATH_MAX];
+	int i;
 
 	if (security_manager_app_inst_req_new(&req)) {
 		printf("security_manager_app_inst_req_new failed\n");
@@ -52,20 +67,26 @@ static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
 		return NULL;
 	}
 
-	path = _get_path(pkgid, uid);
+	root_path = _get_pkg_root_path(pkgid, uid);
 	/* TODO: should be fixed */
-	if (access(path, F_OK) == -1) {
+	if (access(root_path, F_OK) == -1) {
 		printf("cannot find %s, but the smack rule for %s "
-				"will be installed\n", path, appid);
+				"will be installed\n", root_path, appid);
 		return req;
 	}
 
-	ret = security_manager_app_inst_req_add_path(req, path,
-			SECURITY_MANAGER_PATH_RO);
-	if (ret != SECURITY_MANAGER_SUCCESS) {
-		printf("set path failed: %d\n", ret);
-		security_manager_app_inst_req_free(req);
-		return NULL;
+	for (i = 0; path_type_map[i].path; i++) {
+		snprintf(buf, sizeof(buf), "%s%s", root_path,
+				path_type_map[i].path);
+		if (access(buf, F_OK) == -1)
+			continue;
+		ret = security_manager_app_inst_req_add_path(req, buf,
+				path_type_map[i].type);
+		if (ret != SECURITY_MANAGER_SUCCESS) {
+			printf("set path failed: %d\n", ret);
+			security_manager_app_inst_req_free(req);
+			return NULL;
+		}
 	}
 
 	return req;
