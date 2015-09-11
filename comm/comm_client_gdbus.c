@@ -39,6 +39,8 @@
 #include "comm_client.h"
 #include "comm_debug.h"
 
+#define COMM_CLIENT_RETRY_MAX 5
+
 /*******************
  * ADT description
  */
@@ -225,6 +227,7 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 	gint rc = -1;
 	GDBusProxy *proxy;
 	GVariant *result;
+	int retry_cnt = 0;
 
 	proxy = g_dbus_proxy_new_sync(cc->conn, G_DBUS_PROXY_FLAGS_NONE, NULL,
 			COMM_PKGMGR_DBUS_SERVICE, COMM_PKGMGR_DBUS_OBJECT_PATH,
@@ -245,14 +248,21 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 	if (args == NULL)
 		args = "";
 
-	result = g_dbus_proxy_call_sync(proxy, "Request", g_variant_new("(sisssi)", req_id, req_type, pkg_type, pkgid, args, uid),
-			G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-	if (result == NULL) {
-		ERR("failed to call %s", error->message);
+	do {
+		result = g_dbus_proxy_call_sync(proxy, "Request", g_variant_new("(sisssi)", req_id, req_type, pkg_type, pkgid, args, uid),
+				G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
+		if (result)
+			break;
+
+		ERR("failed to send request, sleep and retry[%s]", error->message);
 		g_error_free(error);
-		g_object_unref(proxy);
+		error = NULL;
+		sleep(1);
+		retry_cnt++;
+	} while (retry_cnt <= COMM_CLIENT_RETRY_MAX);
+
+	if (result == NULL)
 		return -1;
-	}
 
 	g_variant_get(result, "(i)", &rc);
 
