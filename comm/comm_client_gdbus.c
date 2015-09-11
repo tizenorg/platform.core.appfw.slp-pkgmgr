@@ -39,6 +39,9 @@
 #include "comm_client.h"
 #include "comm_debug.h"
 
+#define COMM_CLIENT_RETRY_MAX 5
+#define COMM_CLIENT_WAIT_USEC (1000000 / 2) /* 0.5 sec */
+
 /*******************
  * ADT description
  */
@@ -224,16 +227,8 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 	GError *error = NULL;
 	gint rc = -1;
 	GDBusProxy *proxy;
-	GVariant *result;
-
-	proxy = g_dbus_proxy_new_sync(cc->conn, G_DBUS_PROXY_FLAGS_NONE, NULL,
-			COMM_PKGMGR_DBUS_SERVICE, COMM_PKGMGR_DBUS_OBJECT_PATH,
-			COMM_PKGMGR_DBUS_INTERFACE, NULL, &error);
-	if (proxy == NULL) {
-		ERR("failed to get proxy object: %s", error->message);
-		g_error_free(error);
-		return -1;
-	}
+	GVariant *result = NULL;
+	int retry_cnt = 0;
 
 	/* Assign default values if NULL (NULL is not allowed) */
 	if (req_id == NULL)
@@ -245,16 +240,37 @@ comm_client_request(comm_client *cc, const char *req_id, const int req_type,
 	if (args == NULL)
 		args = "";
 
-	result = g_dbus_proxy_call_sync(proxy, "Request", g_variant_new("(sisssi)", req_id, req_type, pkg_type, pkgid, args, uid),
-			G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-	if (result == NULL) {
-		ERR("failed to call %s", error->message);
-		g_error_free(error);
+	do {
+		proxy = g_dbus_proxy_new_sync(cc->conn, G_DBUS_PROXY_FLAGS_NONE, NULL,
+				COMM_PKGMGR_DBUS_SERVICE, COMM_PKGMGR_DBUS_OBJECT_PATH,
+				COMM_PKGMGR_DBUS_INTERFACE, NULL, &error);
+		if (proxy == NULL) {
+			ERR("failed to get proxy object, sleep and retry[%s]", error->message);
+			g_error_free(error);
+			error = NULL;
+			usleep(COMM_CLIENT_WAIT_USEC);
+			retry_cnt++;
+			continue;
+		}
+
+		result = g_dbus_proxy_call_sync(proxy, "Request", g_variant_new("(sisssi)", req_id, req_type, pkg_type, pkgid, args, uid),
+				G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
 		g_object_unref(proxy);
+		if (result)
+			break;
+
+		ERR("failed to send request, sleep and retry[%s]", error->message);
+		g_error_free(error);
+		error = NULL;
+		usleep(COMM_CLIENT_WAIT_USEC);
+		retry_cnt++;
+	} while (retry_cnt <= COMM_CLIENT_RETRY_MAX);
+
+	if (result == NULL)
 		return -1;
-	}
 
 	g_variant_get(result, "(i)", &rc);
+	g_variant_unref(result);
 
 	return rc == 0 ? COMM_RET_OK : COMM_RET_ERROR;
 }
