@@ -14,6 +14,7 @@ Source1004: %{name}-server.manifest
 Source1005: %{name}-installer.manifest
 Source1006: %{name}-installer-devel.manifest
 Source1007: %{name}-types-devel.manifest
+Source1008: %{name}.conf
 
 BuildRequires:  cmake
 BuildRequires:  unzip
@@ -107,6 +108,9 @@ rm -f  %{buildroot}%{_bindir}/pkgmgr_backend_sample
 rm -f %{buildroot}%{_libdir}/libpkgmgr_backend_lib_sample.so
 rm -f %{buildroot}%{_libdir}/libpkgmgr_parser_lib_sample.so
 
+mkdir -p %{buildroot}%{_tmpfilesdir}/
+install -m 0644 %{SOURCE1008} %{buildroot}%{_tmpfilesdir}/pkgmgr.conf
+
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backend
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backendlib
 mkdir -p %{buildroot}%{_sysconfdir}/opt/upgrade
@@ -162,6 +166,7 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %{_bindir}/pkginfo
 %{_datadir}/mime/packages/mime.wac.xml
 %{_datadir}/mime/packages/mime.tpk.xml
+%{_tmpfilesdir}/pkgmgr.conf
 %exclude %{_includedir}/pkgmgr/comm_client.h
 %exclude %{_includedir}/pkgmgr/comm_config.h
 %exclude %{_sysconfdir}/package-manager/server/queue_status
