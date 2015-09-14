@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <linux/limits.h>
 
 #include <pkgmgr_parser.h>
 #include <tzplatform_config.h>
@@ -11,7 +13,27 @@
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 #define UG_CLIENT tzplatform_mkpath(TZ_SYS_BIN, "ug-client")
 
-static int _install_ug(const char *manifest)
+static int _check_bin_directory(const char *pkgid)
+{
+	int ret;
+	const char *path;
+	char buf[PATH_MAX];
+
+	path = tzplatform_mkpath(TZ_SYS_RO_APP, pkgid);
+	snprintf(buf, sizeof(buf), "%s/bin", path);
+
+	if (access(buf, F_OK) == -1) {
+		if (mkdir(buf, S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH)) {
+			printf("create bin directory(%s) failed: %s\n", buf,
+					strerror(errno));
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int _install_ug(char *manifest)
 {
 	manifest_x *mfx;
 	uiapplication_x *tmp;
@@ -26,6 +48,9 @@ static int _install_ug(const char *manifest)
 	for (tmp = mfx->uiapplication; tmp; tmp = tmp->next) {
 		if (tmp->exec == NULL || tmp->ui_gadget == NULL ||
 				strcasecmp(tmp->ui_gadget, "true") != 0)
+			continue;
+
+		if (_check_bin_directory(mfx->package))
 			continue;
 
 		ret = symlink(UG_CLIENT, tmp->exec);
