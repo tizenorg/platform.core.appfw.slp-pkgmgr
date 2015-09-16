@@ -55,7 +55,7 @@ typedef void* pkgmgr_instcertinfo_h;
 #define PKGMGR_INSTALLER_INSTALL_EVENT_STR							"install"
 #define PKGMGR_INSTALLER_UNINSTALL_EVENT_STR						"uninstall"
 #define PKGMGR_INSTALLER_MOVE_EVENT_STR								"move"
-#define PKGMGR_INSTALLER_UPGRADE_EVENT_STR							"upgrade"
+#define PKGMGR_INSTALLER_UPGRADE_EVENT_STR							"update"
 #define PKGMGR_INSTALLER_OK_EVENT_STR								"ok"
 #define PKGMGR_INSTALLER_FAIL_EVENT_STR								"fail"
 
