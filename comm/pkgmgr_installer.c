@@ -61,32 +61,33 @@ struct pkgmgr_installer {
 	GDBusConnection *conn;
 };
 
-static const char *__get_signal_name(int status_type)
+static const char *__get_signal_name(pkgmgr_installer *pi, const char *key)
 {
-	switch (status_type) {
-	case COMM_STATUS_BROADCAST_ALL:
-		return COMM_STATUS_BROADCAST_SIGNAL_STATUS;
-	case COMM_STATUS_BROADCAST_INSTALL:
-		return COMM_STATUS_BROADCAST_EVENT_INSTALL;
-	case COMM_STATUS_BROADCAST_UNINSTALL:
-		return COMM_STATUS_BROADCAST_EVENT_UNINSTALL;
-	case COMM_STATUS_BROADCAST_MOVE:
-		return COMM_STATUS_BROADCAST_EVENT_MOVE;
-	case COMM_STATUS_BROADCAST_INSTALL_PROGRESS:
+	if (strcmp(key, PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR) == 0)
 		return COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS;
-	case COMM_STATUS_BROADCAST_UPGRADE:
-		return COMM_STATUS_BROADCAST_EVENT_UPGRADE;
-	case COMM_STATUS_BROADCAST_GET_SIZE:
+	else if (strcmp(key, PKGMGR_INSTALLER_GET_SIZE_KEY_STR) == 0)
 		return COMM_STATUS_BROADCAST_EVENT_GET_SIZE;
-	default:
-		return NULL;
+	else if (strcmp(key, PKGMGR_INSTALLER_APPID_KEY_STR) == 0)
+		return COMM_STATUS_BROADCAST_EVENT_UNINSTALL;
+
+	switch (pi->request_type) {
+	case PKGMGR_REQ_INSTALL:
+		return COMM_STATUS_BROADCAST_EVENT_INSTALL;
+	case PKGMGR_REQ_UNINSTALL:
+		return COMM_STATUS_BROADCAST_EVENT_UNINSTALL;
+	case PKGMGR_REQ_UPGRADE:
+		return COMM_STATUS_BROADCAST_EVENT_UPGRADE;
+	case PKGMGR_REQ_MOVE:
+		return COMM_STATUS_BROADCAST_EVENT_MOVE;
 	}
+
+	ERR("cannot find type, send signal with type SIGNAL_STATUS");
+
+	return COMM_STATUS_BROADCAST_SIGNAL_STATUS;
 }
 
-static int __send_signal_for_event(int comm_status_type, pkgmgr_installer *pi,
-			     const char *pkg_type,
-			     const char *pkgid,
-			     const char *key, const char *val)
+static int __send_signal_for_event(pkgmgr_installer *pi, const char *pkg_type,
+		const char *pkgid, const char *key, const char *val)
 {
 	char *sid;
 	const char *name;
@@ -99,7 +100,7 @@ static int __send_signal_for_event(int comm_status_type, pkgmgr_installer *pi,
 	if (!sid)
 		sid = "";
 
-	name = __get_signal_name(comm_status_type);
+	name = __get_signal_name(pi, key);
 	if (name == NULL) {
 		ERR("unknown signal type");
 		return -1;
@@ -117,38 +118,6 @@ static int __send_signal_for_event(int comm_status_type, pkgmgr_installer *pi,
 	}
 
 	return 0;
-}
-
-API int __send_event(pkgmgr_installer *pi,
-			     const char *pkg_type,
-			     const char *pkgid,
-			     const char *key, const char *val)
-{
-	int r = -1;
-
-	if (strcmp(key,PKGMGR_INSTALLER_START_KEY_STR) == 0) {
-		if(strcmp(key,PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0) {
-			pi->request_type = PKGMGR_REQ_UPGRADE;
-			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UPGRADE, pi, pkg_type, pkgid, key, val);
-		}
-		if(pi->request_type == PKGMGR_REQ_INSTALL) {
-			r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL, pi, pkg_type, pkgid, key, val);
-		} else if (pi->request_type == PKGMGR_REQ_UNINSTALL){
-			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, key, val);
-		}
-	} else if (strcmp(key,PKGMGR_INSTALLER_END_KEY_STR) == 0) {
-		if(pi->request_type == PKGMGR_REQ_INSTALL) {
-			r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL, pi, pkg_type, pkgid, key, val);
-		} else if (pi->request_type == PKGMGR_REQ_UNINSTALL){
-			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, key, val);
-		} else if (pi->request_type == PKGMGR_REQ_UPGRADE){
-			r = __send_signal_for_event(COMM_STATUS_BROADCAST_UPGRADE, pi, pkg_type, pkgid, key, val);
-		}
-	} else if (strcmp(key,PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR) == 0) {
-		r = __send_signal_for_event(COMM_STATUS_BROADCAST_INSTALL_PROGRESS, pi, pkg_type, pkgid, key, val);
-	}
-
-	return r;
 }
 
 API pkgmgr_installer *pkgmgr_installer_new(void)
@@ -386,7 +355,8 @@ API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
 {
 	int ret = -1;
 
-	ret = __send_signal_for_event(COMM_STATUS_BROADCAST_UNINSTALL, pi, pkg_type, pkgid, "appid", val);
+	ret = __send_signal_for_event(pi, pkg_type, pkgid,
+			PKGMGR_INSTALLER_APPID_KEY_STR, val);
 	return ret;
 }
 
@@ -404,16 +374,16 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 		return -1;
 	}
 
-	if (strcmp(pkg_type,PKGMGR_INSTALLER_GET_SIZE_KEY_STR) == 0) {
-		r = __send_signal_for_event(COMM_STATUS_BROADCAST_GET_SIZE, pi, pkg_type, pkgid, key, val);
-		return r;
+	sid = pi->session_id;
+	if (!sid) {
+		ERR("session id is NULL, set empty string");
+		sid = "";
 	}
 
-	sid = pi->session_id;
-	if (!sid)
-		sid = "";
+	if (strcmp(key, PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0)
+		pi->request_type = PKGMGR_REQ_UPGRADE;
 
-	r = __send_event(pi, pkg_type, pkgid, key, val);
+	r = __send_signal_for_event(pi, pkg_type, pkgid, key, val);
 
 	return r;
 }
