@@ -47,17 +47,19 @@ typedef void* pkgmgr_instcertinfo_h;
 /**
  * @brief listening event type in pkgmgr.
  */
-#define PKGMGR_INSTALLER_START_KEY_STR								"start"
-#define PKGMGR_INSTALLER_END_KEY_STR								"end"
-#define PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR					"install_percent"
-#define PKGMGR_INSTALLER_GET_SIZE_KEY_STR						"get_size"
+#define PKGMGR_INSTALLER_START_KEY_STR           "start"
+#define PKGMGR_INSTALLER_END_KEY_STR             "end"
+#define PKGMGR_INSTALLER_ERROR_KEY_STR           "error"
+#define PKGMGR_INSTALLER_APPID_KEY_STR           "appid"
+#define PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR "install_percent"
+#define PKGMGR_INSTALLER_GET_SIZE_KEY_STR        "get_size"
 
-#define PKGMGR_INSTALLER_INSTALL_EVENT_STR							"install"
-#define PKGMGR_INSTALLER_UNINSTALL_EVENT_STR						"uninstall"
-#define PKGMGR_INSTALLER_MOVE_EVENT_STR								"move"
-#define PKGMGR_INSTALLER_UPGRADE_EVENT_STR							"upgrade"
-#define PKGMGR_INSTALLER_OK_EVENT_STR								"ok"
-#define PKGMGR_INSTALLER_FAIL_EVENT_STR								"fail"
+#define PKGMGR_INSTALLER_INSTALL_EVENT_STR       "install"
+#define PKGMGR_INSTALLER_UNINSTALL_EVENT_STR     "uninstall"
+#define PKGMGR_INSTALLER_MOVE_EVENT_STR          "move"
+#define PKGMGR_INSTALLER_UPGRADE_EVENT_STR       "update"
+#define PKGMGR_INSTALLER_OK_EVENT_STR            "ok"
+#define PKGMGR_INSTALLER_FAIL_EVENT_STR          "fail"
 
 
 
