@@ -1509,7 +1509,7 @@ API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
 
 	g_variant_unref(result);
 
-	return req_id;
+	return PKGMGR_R_OK;
 }
 
 API int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc,
@@ -1564,7 +1564,7 @@ API int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc,
 
 	g_variant_unref(result);
 
-	return req_id;
+	return PKGMGR_R_OK;
 }
 
 API int pkgmgr_client_get_package_size_info(pkgmgr_client *pc, const char *pkgid, pkgmgr_pkg_size_info_receive_cb event_cb, void *user_data)
