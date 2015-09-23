@@ -637,12 +637,13 @@ int main(int argc, char *argv[])
 		break;
 	}
 
-	ret = pkgmgr_installer_send_signal(pi,
-			PKGMGR_INSTALLER_GET_SIZE_KEY_STR,
-			pkgid, "get_size", (ret == 0) ? "end" : "error");
-	pkgmgr_installer_free(pi);
+	if (pkgmgr_installer_send_signal(pi, PKGMGR_INSTALLER_GET_SIZE_KEY_STR,
+				pkgid, PKGMGR_INSTALLER_GET_SIZE_KEY_STR,
+				PKGMGR_INSTALLER_END_KEY_STR))
+		ERR("failed to send finished signal");
 
-	DBG("finish get size : [result = %d] \n", ret);
+	DBG("get size result = %d\n", ret);
+	pkgmgr_installer_free(pi);
 
 	return ret;
 }
