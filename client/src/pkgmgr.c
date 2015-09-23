@@ -1422,7 +1422,7 @@ API int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid)
 
 	if (pkgid == NULL) {
 		ERR("invalid parameter");
-		return PMINFO_R_EINVAL;
+		return PKGMGR_R_EINVAL;
 	}
 
 	pc = pkgmgr_client_new(PC_REQUEST);

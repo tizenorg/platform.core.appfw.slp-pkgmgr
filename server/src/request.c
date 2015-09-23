@@ -65,7 +65,6 @@ static const char instropection_xml[] =
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='clearcache'>"
-	"      <arg type='s' name='pkgtype' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
@@ -348,18 +347,17 @@ static int __handle_request_cleardata(uid_t uid,
 static int __handle_request_clearcache(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
-	char *pkgtype;
 	char *pkgid;
 
-	g_variant_get(parameters, "(&s&s)", &pkgtype, &pkgid);
-	if (pkgtype == NULL || pkgid == NULL) {
+	g_variant_get(parameters, "(&s)", &pkgid);
+	if (pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ECOMM));
 		return -1;
 	}
 
-	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_CLEARCACHE, pkgtype,
-				pkgid, "")) {
+	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_CLEARCACHE,
+				"clearcache", pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ESYSTEM));
 		return -1;
