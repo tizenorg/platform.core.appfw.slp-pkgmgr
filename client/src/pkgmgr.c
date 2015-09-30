@@ -1003,7 +1003,7 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 
 	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
 	if (ret < 0)
-		return PKGMGR_R_ERROR;
+		return PKGMGR_R_EINVAL;
 
 	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
 	if (ret < 0) {
