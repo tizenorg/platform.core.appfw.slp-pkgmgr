@@ -918,6 +918,11 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
+	if (access(pkg_path, F_OK) != 0) {
+		ERR("failed to access: %s", pkg_path);
+		return PKGMGR_R_EINVAL;
+	}
+
 	/* TODO: check pkg's type on server-side */
 	if (pkg_type == NULL)
 		pkgtype = __get_type_from_path(pkg_path);
