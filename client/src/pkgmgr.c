@@ -867,6 +867,34 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 	return PKGMGR_R_ERROR;
 }
 
+static char *__get_type_from_path(const char *pkg_path)
+{
+	int ret;
+	char mimetype[255] = { '\0', };
+	char extlist[256] = { '\0', };
+	char *pkg_type;
+
+	ret = _get_mime_from_file(pkg_path, mimetype, sizeof(mimetype));
+	if (ret) {
+		ERR("_get_mime_from_file() failed - error code[%d]\n", ret);
+		return NULL;
+	}
+
+	ret = _get_mime_extension(mimetype, extlist, sizeof(extlist));
+	if (ret) {
+		ERR("_get_mime_extension() failed - error code[%d]\n", ret);
+		return NULL;
+	}
+
+	if (strlen(extlist) == 0)
+		return NULL;
+
+	if (strchr(extlist, ','))
+		extlist[strlen(extlist) - strlen(strchr(extlist, ','))] = '\0';
+
+	pkg_type = strchr(extlist, '.') + 1;
+	return strdup(pkg_type);
+}
 
 API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		const char *descriptor_path, const char *pkg_path,
@@ -878,8 +906,9 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 	char *req_key = NULL;
 	int req_id;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+	char *pkgtype;
 
-	if (pc == NULL || pkg_type == NULL || pkg_path == NULL) {
+	if (pc == NULL || pkg_path == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
 	}
@@ -889,8 +918,15 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
+	/* TODO: check pkg's type on server-side */
+	if (pkg_type == NULL)
+		pkgtype = __get_type_from_path(pkg_path);
+	else
+		pkgtype = strdup(pkg_type);
+
 	result = comm_client_request(mpc->info.request.cc, "install",
-			g_variant_new("(ss)", pkg_type, pkg_path));
+			g_variant_new("(ss)", pkgtype, pkg_path));
+	free(pkgtype);
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i&s)", &ret, &req_key);
@@ -938,8 +974,10 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
 	char *req_key = NULL;
 	int req_id;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+	char *pkgtype;
+	pkgmgrinfo_pkginfo_h handle;
 
-	if (pc == NULL || pkg_type == NULL || pkgid == NULL) {
+	if (pc == NULL || pkgid == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
 	}
@@ -949,8 +987,19 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
+	ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(pkgid, uid, &handle);
+	if (ret < 0)
+		return PKGMGR_R_EINVAL;
+
+	ret = pkgmgrinfo_pkginfo_get_type(handle, &pkgtype);
+	if (ret < 0) {
+		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
+		return PKGMGR_R_ERROR;
+	}
+
 	result = comm_client_request(mpc->info.request.cc, "reinstall",
-			g_variant_new("(ss)", pkg_type, pkgid));
+			g_variant_new("(ss)", pkgtype, pkgid));
+	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i&s)", &ret, &req_key);
