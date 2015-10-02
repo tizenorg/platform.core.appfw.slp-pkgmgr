@@ -36,7 +36,7 @@ static int _check_bin_directory(const char *pkgid)
 static int _install_ug(char *manifest)
 {
 	manifest_x *mfx;
-	uiapplication_x *tmp;
+	application_x *tmp;
 	int ret;
 
 	mfx = pkgmgr_parser_process_manifest_xml(manifest);
@@ -45,7 +45,7 @@ static int _install_ug(char *manifest)
 		return -1;
 	}
 
-	for (tmp = mfx->uiapplication; tmp; tmp = tmp->next) {
+	for (tmp = mfx->application; tmp; tmp = tmp->next) {
 		if (tmp->exec == NULL || tmp->ui_gadget == NULL ||
 				strcasecmp(tmp->ui_gadget, "true") != 0)
 			continue;

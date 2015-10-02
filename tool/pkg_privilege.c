@@ -98,8 +98,7 @@ static int _insert_privilege(char *manifest, uid_t uid)
 	app_inst_req *req;
 	manifest_x *mfx;
 	privilege_x *priv;
-	struct uiapplication_x *uiapp;
-	struct serviceapplication_x *svcapp;
+	struct application_x *app;
 
 	mfx = pkgmgr_parser_process_manifest_xml(manifest);
 	if (mfx == NULL) {
@@ -107,9 +106,9 @@ static int _insert_privilege(char *manifest, uid_t uid)
 		return -1;
 	}
 
-	uiapp = mfx->uiapplication;
-	while (uiapp) {
-		req = _prepare_request(mfx->package, uiapp->appid, uid);
+	app = mfx->application;
+	while (app) {
+		req = _prepare_request(mfx->package, app->appid, uid);
 		if (req == NULL) {
 			pkgmgr_parser_free_manifest_xml(mfx);
 			return -1;
@@ -125,28 +124,7 @@ static int _insert_privilege(char *manifest, uid_t uid)
 		if (ret != SECURITY_MANAGER_SUCCESS)
 			printf("app install failed: %d\n", ret);
 		security_manager_app_inst_req_free(req);
-		uiapp = uiapp->next;
-	}
-
-	svcapp = mfx->serviceapplication;
-	while (svcapp) {
-		req = _prepare_request(mfx->package, svcapp->appid, uid);
-		if (req == NULL) {
-			pkgmgr_parser_free_manifest_xml(mfx);
-			return -1;
-		}
-		if (mfx->privileges != NULL) {
-			for (priv = mfx->privileges->privilege; priv;
-					priv = priv->next)
-				security_manager_app_inst_req_add_privilege(req,
-						priv->text);
-		}
-
-		ret = security_manager_app_install(req);
-		if (ret != SECURITY_MANAGER_SUCCESS)
-			printf("app install failed: %d\n", ret);
-		security_manager_app_inst_req_free(req);
-		svcapp = svcapp->next;
+		app = app->next;
 	}
 
 	pkgmgr_parser_free_manifest_xml(mfx);
@@ -159,8 +137,7 @@ static int _remove_privilege(char *manifest, uid_t uid)
 	int ret;
 	app_inst_req *req;
 	manifest_x *mfx;
-	struct uiapplication_x *uiapp;
-	struct serviceapplication_x *svcapp;
+	struct application_x *app;
 
 	mfx = pkgmgr_parser_process_manifest_xml(manifest);
 	if (mfx == NULL) {
@@ -168,9 +145,9 @@ static int _remove_privilege(char *manifest, uid_t uid)
 		return -1;
 	}
 
-	uiapp = mfx->uiapplication;
-	while (uiapp) {
-		req = _prepare_request(mfx->package, uiapp->appid, uid);
+	app = mfx->application;
+	while (app) {
+		req = _prepare_request(mfx->package, app->appid, uid);
 		if (req == NULL) {
 			pkgmgr_parser_free_manifest_xml(mfx);
 			return -1;
@@ -181,23 +158,7 @@ static int _remove_privilege(char *manifest, uid_t uid)
 			printf("app uninstall failed: %d\n", ret);
 
 		security_manager_app_inst_req_free(req);
-		uiapp = uiapp->next;
-	}
-
-	svcapp = mfx->serviceapplication;
-	while (svcapp) {
-		req = _prepare_request(mfx->package, svcapp->appid, uid);
-		if (req == NULL) {
-			pkgmgr_parser_free_manifest_xml(mfx);
-			return -1;
-		}
-
-		ret = security_manager_app_uninstall(req);
-		if (ret != SECURITY_MANAGER_SUCCESS)
-			printf("app uninstall failed: %d\n", ret);
-
-		security_manager_app_inst_req_free(req);
-		svcapp = svcapp->next;
+		app = app->next;
 	}
 
 	pkgmgr_parser_free_manifest_xml(mfx);
