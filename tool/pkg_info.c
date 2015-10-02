@@ -81,7 +81,6 @@ static void __get_pkgmgrinfo_pkginfo(const pkgmgrinfo_pkginfo_h handle, void *us
 	bool readonly = 0;
 	bool update = 0;
 	bool system = 0;
-	int size = -1;
 	int installed_time = -1;
 
 	ret = pkgmgrinfo_pkginfo_get_type(handle, &type);
@@ -103,12 +102,6 @@ static void __get_pkgmgrinfo_pkginfo(const pkgmgrinfo_pkginfo_h handle, void *us
 		printf("Failed to get install location\n");
 	}
 	printf("Install Location: %d\n", location);
-
-	ret = pkgmgrinfo_pkginfo_get_package_size(handle, &size);
-	if (ret < 0) {
-		printf("Failed to get package size \n");
-	}
-	printf("Package Size: %d\n", size);
 
 	ret = pkgmgrinfo_pkginfo_get_icon(handle, &icon);
 	if (ret < 0) {
@@ -686,10 +679,9 @@ static int __add_pkg_filter(uid_t uid)
 		printf("11 --> filter by package preload [0|1]\n");
 		printf("12 --> filter by package update [0|1]\n");
 		printf("13 --> filter by package appsetting [0|1]\n");
-		printf("14 --> filter by package size\n");
-		printf("15 --> filter by package installed storage[installed_internal | installed_external]\n");
-		printf("16 --> filter by package privilege\n");
-		printf("17 --> filter by package support disable [0|1]\n");
+		printf("14 --> filter by package installed storage[installed_internal | installed_external]\n");
+		printf("15 --> filter by package privilege\n");
+		printf("16 --> filter by package support disable [0|1]\n");
 		choice = __get_integer_input_data();
 		switch (choice) {
 		case 0:
@@ -850,16 +842,6 @@ static int __add_pkg_filter(uid_t uid)
 			}
 			break;
 		case 14:
-			val = __get_integer_input_data();
-			ret = pkgmgrinfo_pkginfo_filter_add_int(handle,
-				PMINFO_PKGINFO_PROP_PACKAGE_SIZE, val);
-			if (ret < 0) {
-				printf("pkgmgrinfo_pkginfo_filter_add_int() failed\n");
-				ret = -1;
-				goto err;
-			}
-			break;
-		case 15:
 			value = __get_string_input_data();
 			ret = pkgmgrinfo_pkginfo_filter_add_string(handle,
 				PMINFO_PKGINFO_PROP_PACKAGE_INSTALLED_STORAGE, value);
@@ -871,7 +853,7 @@ static int __add_pkg_filter(uid_t uid)
 			free(value);
 			value = NULL;
 			break;
-		case 16:
+		case 15:
 			value = __get_string_input_data();
 			ret = pkgmgrinfo_pkginfo_filter_add_string(handle,
 					PMINFO_PKGINFO_PROP_PACKAGE_PRIVILEGE,
@@ -884,7 +866,7 @@ static int __add_pkg_filter(uid_t uid)
 			free(value);
 			value = NULL;
 			break;
-		case 17:
+		case 16:
 			val = __get_integer_input_data();
 			ret = pkgmgrinfo_pkginfo_filter_add_bool(handle,
 				PMINFO_PKGINFO_PROP_PACKAGE_SUPPORT_DISABLE, val);
