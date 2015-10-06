@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <linux/limits.h>
 
+#include <glib.h>
+
 #include <pkgmgr_parser.h>
 #include <tzplatform_config.h>
 
@@ -33,33 +35,37 @@ static int _check_bin_directory(const char *pkgid)
 	return 0;
 }
 
+static void _application_cb(gpointer data, gpointer user_data)
+{
+	int ret;
+	application_x *app = (application_x *)data;
+	package_x *pkg = (package_x *)user_data;
+
+	if (app->exec == NULL || app->ui_gadget == NULL ||
+			strcasecmp(app->ui_gadget, "true") != 0)
+		return;
+
+	if (_check_bin_directory(pkg->package))
+		return;
+
+	ret = symlink(UG_CLIENT, app->exec);
+	if (ret != 0)
+		printf("failed to install ug %s: %s\n", app->exec,
+				strerror(errno));
+}
+
 static int _install_ug(char *manifest)
 {
-	manifest_x *mfx;
-	application_x *tmp;
-	int ret;
+	package_x *pkg;
 
-	mfx = pkgmgr_parser_process_manifest_xml(manifest);
-	if (mfx == NULL) {
+	pkg = pkgmgr_parser_process_manifest_xml(manifest);
+	if (pkg == NULL) {
 		printf("Parse manifest failed\n");
 		return -1;
 	}
 
-	for (tmp = mfx->application; tmp; tmp = tmp->next) {
-		if (tmp->exec == NULL || tmp->ui_gadget == NULL ||
-				strcasecmp(tmp->ui_gadget, "true") != 0)
-			continue;
-
-		if (_check_bin_directory(mfx->package))
-			continue;
-
-		ret = symlink(UG_CLIENT, tmp->exec);
-		if (ret != 0)
-			printf("failed to install ug %s: %s\n", tmp->exec,
-					strerror(errno));
-	}
-
-	pkgmgr_parser_free_manifest_xml(mfx);
+	g_list_foreach(pkg->application, _application_cb, pkg);
+	pkgmgr_parser_free_manifest_xml(pkg);
 
 	return 0;
 }
@@ -71,8 +77,6 @@ static void _print_usage(const char *cmd)
 
 int main(int argc, char *argv[])
 {
-	int ret;
-
 	if (getuid() != OWNER_ROOT && getuid() != GLOBAL_USER) {
 		printf("Only root or tizenglobalapp user is allowed\n");
 		return -1;
@@ -83,7 +87,5 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	ret = _install_ug(argv[1]);
-
-	return ret;
+	return _install_ug(argv[1]);
 }

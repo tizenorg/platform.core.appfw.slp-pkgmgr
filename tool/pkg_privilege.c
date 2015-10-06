@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <linux/limits.h>
 
+#include <glib.h>
+
 #include <tzplatform_config.h>
 #include <security-manager.h>
 #include <pkgmgr_parser.h>
@@ -11,9 +13,10 @@
 #define OWNER_ROOT 0
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
 
-static const char *_get_pkg_root_path(const char *pkgid, uid_t uid)
+static const char *_get_pkg_root_path(const char *pkgid)
 {
 	const char *path;
+	uid_t uid = getuid();
 
 	tzplatform_set_user(uid);
 	path = tzplatform_mkpath((uid == OWNER_ROOT || uid == GLOBAL_USER) ?
@@ -39,8 +42,7 @@ struct path_type path_type_map[] = {
 	{NULL, SECURITY_MANAGER_ENUM_END}
 };
 
-static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
-		uid_t uid)
+static app_inst_req *_prepare_request(const char *pkgid, const char *appid)
 {
 	int ret;
 	app_inst_req *req;
@@ -67,7 +69,7 @@ static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
 		return NULL;
 	}
 
-	root_path = _get_pkg_root_path(pkgid, uid);
+	root_path = _get_pkg_root_path(pkgid);
 	/* TODO: should be fixed */
 	if (access(root_path, F_OK) == -1) {
 		printf("cannot find %s, but the smack rule for %s "
@@ -92,6 +94,14 @@ static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
 	return req;
 }
 
+static void _insert_privilege_cb(gpointer data, gpointer user_data)
+{
+	const char *privilege = (const char *)data;
+	app_inst_req *req = (app_inst_req *)user_data;
+
+	security_manager_app_inst_req_add_privilege(req, privilege);
+}
+
 /* NOTE: We cannot use cert-svc api which checks signature level in this tool,
  * because cert-svc does not provide c apis in Tizen 3.0.
  * So we set default privilege as platform level temporarily.
@@ -99,85 +109,84 @@ static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
 #define DEFAULT_PRIVILEGE_PUBLIC "http://tizen.org/privilege/internal/default/public"
 #define DEFAULT_PRIVILEGE_PARTNER "http://tizen.org/privilege/internal/default/partner"
 #define DEFAULT_PRIVILEGE_PLATFORM "http://tizen.org/privilege/internal/default/platform"
-static int _insert_privilege(char *manifest, uid_t uid)
+static void _insert_application_cb(gpointer data, gpointer user_data)
 {
 	int ret;
 	app_inst_req *req;
-	manifest_x *mfx;
-	privilege_x *priv;
-	struct application_x *app;
+	application_x *app = (application_x *)data;
+	package_x *pkg = (package_x *)user_data;
 
-	mfx = pkgmgr_parser_process_manifest_xml(manifest);
-	if (mfx == NULL) {
+	req = _prepare_request(pkg->package, app->appid);
+	if (req == NULL) {
+		printf("out of memory\n");
+		return;
+	}
+
+	if (getuid() == OWNER_ROOT) {
+		security_manager_app_inst_req_add_privilege(req,
+				DEFAULT_PRIVILEGE_PUBLIC);
+		security_manager_app_inst_req_add_privilege(req,
+				DEFAULT_PRIVILEGE_PARTNER);
+		security_manager_app_inst_req_add_privilege(req,
+				DEFAULT_PRIVILEGE_PLATFORM);
+	}
+
+	g_list_foreach(pkg->privileges, _insert_privilege_cb, (gpointer)req);
+
+	ret = security_manager_app_install(req);
+	if (ret != SECURITY_MANAGER_SUCCESS)
+		printf("app install failed: %d\n", ret);
+	security_manager_app_inst_req_free(req);
+}
+
+static int _insert_privilege(char *manifest)
+{
+	package_x *pkg;
+
+	pkg = pkgmgr_parser_process_manifest_xml(manifest);
+	if (pkg == NULL) {
 		printf("Parse manifest failed\n");
 		return -1;
 	}
 
-	app = mfx->application;
-	while (app) {
-		req = _prepare_request(mfx->package, app->appid, uid);
-		if (req == NULL) {
-			pkgmgr_parser_free_manifest_xml(mfx);
-			return -1;
-		}
-		if (mfx->privileges != NULL) {
-			for (priv = mfx->privileges->privilege; priv;
-					priv = priv->next)
-				security_manager_app_inst_req_add_privilege(req,
-						priv->text);
-		}
-
-		if (getuid() == OWNER_ROOT) {
-			security_manager_app_inst_req_add_privilege(req,
-					DEFAULT_PRIVILEGE_PUBLIC);
-			security_manager_app_inst_req_add_privilege(req,
-					DEFAULT_PRIVILEGE_PARTNER);
-			security_manager_app_inst_req_add_privilege(req,
-					DEFAULT_PRIVILEGE_PLATFORM);
-		}
-
-		ret = security_manager_app_install(req);
-		if (ret != SECURITY_MANAGER_SUCCESS)
-			printf("app install failed: %d\n", ret);
-		security_manager_app_inst_req_free(req);
-		app = app->next;
-	}
-
-	pkgmgr_parser_free_manifest_xml(mfx);
+	g_list_foreach(pkg->application, _insert_application_cb, (gpointer)pkg);
+	pkgmgr_parser_free_manifest_xml(pkg);
 
 	return 0;
 }
 
-static int _remove_privilege(char *manifest, uid_t uid)
+static void _remove_application_cb(gpointer data, gpointer user_data)
 {
 	int ret;
 	app_inst_req *req;
-	manifest_x *mfx;
-	struct application_x *app;
+	application_x *app = (application_x *)data;
+	package_x *pkg = (package_x *)user_data;
 
-	mfx = pkgmgr_parser_process_manifest_xml(manifest);
-	if (mfx == NULL) {
+	req = _prepare_request(pkg->package, app->appid);
+	if (req == NULL) {
+		printf("out of memory\n");
+		return;
+	}
+
+	ret = security_manager_app_uninstall(req);
+	if (ret != SECURITY_MANAGER_SUCCESS)
+		printf("app uninstall failed: %d\n", ret);
+
+	security_manager_app_inst_req_free(req);
+}
+
+static int _remove_privilege(char *manifest)
+{
+	package_x *pkg;
+
+	pkg = pkgmgr_parser_process_manifest_xml(manifest);
+	if (pkg == NULL) {
 		printf("Parse manifest failed\n");
 		return -1;
 	}
 
-	app = mfx->application;
-	while (app) {
-		req = _prepare_request(mfx->package, app->appid, uid);
-		if (req == NULL) {
-			pkgmgr_parser_free_manifest_xml(mfx);
-			return -1;
-		}
-
-		ret = security_manager_app_uninstall(req);
-		if (ret != SECURITY_MANAGER_SUCCESS)
-			printf("app uninstall failed: %d\n", ret);
-
-		security_manager_app_inst_req_free(req);
-		app = app->next;
-	}
-
-	pkgmgr_parser_free_manifest_xml(mfx);
+	g_list_foreach(pkg->application, _remove_application_cb, (gpointer)pkg);
+	pkgmgr_parser_free_manifest_xml(pkg);
 
 	return 0;
 }
@@ -199,9 +208,9 @@ int main(int argc, char **argv)
 	}
 
 	if (!strcmp(argv[1], "-i")) {
-		ret = _insert_privilege(argv[2], getuid());
+		ret = _insert_privilege(argv[2]);
 	} else if (!strcmp(argv[1], "-u")) {
-		ret = _remove_privilege(argv[2], getuid());
+		ret = _remove_privilege(argv[2]);
 	} else {
 		_print_usage(argv[0]);
 		ret = -1;
