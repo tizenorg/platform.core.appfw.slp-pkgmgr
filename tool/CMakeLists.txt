@@ -11,7 +11,7 @@ FOREACH(flag ${pkgs_initdb_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-pkg_check_modules(pkgs_test REQUIRED dlog libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config security-manager)
+pkg_check_modules(pkgs_test REQUIRED dlog glib-2.0 libxml-2.0 bundle pkgmgr-parser pkgmgr-info libtzplatform-config security-manager)
 FOREACH(flag ${pkgs_test_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
