@@ -102,6 +102,11 @@ static void _insert_privilege_cb(gpointer data, gpointer user_data)
 	security_manager_app_inst_req_add_privilege(req, privilege);
 }
 
+/* NOTE: We cannot use cert-svc api which checks signature level in this tool,
+ * because cert-svc does not provide c apis in Tizen 3.0.
+ * So we set default privilege as public level temporarily.
+ */
+#define DEFAULT_PRIVILEGE "http://tizen.org/privilege/internal/default/public"
 static void _insert_application_cb(gpointer data, gpointer user_data)
 {
 	int ret;
@@ -116,6 +121,9 @@ static void _insert_application_cb(gpointer data, gpointer user_data)
 	}
 
 	g_list_foreach(pkg->privileges, _insert_privilege_cb, (gpointer)req);
+	/* set default privilege when install preloaded packages */
+	if (getuid() == OWNER_ROOT)
+		security_manager_app_inst_req_add_privilege(req, DEFAULT_PRIVILEGE);
 
 	ret = security_manager_app_install(req);
 	if (ret != SECURITY_MANAGER_SUCCESS)
