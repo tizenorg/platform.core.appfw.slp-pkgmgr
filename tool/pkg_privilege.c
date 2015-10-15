@@ -92,6 +92,11 @@ static app_inst_req *_prepare_request(const char *pkgid, const char *appid,
 	return req;
 }
 
+/* NOTE: We cannot use cert-svc api which checks signature level in this tool,
+ * because cert-svc does not provide c apis in Tizen 3.0.
+ * So we set default privilege as platform level temporarily.
+ */
+#define DEFAULT_PRIVILEGE "http://tizen.org/privilege/internal/default/platform"
 static int _insert_privilege(char *manifest, uid_t uid)
 {
 	int ret;
@@ -119,6 +124,10 @@ static int _insert_privilege(char *manifest, uid_t uid)
 				security_manager_app_inst_req_add_privilege(req,
 						priv->text);
 		}
+
+		if (getuid() == OWNER_ROOT)
+			security_manager_app_inst_req_add_privilege(req,
+					DEFAULT_PRIVILEGE);
 
 		ret = security_manager_app_install(req);
 		if (ret != SECURITY_MANAGER_SUCCESS)
