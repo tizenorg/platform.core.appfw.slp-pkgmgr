@@ -226,6 +226,9 @@ GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *par
 	GVariant *result = NULL;
 	int retry_cnt = 0;
 
+	/* convert floating ref into normal ref */
+	g_variant_ref_sink(params);
+
 	do {
 		proxy = g_dbus_proxy_new_sync(cc->conn, G_DBUS_PROXY_FLAGS_NONE, NULL,
 				COMM_PKGMGR_DBUS_SERVICE, COMM_PKGMGR_DBUS_OBJECT_PATH,
@@ -251,6 +254,9 @@ GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *par
 		usleep(COMM_CLIENT_WAIT_USEC);
 		retry_cnt++;
 	} while (retry_cnt <= COMM_CLIENT_RETRY_MAX);
+
+	/* decrease ref count to 0 to free resource */
+	g_variant_unref(params);
 
 	return result;
 }
