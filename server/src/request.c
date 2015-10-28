@@ -14,65 +14,78 @@ static const char instropection_xml[] =
 	"<node>"
 	"  <interface name='org.tizen.pkgmgr'>"
 	"    <method name='install'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgtype' direction='in'/>"
 	"      <arg type='s' name='pkgpath' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"      <arg type='s' name='reqkey' direction='out'/>"
 	"    </method>"
 	"    <method name='reinstall'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgtype' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"      <arg type='s' name='reqkey' direction='out'/>"
 	"    </method>"
 	"    <method name='uninstall'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgtype' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"      <arg type='s' name='reqkey' direction='out'/>"
 	"    </method>"
 	"    <method name='move'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgtype' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"      <arg type='s' name='reqkey' direction='out'/>"
 	"    </method>"
 	"    <method name='enable_pkg'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='disable_pkg'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='enable_app'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='appid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='disable_app'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='appid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='getsize'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='get_type' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"      <arg type='s' name='reqkey' direction='out'/>"
 	"    </method>"
 	"    <method name='cleardata'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgtype' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='clearcache'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='kill'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
 	"    <method name='check'>"
+	"      <arg type='u' name='uid' direction='in'/>"
 	"      <arg type='s' name='pkgid' direction='in'/>"
 	"      <arg type='i' name='ret' direction='out'/>"
 	"    </method>"
@@ -108,12 +121,13 @@ static char *__generate_reqkey(const char *pkgid)
 static int __handle_request_install(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgtype = NULL;
 	char *pkgpath = NULL;
 	char *reqkey;
 
-	g_variant_get(parameters, "(&s&s)", &pkgtype, &pkgpath);
-	if (pkgtype == NULL || pkgpath == NULL) {
+	g_variant_get(parameters, "(u&s&s)", &target_uid, &pkgtype, &pkgpath);
+	if (target_uid == (uid_t)-1 || pkgtype == NULL || pkgpath == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ECOMM, ""));
 		return -1;
@@ -122,7 +136,7 @@ static int __handle_request_install(uid_t uid,
 	reqkey = __generate_reqkey(pkgpath);
 	if (reqkey == NULL)
 		return -1;
-	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_INSTALL, pkgtype,
+	if (_pm_queue_push(target_uid, reqkey, PKGMGR_REQUEST_TYPE_INSTALL, pkgtype,
 				pkgpath, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ESYSTEM, ""));
@@ -140,12 +154,13 @@ static int __handle_request_install(uid_t uid,
 static int __handle_request_reinstall(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgtype = NULL;
 	char *pkgid = NULL;
 	char *reqkey;
 
-	g_variant_get(parameters, "(&s&s)", &pkgtype, &pkgid);
-	if (pkgtype == NULL || pkgid == NULL) {
+	g_variant_get(parameters, "(u&s&s)", &target_uid, &pkgtype, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgtype == NULL || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ECOMM, ""));
 		return -1;
@@ -154,7 +169,7 @@ static int __handle_request_reinstall(uid_t uid,
 	reqkey = __generate_reqkey(pkgid);
 	if (reqkey == NULL)
 		return -1;
-	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_REINSTALL, pkgtype,
+	if (_pm_queue_push(target_uid, reqkey, PKGMGR_REQUEST_TYPE_REINSTALL, pkgtype,
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ESYSTEM, ""));
@@ -172,12 +187,13 @@ static int __handle_request_reinstall(uid_t uid,
 static int __handle_request_uninstall(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgtype = NULL;
 	char *pkgid = NULL;
 	char *reqkey;
 
-	g_variant_get(parameters, "(&s&s)", &pkgtype, &pkgid);
-	if (pkgtype == NULL || pkgid == NULL) {
+	g_variant_get(parameters, "(u&s&s)", &target_uid, &pkgtype, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgtype == NULL || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ECOMM, ""));
 		return -1;
@@ -186,7 +202,7 @@ static int __handle_request_uninstall(uid_t uid,
 	reqkey = __generate_reqkey(pkgid);
 	if (reqkey == NULL)
 		return -1;
-	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_UNINSTALL, pkgtype,
+	if (_pm_queue_push(target_uid, reqkey, PKGMGR_REQUEST_TYPE_UNINSTALL, pkgtype,
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ESYSTEM, ""));
@@ -204,12 +220,13 @@ static int __handle_request_uninstall(uid_t uid,
 static int __handle_request_move(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgtype = NULL;
 	char *pkgid = NULL;
 	char *reqkey;
 
-	g_variant_get(parameters, "(&s&s)", &pkgtype, &pkgid);
-	if (pkgtype == NULL || pkgid == NULL) {
+	g_variant_get(parameters, "(u&s&s)", &target_uid, &pkgtype, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgtype == NULL || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ECOMM, ""));
 		return -1;
@@ -218,7 +235,7 @@ static int __handle_request_move(uid_t uid,
 	reqkey = __generate_reqkey(pkgid);
 	if (reqkey == NULL)
 		return -1;
-	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_MOVE, pkgtype,
+	if (_pm_queue_push(target_uid, reqkey, PKGMGR_REQUEST_TYPE_MOVE, pkgtype,
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ESYSTEM, ""));
@@ -236,16 +253,17 @@ static int __handle_request_move(uid_t uid,
 static int __handle_request_enable(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgid = NULL;
 
-	g_variant_get(parameters, "(&s)", &pkgid);
-	if (pkgid == NULL) {
+	g_variant_get(parameters, "(u&s)", &target_uid, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ECOMM));
 		return -1;
 	}
 
-	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_ENABLE, "pkg",
+	if (_pm_queue_push(target_uid, "", PKGMGR_REQUEST_TYPE_ENABLE, "pkg",
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ESYSTEM));
@@ -261,16 +279,17 @@ static int __handle_request_enable(uid_t uid,
 static int __handle_request_disable(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgid = NULL;
 
-	g_variant_get(parameters, "(&s)", &pkgid);
-	if (pkgid == NULL) {
+	g_variant_get(parameters, "(u&s)", &target_uid, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ECOMM));
 		return -1;
 	}
 
-	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_DISABLE, "pkg",
+	if (_pm_queue_push(target_uid, "", PKGMGR_REQUEST_TYPE_DISABLE, "pkg",
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ESYSTEM));
@@ -286,13 +305,14 @@ static int __handle_request_disable(uid_t uid,
 static int __handle_request_getsize(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgid = NULL;
 	int get_type = -1;
 	char *reqkey;
 	char buf[4];
 
-	g_variant_get(parameters, "(&si)", &pkgid, &get_type);
-	if (pkgid == NULL || get_type == -1) {
+	g_variant_get(parameters, "(u&si)", &target_uid, &pkgid, &get_type);
+	if (target_uid == (uid_t)-1 || pkgid == NULL || get_type == -1) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ECOMM, ""));
 		return -1;
@@ -303,7 +323,7 @@ static int __handle_request_getsize(uid_t uid,
 		return -1;
 
 	snprintf(buf, sizeof(buf), "%d", get_type);
-	if (_pm_queue_push(uid, reqkey, PKGMGR_REQUEST_TYPE_GETSIZE, "getsize",
+	if (_pm_queue_push(target_uid, reqkey, PKGMGR_REQUEST_TYPE_GETSIZE, "getsize",
 				pkgid, buf)) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(is)", PKGMGR_R_ESYSTEM, ""));
@@ -321,17 +341,18 @@ static int __handle_request_getsize(uid_t uid,
 static int __handle_request_cleardata(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
+	uid_t target_uid = (uid_t)-1;
 	char *pkgtype = NULL;
 	char *pkgid = NULL;
 
-	g_variant_get(parameters, "(&s&s)", &pkgtype, &pkgid);
-	if (pkgtype == NULL || pkgid == NULL) {
+	g_variant_get(parameters, "(u&s&s)", &target_uid, &pkgtype, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgtype == NULL || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ECOMM));
 		return -1;
 	}
 
-	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_CLEARDATA, pkgtype,
+	if (_pm_queue_push(target_uid, "", PKGMGR_REQUEST_TYPE_CLEARDATA, pkgtype,
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ESYSTEM));
@@ -347,16 +368,17 @@ static int __handle_request_cleardata(uid_t uid,
 static int __handle_request_clearcache(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
-	char *pkgid;
+	uid_t target_uid = (uid_t)-1;
+	char *pkgid = NULL;
 
-	g_variant_get(parameters, "(&s)", &pkgid);
-	if (pkgid == NULL) {
+	g_variant_get(parameters, "(u&s)", &target_uid, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ECOMM));
 		return -1;
 	}
 
-	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_CLEARCACHE,
+	if (_pm_queue_push(target_uid, "", PKGMGR_REQUEST_TYPE_CLEARCACHE,
 				"clearcache", pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ESYSTEM));
@@ -372,16 +394,17 @@ static int __handle_request_clearcache(uid_t uid,
 static int __handle_request_kill(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
-	char *pkgid;
+	uid_t target_uid = (uid_t)-1;
+	char *pkgid = NULL;
 
-	g_variant_get(parameters, "(&s)", &pkgid);
-	if (pkgid == NULL) {
+	g_variant_get(parameters, "(u&s)", &target_uid, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ECOMM));
 		return -1;
 	}
 
-	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_KILL, "pkg",
+	if (_pm_queue_push(target_uid, "", PKGMGR_REQUEST_TYPE_KILL, "pkg",
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ESYSTEM));
@@ -397,16 +420,17 @@ static int __handle_request_kill(uid_t uid,
 static int __handle_request_check(uid_t uid,
 		GDBusMethodInvocation *invocation, GVariant *parameters)
 {
-	char *pkgid;
+	uid_t target_uid = (uid_t)-1;
+	char *pkgid = NULL;
 
-	g_variant_get(parameters, "(&s)", &pkgid);
-	if (pkgid == NULL) {
+	g_variant_get(parameters, "(u&s)", &target_uid, &pkgid);
+	if (target_uid == (uid_t)-1 || pkgid == NULL) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ECOMM));
 		return -1;
 	}
 
-	if (_pm_queue_push(uid, "", PKGMGR_REQUEST_TYPE_CHECK, "pkg",
+	if (_pm_queue_push(target_uid, "", PKGMGR_REQUEST_TYPE_CHECK, "pkg",
 				pkgid, "")) {
 		g_dbus_method_invocation_return_value(invocation,
 				g_variant_new("(i)", PKGMGR_R_ESYSTEM));

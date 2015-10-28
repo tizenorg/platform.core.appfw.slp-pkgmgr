@@ -930,7 +930,7 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		pkgtype = strdup(pkg_type);
 
 	result = comm_client_request(mpc->info.request.cc, "install",
-			g_variant_new("(ss)", pkgtype, pkg_path));
+			g_variant_new("(uss)", uid, pkgtype, pkg_path));
 	free(pkgtype);
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
@@ -1003,7 +1003,7 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "reinstall",
-			g_variant_new("(ss)", pkgtype, pkgid));
+			g_variant_new("(uss)", uid, pkgtype, pkgid));
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
@@ -1068,7 +1068,7 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 	/* TODO: check removable ? */
 
 	result = comm_client_request(mpc->info.request.cc, "uninstall",
-			g_variant_new("(ss)", pkgtype, pkgid));
+			g_variant_new("(uss)", uid, pkgtype, pkgid));
 	if (result == NULL) {
 		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 		return PKGMGR_R_ECOMM;
@@ -1122,7 +1122,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "move",
-			g_variant_new("(ss)", pkg_type, pkgid));
+			g_variant_new("(uss)", uid, pkg_type, pkgid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
@@ -1144,7 +1144,7 @@ API int pkgmgr_client_usr_activate(pkgmgr_client *pc, const char *pkg_type,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "enable_pkg",
-			g_variant_new("(s)", pkgid));
+			g_variant_new("(us)", uid, pkgid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
@@ -1172,7 +1172,7 @@ API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "disable_pkg",
-			g_variant_new("(s)", pkgid));
+			g_variant_new("(us)", uid, pkgid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
@@ -1200,7 +1200,7 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "enable_app",
-			g_variant_new("(s)", appid));
+			g_variant_new("(us)", uid, appid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
@@ -1240,7 +1240,7 @@ API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "disable_app",
-			g_variant_new("(s)", appid));
+			g_variant_new("(us)", uid, appid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
@@ -1273,7 +1273,7 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "cleardata",
-			g_variant_new("(ss)", pkg_type, appid));
+			g_variant_new("(uss)", uid, pkg_type, appid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 
@@ -1544,7 +1544,7 @@ API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
 	else
 		get_type = PM_GET_PKG_SIZE_INFO;
 	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(si)", pkgid, get_type));
+			g_variant_new("(usi)", uid, pkgid, get_type));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 
@@ -1598,7 +1598,7 @@ API int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc,
 	else
 		get_type = PM_GET_PKG_SIZE_INFO;
 	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(si)", pkgid, get_type));
+			g_variant_new("(usi)", uid, pkgid, get_type));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 
