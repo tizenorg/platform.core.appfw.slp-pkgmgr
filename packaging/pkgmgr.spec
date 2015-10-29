@@ -132,7 +132,9 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
 # For pkgmgr-install:
 # Update mime database to support package mime types
 update-mime-database %{_datadir}/mime
-chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
+
+# Create tizenglobalapp user needed for global installation
+useradd -d %TZ_SYS_RW_APP -m %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g root
 
 %post -n pkgmgr-server -p /sbin/ldconfig
 
