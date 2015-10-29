@@ -8,7 +8,7 @@ set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 
 
 ### Versioning
-if(DEFINED ${VERSION}) 
+if(DEFINED ${VERSION})
 	message("VERSION: ${VERSION}")
 else()
 	message("VERSION is not defined. set it as 0.1.0")

@@ -10,11 +10,10 @@ Source0:    %{name}-%{version}.tar.gz
 Source1001: %{name}.manifest
 Source1002: %{name}-client.manifest
 Source1003: %{name}-client-devel.manifest
-Source1004: %{name}-server.manifest
-Source1005: %{name}-installer.manifest
-Source1006: %{name}-installer-devel.manifest
-Source1007: %{name}-types-devel.manifest
-Source1008: %{name}.conf
+Source1004: %{name}-installer.manifest
+Source1005: %{name}-installer-devel.manifest
+Source1006: %{name}-types-devel.manifest
+Source1007: %{name}.conf
 
 BuildRequires:  cmake
 BuildRequires:  unzip
@@ -58,14 +57,6 @@ Requires: pkgmgr-client
 Package Manager client library develpoment package for packaging
 
 
-%package server
-Summary:    Package Manager server
-Requires:   %{name} = %{version}-%{release}
-
-%description server
-Package Manager server for packaging
-
-
 %package installer
 Summary:    Library for installer frontend/backend
 Requires:   %{name} = %{version}-%{release}
@@ -92,7 +83,7 @@ Package Manager client types develpoment package for packaging
 
 %prep
 %setup -q
-cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURCE1006} %{SOURCE1007} .
+cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURCE1006} .
 
 %build
 %cmake .
@@ -106,7 +97,7 @@ rm -f %{buildroot}%{_libdir}/libpkgmgr_backend_lib_sample.so
 rm -f %{buildroot}%{_libdir}/libpkgmgr_parser_lib_sample.so
 
 mkdir -p %{buildroot}%{_tmpfilesdir}/
-install -m 0644 %{SOURCE1008} %{buildroot}%{_tmpfilesdir}/pkgmgr.conf
+install -m 0644 %{SOURCE1007} %{buildroot}%{_tmpfilesdir}/pkgmgr.conf
 
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backend
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backendlib
@@ -122,19 +113,11 @@ touch  %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
 chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
 
 
-mkdir -p %{buildroot}%{_sysconfdir}/package-manager/server
-
 %fdupes %{buildroot}
 
 %post
 /sbin/ldconfig
 
-# For pkgmgr-install:
-# Update mime database to support package mime types
-update-mime-database %{_datadir}/mime
-chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
-
-%post -n pkgmgr-server -p /sbin/ldconfig
 
 %post -n pkgmgr-client -p /sbin/ldconfig
 
@@ -148,24 +131,13 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %files
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%{_includedir}/package-manager-debug.h
+%{_includedir}/pkgmgr/comm_config.h
 %dir %{_sysconfdir}/package-manager/backend
 %dir %{_sysconfdir}/package-manager/backendlib
-%dir %{_sysconfdir}/opt/upgrade
 %{_sysconfdir}/package-manager/backend/*
-%{_sysconfdir}/opt/upgrade/pkgmgr.patch.sh
-%{_bindir}/pkgcmd
-%attr(06755,root,root) %{_bindir}/pkg_initdb
-%attr(755,root,root) %{_sysconfdir}/gumd/useradd.d/10_package-manager-add.post
-%{_bindir}/pkg_getsize
-%{_bindir}/pkg_clearcache
-%{_bindir}/pkg_privilege
-%{_bindir}/pkg_install_ug
-%{_bindir}/pkginfo
-%{_datadir}/mime/packages/mime.wac.xml
-%{_datadir}/mime/packages/mime.tpk.xml
 %{_tmpfilesdir}/pkgmgr.conf
 %exclude %{_includedir}/pkgmgr/comm_client.h
-%exclude %{_includedir}/pkgmgr/comm_config.h
 %exclude %{_sysconfdir}/package-manager/server/queue_status
 
 %files client
@@ -181,14 +153,6 @@ chsmack -a '*' %{TZ_SYS_RW_PACKAGES}
 %{_includedir}/package-manager.h
 %{_libdir}/pkgconfig/pkgmgr.pc
 %{_libdir}/libpkgmgr-client.so
-
-%files server
-%manifest %{name}-server.manifest
-%defattr(-,root,root,-)
-%{_datadir}/dbus-1/system-services/org.tizen.pkgmgr.service
-%config %{_sysconfdir}/dbus-1/system.d/org.tizen.pkgmgr.conf
-%{_bindir}/pkgmgr-server
-%{_sysconfdir}/package-manager/server
 
 %files installer
 %manifest %{name}-installer.manifest
