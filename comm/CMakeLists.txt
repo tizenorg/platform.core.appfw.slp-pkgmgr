@@ -62,19 +62,19 @@ configure_file(pkgmgr-installer.pc.in ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-install
 
 
 ## Install
-INSTALL(TARGETS 
-			pkgmgr_installer_client 
+INSTALL(TARGETS
+			pkgmgr_installer_client
 			pkgmgr_installer
             DESTINATION ${LIB_INSTALL_DIR}
 		COMPONENT RuntimeLibraries)
-INSTALL(FILES 
-			comm_client.h 
+INSTALL(FILES
+			comm_client.h
 			comm_config.h
 			pkgmgr_installer.h
 		DESTINATION include/pkgmgr)
 
 
-INSTALL(FILES 
-		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-client.pc 
-		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc 
+INSTALL(FILES
+		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-client.pc
+		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc
         DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
