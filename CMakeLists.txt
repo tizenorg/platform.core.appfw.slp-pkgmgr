@@ -26,3 +26,4 @@ ADD_SUBDIRECTORY(client)
 ADD_SUBDIRECTORY(types)
 
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/package-manager-debug.h DESTINATION include)
+
