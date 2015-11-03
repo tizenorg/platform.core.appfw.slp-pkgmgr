@@ -86,6 +86,8 @@ typedef struct _pkgmgr_client_t {
 		} listening;
 	} info;
 	void *new_event_cb;
+	char *tep_path;
+	char *tep_move;
 } pkgmgr_client_t;
 
 typedef struct _iter_data {
@@ -797,6 +799,7 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 	/* Manage pc */
 	pc->ctype = ctype;
 	pc->status_type = PKGMGR_CLIENT_STATUS_ALL;
+	pc->tep_path = NULL;
 
 	if (pc->ctype == PC_REQUEST) {
 		pc->info.request.cc = comm_client_new();
@@ -855,6 +858,16 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 		return PKGMGR_R_EINVAL;
 	}
 
+	if (mpc->tep_path) {
+		free(mpc->tep_path);
+		mpc->tep_path = NULL;
+	}
+
+	if (mpc->tep_move) {
+		free(mpc->tep_move);
+		mpc->tep_move = NULL;
+	}
+
 	free(mpc);
 	mpc = NULL;
 	return PKGMGR_R_OK;
@@ -896,6 +909,18 @@ static char *__get_type_from_path(const char *pkg_path)
 	return strdup(pkg_type);
 }
 
+API int pkgmgr_client_set_tep_path(pkgmgr_client *pc, char *tep_path, char *tep_move)
+{
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
+	retvm_if(tep_path == NULL, PKGMGR_R_EINVAL, "tep path is NULL");
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+
+	mpc->tep_path = strdup(tep_path);
+	mpc->tep_move = strdup(tep_move);
+
+	return PKGMGR_R_OK;
+}
+
 API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		const char *descriptor_path, const char *pkg_path,
 		const char *optional_file, pkgmgr_mode mode,
@@ -904,9 +929,12 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
 	char *req_key = NULL;
+	GVariantBuilder *builder = NULL;
+	GVariant *args = NULL;
 	int req_id;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 	char *pkgtype;
+	char *temp = NULL;
 
 	if (pc == NULL || pkg_path == NULL) {
 		ERR("invalid parameter");
@@ -923,15 +951,32 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
+	if (mpc->tep_path != NULL && access(mpc->tep_path, F_OK) != 0) {
+		ERR("failed to access: %s", mpc->tep_path);
+		return PKGMGR_R_EINVAL;
+	}
+
 	/* TODO: check pkg's type on server-side */
 	if (pkg_type == NULL)
 		pkgtype = __get_type_from_path(pkg_path);
 	else
 		pkgtype = strdup(pkg_type);
 
+	/* build arguments */
+	builder = g_variant_builder_new(G_VARIANT_TYPE("as"));
+	if (mpc->tep_path) {
+		g_variant_builder_add(builder, "s", "-e");
+		g_variant_builder_add(builder, "s", mpc->tep_path);
+		g_variant_builder_add(builder, "s", "-M");
+		g_variant_builder_add(builder, "s", mpc->tep_move);
+	}
+
+	args = g_variant_new("as", builder);
+	g_variant_builder_unref(builder);
+
 	result = comm_client_request(mpc->info.request.cc, "install",
-			g_variant_new("(uss)", uid, pkgtype, pkg_path));
-	free(pkgtype);
+			g_variant_new("(uss@as)", uid, pkgtype, pkg_path, args));
+
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i&s)", &ret, &req_key);
