@@ -32,6 +32,25 @@ extern "C" {
 #endif
 
 /* Supported options */
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:e:M:q";
+const struct option long_opts[] = {
+	{ "session-id", 1, NULL, 'k' },
+	{ "license-path", 1, NULL, 'l' },
+	{ "install", 1, NULL, 'i' },
+	{ "uninstall", 1, NULL, 'd' },
+	{ "clear", 1, NULL, 'c' },
+	{ "move", 1, NULL, 'm' },
+	{ "move-type", 1, NULL, 't' },
+	{ "optional-data", 0, NULL, 'o' },
+	{ "reinstall", 0, NULL, 'r' },
+	{ "caller-pkgid", 1, NULL, 'p' },
+	{ "tep-path", 1, NULL, 'e' },
+	{ "tep-move", 1, NULL, 'M' },
+	{ "smack", 1, NULL, 's' },
+	{ 0, 0, 0, 0 }	/* sentinel */
+};
+#else
 const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:q";
 const struct option long_opts[] = {
 	{ "session-id", 1, NULL, 'k' },
@@ -47,6 +66,7 @@ const struct option long_opts[] = {
 	{ "smack", 1, NULL, 's' },
 	{ 0, 0, 0, 0 }	/* sentinel */
 };
+#endif
 
 #ifdef __cplusplus
 }

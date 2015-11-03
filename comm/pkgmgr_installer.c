@@ -57,6 +57,11 @@ struct pkgmgr_installer {
 	char *optional_data;
 	char *caller_pkgid;
 	uid_t target_uid;
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+	char *tep_path;
+	int tep_move;
+	int is_tep_included;
+#endif
 
 	GDBusConnection *conn;
 };
@@ -137,6 +142,11 @@ API pkgmgr_installer *pkgmgr_installer_new(void)
 		return NULL;
 	}
 
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+	pi->tep_path = NULL;
+	pi->tep_move = 0;
+#endif
+
 	pi->request_type = PKGMGR_REQ_INVALID;
 
 	return pi;
@@ -155,7 +165,10 @@ API int pkgmgr_installer_free(pkgmgr_installer *pi)
 		free(pi->optional_data);
 	if (pi->caller_pkgid)
 		free(pi->caller_pkgid);
-
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+	if (pi->tep_path)
+		free(pi->tep_path);
+#endif
 	if (pi->conn) {
 		g_dbus_connection_flush_sync(pi->conn, NULL, NULL);
 		g_object_unref(pi->conn);
@@ -209,8 +222,36 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			if (pi->pkgmgr_info)
 				free(pi->pkgmgr_info);
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+			DBG("option is [i] pkgid[%s]", pi->pkgmgr_info );
+			if (pi->pkgmgr_info && strlen(pi->pkgmgr_info)==0){
+				free(pi->pkgmgr_info);
+			}else{
+				mode = 'i';
+			}
 			break;
 
+		case 'e':	/* install */
+#if 0
+         /*For "only TEP installation". It will be added later*/
+			if (!mode)
+				pi->request_type = PKGMGR_REQ_INSTALL_TEP;
+#endif
+			if (pi->tep_path)
+				free(pi->tep_path);
+			pi->tep_path = strndup(optarg, MAX_STRLEN);
+			pi->is_tep_included = 1;
+			DBG("option is [e] tep_path[%s]", pi->tep_path);
+			break;
+
+		case 'M':	/* install */
+			if (strcmp(optarg, "tep_move") == 0)
+				pi->tep_move = 1;
+			else
+				pi->tep_move = 0;
+			DBG("option is [M] tep_move[%d]", pi->tep_move);
+#endif
+			break;
 		case 'd':	/* uninstall */
 			if (mode) {
 				r = -EINVAL;
@@ -312,6 +353,20 @@ API const char *pkgmgr_installer_get_request_info(pkgmgr_installer *pi)
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->pkgmgr_info;
 }
+
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+API const char *pkgmgr_installer_get_tep_path(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->tep_path;
+}
+
+API int pkgmgr_installer_get_tep_move_type(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->tep_move;
+}
+#endif
 
 API const char *pkgmgr_installer_get_session_id(pkgmgr_installer *pi)
 {

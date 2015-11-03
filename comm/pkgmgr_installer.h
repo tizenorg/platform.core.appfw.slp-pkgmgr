@@ -78,7 +78,12 @@ enum {
 	PKGMGR_REQ_REINSTALL = 6,
 	PKGMGR_REQ_GETSIZE = 7,
 	PKGMGR_REQ_UPGRADE = 8,
-	PKGMGR_REQ_SMACK = 9
+	PKGMGR_REQ_SMACK = 9,
+#if 0//#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+   /*For "TEP only installation" only. It will be added later*/
+	PKGMGR_REQ_INSTALL_TEP,
+#endif
+
 };
 
 enum {
@@ -252,6 +257,77 @@ int main(int argc, char **argv)
  */
 const char *pkgmgr_installer_get_request_info(pkgmgr_installer *pi);
 
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+
+/**
+	@brief		Get TEP path
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		TEP path if exists
+	@retval		NULL	on function failure
+	@remark		Returned string must not be modified.
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	char *tep_path = NULL;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	tep_path = (char *) pkgmgr_installer_get_tep_path(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+@endcode
+ */
+const char *pkgmgr_installer_get_tep_path(pkgmgr_installer *pi);
+
+/**
+	@brief		Get TEP move type
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		integer value indicates tep move type(0: copy TEP file / 1: move TEP file)
+	@retval		0	on function failure
+	@remark		Returned string must not be modified.
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	int tep_move_type = -1;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	tep_move_type = pkgmgr_installer_get_tep_move_type(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+@endcode
+ */
+int pkgmgr_installer_get_tep_move_type(pkgmgr_installer *pi);
+#endif
+
 /**
 	@brief		Get session ID for a certain session
 	@pre		pkgmgr_installer_receive_request() must be called.
@@ -281,7 +357,7 @@ int main(int argc, char **argv)
 
 	pkgmgr_installer_free(pi);
 	return r;
-}	
+}
 @endcode
  */
 const char *pkgmgr_installer_get_session_id(pkgmgr_installer *pi);
@@ -315,7 +391,7 @@ int main(int argc, char **argv)
 
 	pkgmgr_installer_free(pi);
 	return r;
-}	
+}
 @endcode
  */
 const char *pkgmgr_installer_get_license_path(pkgmgr_installer *pi);
@@ -385,7 +461,7 @@ int main(int argc, char **argv)
 
 	pkgmgr_installer_free(pi);
 	return r;
-}	
+}
 	@endcode
  */
 int pkgmgr_installer_is_quiet(pkgmgr_installer *pi);
@@ -458,7 +534,7 @@ int main(int argc, char **argv)
 const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi);
 
 /**
-	@brief		Send a process status signal 
+	@brief		Send a process status signal
 	@pre		None
 	@post		None
 	@see		None
@@ -493,7 +569,7 @@ int main(int argc, char **argv)
 
 	pkgmgr_installer_free(pi);
 	return r;
-}	
+}
 	@endcode
  */
 int pkgmgr_installer_send_signal(pkgmgr_installer *pi,

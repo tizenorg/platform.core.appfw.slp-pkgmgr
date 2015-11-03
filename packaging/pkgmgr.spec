@@ -35,6 +35,8 @@ BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
 BuildRequires:  fdupes
 
+%define appfw_feature_expansion_pkg_install 1
+
 %description
 Packager Manager client library package for packaging
 
@@ -81,13 +83,18 @@ Requires:   %{name} = %{version}-%{release}
 %description types-devel
 Package Manager client types develpoment package for packaging
 
+%if %{?appfw_feature_expansion_pkg_install}
+_EXPANSION_PKG_INSTALL=ON
+%else
+_EXPANSION_PKG_INSTALL=OFF
+%endif
 
 %prep
 %setup -q
 cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURCE1006} .
 
 %build
-%cmake .
+%cmake . -D_APPFW_FEATURE_EXPANSION_PKG_INSTALL:BOOL=_EXPANSION_PKG_INSTALL
 
 %__make %{?_smp_mflags}
 

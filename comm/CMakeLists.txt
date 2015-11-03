@@ -35,6 +35,13 @@ foreach(flag ${installer_pkgs_CFLAGS})
 	set(installer_pkgs_CFLAGS_str "${installer_pkgs_CFLAGS_str} ${flag}")
 endforeach()
 
+
+### Add features
+IF(_APPFW_FEATURE_EXPANSION_PKG_INSTALL)
+	ADD_DEFINITIONS("-D_APPFW_FEATURE_EXPANSION_PKG_INSTALL")
+ENDIF(_APPFW_FEATURE_EXPANSION_PKG_INSTALL)
+
+
 ### Build modules
 
 ## client for apps
@@ -62,19 +69,19 @@ configure_file(pkgmgr-installer.pc.in ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-install
 
 
 ## Install
-INSTALL(TARGETS 
-			pkgmgr_installer_client 
+INSTALL(TARGETS
+			pkgmgr_installer_client
 			pkgmgr_installer
             DESTINATION ${LIB_INSTALL_DIR}
 		COMPONENT RuntimeLibraries)
-INSTALL(FILES 
-			comm_client.h 
+INSTALL(FILES
+			comm_client.h
 			comm_config.h
 			pkgmgr_installer.h
 		DESTINATION include/pkgmgr)
 
 
-INSTALL(FILES 
-		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-client.pc 
-		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc 
+INSTALL(FILES
+		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer-client.pc
+		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc
         DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)

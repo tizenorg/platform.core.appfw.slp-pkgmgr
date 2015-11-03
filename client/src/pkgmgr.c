@@ -86,6 +86,10 @@ typedef struct _pkgmgr_client_t {
 		} listening;
 	} info;
 	void *new_event_cb;
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+	char *tep_path;
+	char *tep_move;
+#endif
 } pkgmgr_client_t;
 
 typedef struct _iter_data {
@@ -798,6 +802,10 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 	pc->ctype = ctype;
 	pc->status_type = PKGMGR_CLIENT_STATUS_ALL;
 
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+	pc->tep_path = NULL;
+#endif
+
 	if (pc->ctype == PC_REQUEST) {
 		pc->info.request.cc = comm_client_new();
 		trym_if(pc->info.request.cc == NULL, "client creation failed");
@@ -855,6 +863,16 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 		return PKGMGR_R_EINVAL;
 	}
 
+	if (mpc->tep_path) {
+		free(mpc->tep_path);
+		mpc->tep_path = NULL;
+	}
+
+	if (mpc->tep_move) {
+		free(mpc->tep_move);
+		mpc->tep_move = NULL;
+	}
+
 	free(mpc);
 	mpc = NULL;
 	return PKGMGR_R_OK;
@@ -896,6 +914,20 @@ static char *__get_type_from_path(const char *pkg_path)
 	return strdup(pkg_type);
 }
 
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+API int pkgmgr_client_set_tep_path(pkgmgr_client *pc, char *tep_path, char *tep_move)
+{
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
+	retvm_if(tep_path == NULL, PKGMGR_R_EINVAL, "tep path is NULL");
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+
+	mpc->tep_path = strdup(tep_path);
+	mpc->tep_move = strdup(tep_move);
+
+	return PKGMGR_R_OK;
+}
+#endif
+
 API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		const char *descriptor_path, const char *pkg_path,
 		const char *optional_file, pkgmgr_mode mode,
@@ -904,13 +936,29 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
 	char *req_key = NULL;
+	char *argv[PKG_ARGC_MAX] = { NULL, };
+	char *args = NULL;
+	int argcnt = 0;
 	int req_id;
+	int i;
+	int len = 0;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 	char *pkgtype;
+	char *temp = NULL;
 
-	if (pc == NULL || pkg_path == NULL) {
+	if (pc == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
+	}
+
+	if (pkg_path == NULL) {
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+		if (mpc->tep_path == NULL)
+#endif
+		{
+			ERR("invalid parameter");
+			return PKGMGR_R_EINVAL;
+		}
 	}
 
 	if (mpc->ctype != PC_REQUEST) {
@@ -918,20 +966,77 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+	if (pkg_path != NULL) {
+		if (access(pkg_path, F_OK) != 0) {
+			ERR("failed to access: %s", pkg_path);
+			return PKGMGR_R_EINVAL;
+		}
+
+		if (mpc->tep_path != NULL && access(mpc->tep_path, F_OK) != 0 ) {
+			ERR("failed to access: %s", mpc->tep_path);
+			return PKGMGR_R_EINVAL;
+		}
+	} else {
+		if (mpc->tep_path == NULL || access(mpc->tep_path, F_OK) != 0) {
+			ERR("failed to access: %s", mpc->tep_path);
+			return PKGMGR_R_EINVAL;
+		}
+	}
+#else
 	if (access(pkg_path, F_OK) != 0) {
 		ERR("failed to access: %s", pkg_path);
 		return PKGMGR_R_EINVAL;
 	}
+#endif
 
 	/* TODO: check pkg's type on server-side */
-	if (pkg_type == NULL)
+	if (pkg_type == NULL && pkg_path != NULL)
 		pkgtype = __get_type_from_path(pkg_path);
 	else
 		pkgtype = strdup(pkg_type);
 
+#ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+	/* make argc before making args*/
+	if (mpc->tep_path) {
+		argv[argcnt++] = strdup("-e");
+		argv[argcnt++] = strdup(mpc->tep_path);
+		argv[argcnt++] = strdup("-M");
+		argv[argcnt++] = strdup(mpc->tep_move);
+
+		for (i = 0; i < argcnt; i++) {
+			temp = g_shell_quote(argv[i]);
+			len += (strlen(temp) + 1);
+			g_free(temp);
+		}
+	}
+#endif
+
+	args = (char *)calloc(len, sizeof(char));
+	if (args == NULL) {
+		ERR("calloc failed");
+		return PKGMGR_R_ERROR;
+	}
+
+	if (argv[0] != NULL) {
+		strncpy(args, argv[0], len - 1);
+
+		for (i = 1; i < argcnt; i++) {
+			strncat(args, " ", strlen(" "));
+			temp = g_shell_quote(argv[i]);
+			strncat(args, temp, strlen(temp));
+			g_free(temp);
+		}
+	}
+	DBG("[args] %s [len] %d\n", args, len);
+
 	result = comm_client_request(mpc->info.request.cc, "install",
-			g_variant_new("(uss)", uid, pkgtype, pkg_path));
+			g_variant_new("(usss)", uid, pkgtype, pkg_path, args));
 	free(pkgtype);
+	if (args) {
+		free(args);
+		args = NULL;
+	}
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i&s)", &ret, &req_key);
