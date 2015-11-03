@@ -57,6 +57,9 @@ struct pkgmgr_installer {
 	char *optional_data;
 	char *caller_pkgid;
 	uid_t target_uid;
+	char *tep_path;
+	int tep_move;
+	int is_tep_included;
 
 	GDBusConnection *conn;
 };
@@ -137,6 +140,8 @@ API pkgmgr_installer *pkgmgr_installer_new(void)
 		return NULL;
 	}
 
+	pi->tep_path = NULL;
+	pi->tep_move = 0;
 	pi->request_type = PKGMGR_REQ_INVALID;
 
 	return pi;
@@ -155,6 +160,8 @@ API int pkgmgr_installer_free(pkgmgr_installer *pi)
 		free(pi->optional_data);
 	if (pi->caller_pkgid)
 		free(pi->caller_pkgid);
+	if (pi->tep_path)
+		free(pi->tep_path);
 
 	if (pi->conn) {
 		g_dbus_connection_flush_sync(pi->conn, NULL, NULL);
@@ -209,6 +216,33 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			if (pi->pkgmgr_info)
 				free(pi->pkgmgr_info);
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			DBG("option is [i] pkgid[%s]", pi->pkgmgr_info );
+			if (pi->pkgmgr_info && strlen(pi->pkgmgr_info)==0){
+				free(pi->pkgmgr_info);
+			}else{
+				mode = 'i';
+			}
+			break;
+
+		case 'e':	/* install */
+#if 0 //ifdef _APPFW_FEATURE_EXPANSION_PKG_INSTALL
+			/*TODO(jungh.yeon) : for TEP installation only. It will be added later*/
+			if (!mode)
+				pi->request_type = PKGMGR_REQ_INSTALL_TEP;
+#endif
+			if (pi->tep_path)
+				free(pi->tep_path);
+			pi->tep_path = strndup(optarg, MAX_STRLEN);
+			pi->is_tep_included = 1;
+			DBG("option is [e] tep_path[%s]", pi->tep_path);
+			break;
+
+		case 'M':	/* install */
+			if (strcmp(optarg, "tep_move") == 0)
+				pi->tep_move = 1;
+			else
+				pi->tep_move = 0;
+			DBG("option is [M] tep_move[%d]", pi->tep_move);
 			break;
 
 		case 'd':	/* uninstall */
@@ -311,6 +345,18 @@ API const char *pkgmgr_installer_get_request_info(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->pkgmgr_info;
+}
+
+API const char *pkgmgr_installer_get_tep_path(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->tep_path;
+}
+
+API int pkgmgr_installer_get_tep_move_type(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->tep_move;
 }
 
 API const char *pkgmgr_installer_get_session_id(pkgmgr_installer *pi)
