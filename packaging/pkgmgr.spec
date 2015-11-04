@@ -120,7 +120,7 @@ chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
 /sbin/ldconfig
 
 # Create tizenglobalapp user needed for global installation
-useradd -d %TZ_SYS_RW_APP -m %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g root
+useradd %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g root
 
 %post -n pkgmgr-client -p /sbin/ldconfig
 
