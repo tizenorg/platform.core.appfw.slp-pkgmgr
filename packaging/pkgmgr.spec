@@ -81,7 +81,6 @@ Requires:   %{name} = %{version}-%{release}
 %description types-devel
 Package Manager client types develpoment package for packaging
 
-
 %prep
 %setup -q
 cp %{SOURCE1001} %{SOURCE1002} %{SOURCE1003} %{SOURCE1004} %{SOURCE1005} %{SOURCE1006} .
