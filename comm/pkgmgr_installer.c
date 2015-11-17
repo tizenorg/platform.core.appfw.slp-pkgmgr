@@ -64,6 +64,31 @@ struct pkgmgr_installer {
 	GDBusConnection *conn;
 };
 
+static int __is_xml(char *path)
+{
+	if (path == NULL || strlen(path) == 0)
+		return -1;
+
+	char filepath[MAX_STRLEN] = { '\0', };
+	char *file_type = NULL;
+
+	if (strrchr(path, '/'))
+		strncpy(filepath, strrchr(path, '/') + 1, MAX_STRLEN - 1);
+	else
+		strncpy(filepath, path, MAX_STRLEN - 1);
+
+	file_type = strrchr(filepath, '.');
+	if (file_type == NULL)
+		return -1;
+	else
+		file_type++;
+
+	if (strcmp(file_type, "xml") == 0)
+		return 0;
+	else
+		return -1;
+}
+
 static const char *__get_signal_name(pkgmgr_installer *pi, const char *key)
 {
 	if (strcmp(key, PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR) == 0)
@@ -212,7 +237,6 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 				goto RET;
 			}
 			mode = 'i';
-			pi->request_type = PKGMGR_REQ_INSTALL;
 			if (pi->pkgmgr_info)
 				free(pi->pkgmgr_info);
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
@@ -222,6 +246,10 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			}else{
 				mode = 'i';
 			}
+			if (__is_xml(pi->pkgmgr_info) == 0)
+				pi->request_type = PKGMGR_REQ_RPMAPPINSTALL;
+			else
+				pi->request_type = PKGMGR_REQ_INSTALL;
 			break;
 
 		case 'e':	/* install */
