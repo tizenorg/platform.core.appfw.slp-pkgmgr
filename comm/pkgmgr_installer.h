@@ -78,7 +78,8 @@ enum {
 	PKGMGR_REQ_REINSTALL = 6,
 	PKGMGR_REQ_GETSIZE = 7,
 	PKGMGR_REQ_UPGRADE = 8,
-	PKGMGR_REQ_SMACK = 9
+	PKGMGR_REQ_SMACK = 9,
+	PKGMGR_REQ_MANIFEST_DIRECT_INSTALL = 10
 };
 
 enum {
@@ -251,6 +252,74 @@ int main(int argc, char **argv)
 	@endcode
  */
 const char *pkgmgr_installer_get_request_info(pkgmgr_installer *pi);
+
+/**
+	@brief		Get directory path
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		Directory path if passed
+	@retval		NULL	on function failure
+	@remark		Returned string must not be modified.
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	char *dir_path = NULL;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	dir_path = (char *) pkgmgr_installer_get_directory_path(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+	@endcode
+ */
+const char *pkgmgr_installer_get_directory_path(pkgmgr_installer *pi);
+
+/**
+	@brief		Get xml path
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		XML path if passed
+	@retval		NULL	on function failure
+	@remark		Returned string must not be modified.
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	char *xml_path = NULL;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	xml_path = (char *) pkgmgr_installer_get_xml_path(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+	@endcode
+ */
+const char *pkgmgr_installer_get_xml_path(pkgmgr_installer *pi);
 
 /**
 	@brief		Get TEP path
