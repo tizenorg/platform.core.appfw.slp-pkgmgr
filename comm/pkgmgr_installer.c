@@ -60,7 +60,8 @@ struct pkgmgr_installer {
 	char *tep_path;
 	int tep_move;
 	int is_tep_included;
-
+	char *directory_path;
+	char *xml_path;
 	GDBusConnection *conn;
 };
 
@@ -316,6 +317,15 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->optional_data = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'y': /* directory path*/
+			pi->request_type = PKGMGR_REQ_MANIFESTDIRECTINSTALL;
+			pi->directory_path = strndup(optarg, MAX_STRLEN);
+			break;
+
+		case 'x': /* xml path*/
+			pi->xml_path = strndup(optarg, MAX_STRLEN);
+			break;
+
 			/* Otherwise */
 		case '?':	/* Not an option */
 			break;
@@ -340,6 +350,18 @@ API const char *pkgmgr_installer_get_request_info(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->pkgmgr_info;
+}
+
+API const char *pkgmgr_installer_get_directory_path(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->directory_path;
+}
+
+API const char *pkgmgr_installer_get_xml_path(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->xml_path;
 }
 
 API const char *pkgmgr_installer_get_tep_path(pkgmgr_installer *pi)
