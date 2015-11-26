@@ -671,6 +671,59 @@ int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid);
 */
 int pkgmgr_client_clear_all_cache_dir(void);
 int pkgmgr_client_usr_clear_all_cache_dir(uid_t uid);
+
+/**
+ * @brief	Generates request for getting license
+ *
+ * This API generates request for getting license.\n
+ *
+ * @remarks	You must release @a req_data and @a license_url by yourself.
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	resp_data	The response data string of the purchase request
+ * @param[out]	req_data	License request data
+ * @param[out]	license_url	License acquisition url data
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV	privilege denied
+ * @retval	PKGMGR_R_ESYSTEM	severe system error
+ */
+int pkgmgr_client_generate_license_request(pkgmgr_client *pc, const char *resp_data, char **req_data, char **license_url);
+
+/**
+ * @brief	Registers encrypted license
+ *
+ * This API registers encrypted license.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	resp_data	The response data string of the purchase request
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @retval	PKGMGR_R_ESYSTEM	severe system error
+ */
+int pkgmgr_client_register_license(pkgmgr_client *pc, const char *resp_data);
+
+/**
+ * @brief	Decrypts contents which is encrypted
+ *
+ * This API decrypts contents which is encrypted.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	drm_file_path	The pointer to pkgmgr_client instance
+ * @param[in]	decrypted_file_path	The pointer to pkgmgr_client instance
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @retval	PKGMGR_R_ESYSTEM	severe system error
+ */
+int pkgmgr_client_decrypt_package(pkgmgr_client *pc, const char *drm_file_path, const char *decrypted_file_path);
+
 /** @} */
 
 
