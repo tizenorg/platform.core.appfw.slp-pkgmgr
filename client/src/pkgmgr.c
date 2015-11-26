@@ -1680,3 +1680,109 @@ API int pkgmgr_client_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_tota
 {
 	return pkgmgr_client_usr_get_package_size_info(pc, PKG_SIZE_INFO_TOTAL, (pkgmgr_pkg_size_info_receive_cb)event_cb, user_data, GLOBAL_USER);
 }
+
+API int pkgmgr_client_generate_license_request(pkgmgr_client *pc,
+		const char *resp_data, char **req_data, char **license_url)
+{
+	GVariant *result;
+	int ret;
+	char *data;
+	char *url;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || resp_data == NULL || req_data == NULL ||
+			license_url == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	if (mpc->ctype != PC_REQUEST) {
+		ERR("mpc->ctype is not PC_REQUEST");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc,
+			"generate_license_request",
+			g_variant_new("(s)", resp_data));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+
+	g_variant_get(result, "(i&s&s)", &ret, &data, &url);
+	if (ret != PKGMGR_R_OK) {
+		ERR("generate_license_request failed: %d", ret);
+		g_variant_unref(result);
+		return ret;
+	}
+
+	*req_data = strdup(data);
+	*license_url = strdup(url);
+
+	g_variant_unref(result);
+
+	return PKGMGR_R_OK;
+}
+
+API int pkgmgr_client_register_license(pkgmgr_client *pc, const char *resp_data)
+{
+	GVariant *result;
+	int ret;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || resp_data == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	if (mpc->ctype != PC_REQUEST) {
+		ERR("mpc->ctype is not PC_REQUEST");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc,
+			"register_license", g_variant_new("(s)", resp_data));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("register license failed: %d", ret);
+		return ret;
+	}
+
+	return PKGMGR_R_OK;
+}
+
+API int pkgmgr_client_decrypt_package(pkgmgr_client *pc,
+		const char *drm_file_path, const char *decrypted_file_path)
+{
+	GVariant *result;
+	int ret;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || drm_file_path == NULL ||
+			decrypted_file_path == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	if (mpc->ctype != PC_REQUEST) {
+		ERR("mpc->ctype is not PC_REQUEST");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc,
+			"decrypt_package", g_variant_new("(ss)",
+				drm_file_path, decrypted_file_path));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("decrypt_package failed: %d", ret);
+		return ret;
+	}
+
+	return PKGMGR_R_OK;
+}
