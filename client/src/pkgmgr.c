@@ -1531,7 +1531,7 @@ API int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid)
 	}
 
 	result = comm_client_request(pc->info.request.cc, "clearcache",
-			g_variant_new("(s)", pkgid));
+			g_variant_new("(us)", uid, pkgid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
