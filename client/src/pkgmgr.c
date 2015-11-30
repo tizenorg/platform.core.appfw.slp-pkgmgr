@@ -934,7 +934,6 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 	int req_id;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 	char *pkgtype;
-	char *temp = NULL;
 
 	if (pc == NULL || pkg_path == NULL) {
 		ERR("invalid parameter");
