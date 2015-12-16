@@ -133,14 +133,10 @@ useradd %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g ro
 %files
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
-%{_includedir}/package-manager-debug.h
-%{_includedir}/pkgmgr/comm_config.h
 %dir %{_sysconfdir}/package-manager/backend
 %dir %{_sysconfdir}/package-manager/backendlib
 %{_sysconfdir}/package-manager/backend/*
 %{_tmpfilesdir}/pkgmgr.conf
-%exclude %{_includedir}/pkgmgr/comm_client.h
-%exclude %{_sysconfdir}/package-manager/server/queue_status
 
 %files client
 %manifest %{name}-client.manifest
@@ -177,4 +173,6 @@ useradd %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g ro
 %defattr(-,root,root,-)
 %{_includedir}/package-manager-types.h
 %{_includedir}/package-manager-plugin.h
+%{_includedir}/package-manager-debug.h
+%{_includedir}/pkgmgr/comm_config.h
 %{_libdir}/pkgconfig/pkgmgr-types.pc

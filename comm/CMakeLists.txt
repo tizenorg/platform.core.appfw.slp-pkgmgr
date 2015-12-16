@@ -68,7 +68,6 @@ INSTALL(TARGETS
             DESTINATION ${LIB_INSTALL_DIR}
 		COMPONENT RuntimeLibraries)
 INSTALL(FILES
-			comm_client.h
 			comm_config.h
 			pkgmgr_installer.h
 		DESTINATION include/pkgmgr)
