@@ -1006,6 +1006,52 @@ API int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
 			GLOBAL_USER);
 }
 
+API int pkgmgr_client_direct_manifest_install(pkgmgr_client *pc, const char *pkg_type,
+		const char *pkgid, pkgmgr_mode mode,
+		pkgmgr_handler event_cb, void *data)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	char *req_key = NULL;
+	int req_id;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+	char *pkgtype;
+
+	if (pc == NULL || pkgid == NULL || pkg_type == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	if (mpc->ctype != PC_REQUEST) {
+		ERR("mpc->ctype is not PC_REQUEST");
+		return PKGMGR_R_EINVAL;
+	}
+
+	pkgtype = strdup(pkg_type);
+
+	result = comm_client_request(mpc->info.request.cc, "direct_manifest_install",
+			g_variant_new("(uss)", GLOBAL_USER, pkgtype, pkgid));
+
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+	g_variant_get(result, "(i&s)", &ret, &req_key);
+	if (req_key == NULL) {
+		g_variant_unref(result);
+		return PKGMGR_R_ECOMM;
+	}
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
+
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
+
+	g_variant_unref(result);
+
+	return req_id;
+}
+
 API int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, const char *optional_file, pkgmgr_mode mode,
 		pkgmgr_handler event_cb, void *data)

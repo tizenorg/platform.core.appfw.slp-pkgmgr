@@ -321,6 +321,27 @@ int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 			    const char *descriptor_path, const char *pkg_path,
 			    const char *optional_file, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data, uid_t uid);
+
+/**
+ * @brief	This API installs package from already installed package files.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	pkg_type		package type
+ * @param[in]	pkgid		pkgid of package to be installed
+ * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
+ * @param[in]	event_cb	user callback
+ * @param[in]	data		user data
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_direct_manifest_install(pkgmgr_client *pc, const char *pkg_type,
+			    const char *pkgid, pkgmgr_mode mode,
+			    pkgmgr_handler event_cb, void *data);
+
 /**
  * @brief	This API reinstalls package.
  *
