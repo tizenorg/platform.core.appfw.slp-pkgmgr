@@ -34,6 +34,8 @@ BuildRequires:  pkgmgr-info-parser-devel
 BuildRequires:  pkgmgr-info-parser
 BuildRequires:  fdupes
 
+Requires(post): gum-utils
+
 %description
 Packager Manager client library package for packaging
 
@@ -118,7 +120,7 @@ chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
 /sbin/ldconfig
 
 # Create tizenglobalapp user needed for global installation
-useradd %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g root
+gum-utils --offline --add-user --username=%TZ_SYS_GLOBALAPP_USER --usertype=system --usecret=tizen --shell=/bin/false
 
 %post -n pkgmgr-client -p /sbin/ldconfig
 
