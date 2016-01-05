@@ -119,6 +119,22 @@ pkgmgr_installer_free(pi);
 pkgmgr_installer *pkgmgr_installer_new(void);
 
 /**
+ * @brief	Create a pkgmgr_installer object in offline mode
+ * @pre		None
+ * @post	pkgmgr_installer object must be freed.
+ * @see		pkgmgr_installer_free
+ * @return	pkgmgr_installer object
+ * @retval	NULL	on failure creating an object
+ * @remark	None
+@code
+#include <pkgmgr_installer.h>
+pkgmgr_installer *pi = pkgmgr_installer_offline_new();
+pkgmgr_installer_free(pi);
+@endcode
+ */
+pkgmgr_installer *pkgmgr_installer_offline_new(void);
+
+/**
 	@brief		Free a pkgmgr_installer object
 	@pre		pi must be a valid object.
 	@post		None
