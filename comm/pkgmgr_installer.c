@@ -146,6 +146,22 @@ API pkgmgr_installer *pkgmgr_installer_new(void)
 	return pi;
 }
 
+API pkgmgr_installer *pkgmgr_installer_offline_new(void)
+{
+	pkgmgr_installer *pi;
+	GError *err = NULL;
+
+	pi = calloc(1, sizeof(struct pkgmgr_installer));
+	if (pi == NULL)
+		return NULL;
+
+	pi->tep_path = NULL;
+	pi->tep_move = 0;
+	pi->request_type = PKGMGR_REQ_INVALID;
+
+	return pi;
+}
+
 API int pkgmgr_installer_free(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(-EINVAL);
