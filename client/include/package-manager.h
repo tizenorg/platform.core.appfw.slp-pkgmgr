@@ -112,6 +112,59 @@ extern "C" {
 #define PKGMGR_CLIENT_STATUS_GET_SIZE				0x40
 /** @} */
 
+/* new common error codes */
+/* since 3.0 */
+#define PKGCMD_ERRCODE_UNDEFINED_ERROR (-999)
+#define PKGCMD_ERRCODE_UNZIP_ERROR (-23)  /* Unzip error */
+#define PKGCMD_ERRCODE_SECURITY_ERROR (-22)  /* Security error */
+#define PKGCMD_ERRCODE_REGISTER_ERROR (-21)  /* Register application error */
+#define PKGCMD_ERRCODE_PRIVILEGE_ERROR (-20)  /* Privilege error */
+#define PKGCMD_ERRCODE_PARSE_ERROR (-19)  /* Parsing error */
+#define PKGCMD_ERRCODE_RECOVERY_ERROR (-18)  /* Recovery error */
+#define PKGCMD_ERRCODE_DELTA_ERROR (-17)  /* Delta patch error */
+#define PKGCMD_ERRCODE_APP_DIR_ERROR (-16)  /* Application directory error */
+#define PKGCMD_ERRCODE_CONFIG_ERROR (-15)  /* Configuration error */
+#define PKGCMD_ERRCODE_SIGNATURE_ERROR (-14)  /* Signature error */
+#define PKGCMD_ERRCODE_SIGNATURE_INVALID (-13)  /* Signature invalid */
+#define PKGCMD_ERRCODE_CERT_ERROR (-12)  /* Check certificate error */
+#define PKGCMD_ERRCODE_AUTHOR_CERT_NOT_MATCH (-11)  /* Author certificate not match */
+#define PKGCMD_ERRCODE_AUTHOR_CERT_NOT_FOUND (-10)  /* Author certificate not found */
+#define PKGCMD_ERRCODE_ICON_ERROR (-9)  /* Icon error */
+#define PKGCMD_ERRCODE_ICON_NOT_FOUND (-8)  /* Icon not found */
+#define PKGCMD_ERRCODE_MANIFEST_ERROR (-7)  /* Manifest error */
+#define PKGCMD_ERRCODE_MANIFEST_NOT_FOUND (-6)  /* Manifest not found */
+#define PKGCMD_ERRCODE_PACKAGE_NOT_FOUND (-5)  /* Package not found */
+#define PKGCMD_ERRCODE_OPERATION_NOT_ALLOWED (-4)  /* Operation not allowed */
+#define PKGCMD_ERRCODE_OUT_OF_SPACE (-3)  /* Out of disc space */
+#define PKGCMD_ERRCODE_INVALID_VALUE (-2)  /* Invalid argument */
+#define PKGCMD_ERRCODE_ERROR (-1)  /* General error */
+#define PKGCMD_ERRCODE_OK (0)  /* Success */
+
+#define PKGCMD_ERRCODE_UNZIP_ERROR_STR "Unzip error"
+#define PKGCMD_ERRCODE_SECURITY_ERROR_STR "Security error"
+#define PKGCMD_ERRCODE_REGISTER_ERROR_STR "Register application error"
+#define PKGCMD_ERRCODE_PRIVILEGE_ERROR_STR "Privilege error"
+#define PKGCMD_ERRCODE_PARSE_ERROR_STR "Parsing error"
+#define PKGCMD_ERRCODE_RECOVERY_ERROR_STR "Recovery error"
+#define PKGCMD_ERRCODE_DELTA_ERROR_STR "Delta patch error"
+#define PKGCMD_ERRCODE_APP_DIR_ERROR_STR "Application directory error"
+#define PKGCMD_ERRCODE_CONFIG_ERROR_STR "Configuration error"
+#define PKGCMD_ERRCODE_SIGNATURE_ERROR_STR "Signature error"
+#define PKGCMD_ERRCODE_SIGNATURE_INVALID_STR "Signature invalid"
+#define PKGCMD_ERRCODE_CERT_ERROR_STR "Check certificate error"
+#define PKGCMD_ERRCODE_AUTHOR_CERT_NOT_MATCH_STR "Author certificate not match"
+#define PKGCMD_ERRCODE_AUTHOR_CERT_NOT_FOUND_STR "Author certificate not found"
+#define PKGCMD_ERRCODE_ICON_ERROR_STR "Icon error"
+#define PKGCMD_ERRCODE_ICON_NOT_FOUND_STR "Icon not found"
+#define PKGCMD_ERRCODE_MANIFEST_ERROR_STR "Manifest error"
+#define PKGCMD_ERRCODE_MANIFEST_NOT_FOUND_STR "Manifest not found"
+#define PKGCMD_ERRCODE_PACKAGE_NOT_FOUND_STR "Package not found"
+#define PKGCMD_ERRCODE_OPERATION_NOT_ALLOWED_STR "Operation not allowed"
+#define PKGCMD_ERRCODE_OUT_OF_SPACE_STR "Out of disc space"
+#define PKGCMD_ERRCODE_INVALID_VALUE_STR "Invalid argument"
+#define PKGCMD_ERRCODE_ERROR_STR "General error"
+#define PKGCMD_ERRCODE_OK_STR "Success"
+
 /* 1 -100 : Package command errors */
 /* 101-120 : reserved for Core installer */
 /* 121-140 : reserved for Web installer */
