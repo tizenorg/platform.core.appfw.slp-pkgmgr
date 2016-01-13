@@ -1298,6 +1298,62 @@ API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid)
 	return pkgmgr_client_usr_deactivate_app(pc, appid, GLOBAL_USER);
 }
 
+API int pkgmgr_client_usr_deactivate_global_app(pkgmgr_client *pc,
+				 const char *appid, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || appid == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc, "disable_global_app",
+			g_variant_new("(us)", uid, appid));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+// TODO(jungh.yeon) : should we leave this?
+API int pkgmgr_client_deactivate_global_app(pkgmgr_client *pc, const char *appid)
+{
+	return pkgmgr_client_usr_deactivate_global_app(pc, appid, GLOBAL_USER);
+}
+
+API int pkgmgr_client_usr_activate_global_app(pkgmgr_client *pc,
+				 const char *appid, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || appid == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc, "enable_global_app",
+			g_variant_new("(us)", uid, appid));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+// TODO(jungh.yeon) : should we leave this?
+API int pkgmgr_client_activate_global_app(pkgmgr_client *pc, const char *appid)
+{
+	return pkgmgr_client_usr_activate_global_app(pc, appid, GLOBAL_USER);
+}
+
 API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc,
 		const char *pkg_type, const char *appid, pkgmgr_mode mode,
 		uid_t uid)
