@@ -635,10 +635,10 @@ static int __check_app_process(pkgmgr_request_service_type service_type,
 
 	if (service_type == PM_REQUEST_KILL_APP)
 		result = comm_client_request(mpc->info.request.cc, "kill",
-				g_variant_new("(s)", pkgid));
+				g_variant_new("(us)", uid, pkgid));
 	else if (service_type == PM_REQUEST_CHECK_APP)
 		result = comm_client_request(mpc->info.request.cc, "check",
-				g_variant_new("(s)", pkgid));
+				g_variant_new("(us)", uid, pkgid));
 
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
