@@ -65,13 +65,13 @@ extern "C" {
 
 /**
  * @mainpage
- * 
+ *
  * This is package manager
  *
  * Packaeg manager is used to install/uninstall the packages.\n
  * package includes dpkg, java, widget, etc. and it can be added\n
  * Security is considered on current package manager\n
- * 
+ *
  */
 
 /**
@@ -89,7 +89,7 @@ extern "C" {
  */
 
 /**
- * @brief pkgmgr info types. 
+ * @brief pkgmgr info types.
  */
 #define PKGMGR_INFO_STR_PKGTYPE		"pkg_type"
 #define PKGMGR_INFO_STR_PKGNAME		"pkg_name"
@@ -221,7 +221,7 @@ extern "C" {
 #define PKG_SIZE_INFO_TOTAL "__TOTAL__"
 #define PKG_CLEAR_ALL_CACHE "__ALL__"
 /**
- * @brief Return values in pkgmgr. 
+ * @brief Return values in pkgmgr.
  */
 typedef enum _pkgmgr_return_val {
 	PKGMGR_R_ESYSTEM = -9,		/**< Severe system error */
@@ -241,7 +241,7 @@ typedef enum _pkgmgr_return_val {
  * @defgroup pkg_operate	APIs to install /uninstall / activate application
  * @ingroup pkgmgr
  * @brief
- *	APIs to install /uninstall / activate application 
+ *	APIs to install /uninstall / activate application
  *	- Install application using application package filepath
  *	- Uninstall application using application package name
  *	- Activate application using application package name
@@ -329,8 +329,8 @@ typedef enum {
  * @brief	This API creates pkgmgr client.
  *
  * This API is for package-manager client application.\n
- *  
- * @param[in]	ctype	client type - PC_REQUEST, PC_LISTENING, PC_BROADCAST 
+ *
+ * @param[in]	ctype	client type - PC_REQUEST, PC_LISTENING, PC_BROADCAST
  * @return	pkgmgr_client object
  * @retval	NULL	on failure creating an object
 */
@@ -340,7 +340,7 @@ pkgmgr_client *pkgmgr_client_new(client_type ctype);
  * @brief	This API deletes pkgmgr client.
  *
  * This API is for package-manager client application.\n
- *  
+ *
  * @param[in]	pc	pkgmgr_client
  * @return	Operation result;
  * @retval	PKGMGR_R_OK	success
@@ -353,9 +353,9 @@ int pkgmgr_client_free(pkgmgr_client *pc);
  * @brief	This API installs package.
  *
  * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
- * @param[in]	pkg_type		package type 
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	pkg_type		package type
  * @param[in]	descriptor_path	full path that descriptor is located
  * @param[in]	pkg_path		full path that package file is located
  * @param[in]	optional_file	optional file which is used for installation
@@ -402,9 +402,9 @@ int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type, const 
  * @brief	This API uninstalls package.
  *
  * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
- * @param[in]	pkg_type		package type 
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	pkg_type		package type
  * @param[in]	pkgid	package id
  * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
  * @param[in]	event_cb	user callback
@@ -421,7 +421,7 @@ int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 				const char *pkgid, pkgmgr_mode mode,
 				pkgmgr_handler event_cb, void *data, uid_t uid);
-				
+
 /**
  * @brief	This API moves installed package to SD card or vice versa.
  *
@@ -465,9 +465,9 @@ int pkgmgr_client_move_pkg(pkgmgr_client *pc, const char *pkg_type,
  * @brief	This API activates package.
  *
  * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
- * @param[in]	pkg_type		package type 
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	pkg_type		package type
  * @param[in]	pkgid	package id
  * @return	request_id (>0) if success, error code(<0) if fail\n
  * @retval	PKGMGR_R_OK	success
@@ -482,9 +482,9 @@ int pkgmgr_client_usr_activate(pkgmgr_client *pc, const char *pkg_type,
  * @brief	This API deactivates package.
  *
  * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
- * @param[in]	pkg_type		package type 
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	pkg_type		package type
  * @param[in]	pkgid	package id
  * @return	request_id (>0) if success, error code(<0) if fail\n
  * @retval	PKGMGR_R_OK	success
@@ -538,6 +538,37 @@ int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, char 
 */
 int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid);
 int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid, uid_t uid);
+
+/**
+ * @brief	This API deactivates global app for user specified by uid.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	appid	applicaiton id
+ * @param[in]	uid	user id
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_usr_deactivate_global_app(pkgmgr_client *pc, const char *appid, uid_t uid);
+
+/**
+ * @brief	This API deactivates global app for user specified by uid.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	appid	applicaiton id
+ * @param[in]	uid	user id
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+*/
+int pkgmgr_client_usr_activate_global_app(pkgmgr_client *pc, const char *appid, uid_t uid);
+
 /**
  * @brief	This API deletes application's private data.
  *
@@ -573,8 +604,8 @@ int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type);
  * @brief	This API request to listen the pkgmgr's broadcasting
  *
  * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
+ *
+ * @param[in]	pc	pkgmgr_client
  * @param[in]	event_cb	user callback
  * @param[in]	data		user data
  * @return	request_id (>0) if success, error code(<0) if fail\n
@@ -588,9 +619,9 @@ int pkgmgr_client_listen_status(pkgmgr_client *pc, pkgmgr_handler event_cb,
  * @brief	This API broadcasts pkgmgr's status
  *
  * This API is for package-manager client application.\n
- * 
- * @param[in]	pc	pkgmgr_client 
- * @param[in]	pkg_type		package type 
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	pkg_type		package type
  * @param[in]	pkgid	package id
  * @param[in]	key		key to broadcast
  * @param[in]	val		value to broadcast
