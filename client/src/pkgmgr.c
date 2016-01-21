@@ -1829,3 +1829,85 @@ API int pkgmgr_client_decrypt_package(pkgmgr_client *pc,
 
 	return PKGMGR_R_OK;
 }
+
+API int pkgmgr_client_usr_add_blacklist(pkgmgr_client *pc, const char *pkgid,
+		uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || pkgid == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc, "add_blacklist",
+			g_variant_new("(us)", uid, pkgid));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+API int pkgmgr_client_add_blacklist(pkgmgr_client *pc, const char *pkgid)
+{
+	return pkgmgr_client_usr_add_blacklist(pc, pkgid, GLOBAL_USER);
+}
+
+API int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc,
+		const char *pkgid, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || pkgid == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc, "remove_blacklist",
+			g_variant_new("(us)", uid, pkgid));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+API int pkgmgr_client_remove_blacklist(pkgmgr_client *pc,
+		const char *pkgid)
+{
+	return pkgmgr_client_usr_remove_blacklist(pc, pkgid, GLOBAL_USER);
+}
+
+API int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid,
+		uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || pkgid == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	result = comm_client_request(mpc->info.request.cc, "check_blacklist",
+			g_variant_new("(us)", uid, pkgid));
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+API int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid)
+{
+	return pkgmgr_client_usr_check_blacklist(pc, pkgid, GLOBAL_USER);
+}

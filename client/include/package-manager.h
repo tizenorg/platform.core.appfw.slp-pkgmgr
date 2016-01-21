@@ -809,6 +809,13 @@ int pkgmgr_client_register_license(pkgmgr_client *pc, const char *resp_data);
  */
 int pkgmgr_client_decrypt_package(pkgmgr_client *pc, const char *drm_file_path, const char *decrypted_file_path);
 
+int pkgmgr_client_add_blacklist(pkgmgr_client *pc, const char *pkgid);
+int pkgmgr_client_usr_add_blacklist(pkgmgr_client *pc, const char *pkgid, uid_t uid);
+int pkgmgr_client_remove_blacklist(pkgmgr_client *pc, const char *pkgid);
+int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc, const char *pkgid, uid_t uid);
+int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid);
+int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid, uid_t uid);
+
 /** @} */
 
 
