@@ -809,6 +809,55 @@ int pkgmgr_client_register_license(pkgmgr_client *pc, const char *resp_data);
  */
 int pkgmgr_client_decrypt_package(pkgmgr_client *pc, const char *drm_file_path, const char *decrypted_file_path);
 
+/**
+ * @brief	Add a package to blacklist
+ *
+ * This API adds a package to blacklist.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	pkgid	package id
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ */
+int pkgmgr_client_add_blacklist(pkgmgr_client *pc, const char *pkgid);
+int pkgmgr_client_usr_add_blacklist(pkgmgr_client *pc, const char *pkgid, uid_t uid);
+
+/**
+ * @brief	Remove a package to blacklist
+ *
+ * This API removes a package to blacklist.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	pkgid	package id
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ */
+int pkgmgr_client_remove_blacklist(pkgmgr_client *pc, const char *pkgid);
+int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc, const char *pkgid, uid_t uid);
+
+/**
+ * @brief	Check whether a package is blacklisted
+ *
+ * This API checks whether the given package is blacklisted.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	pkgid	package id
+ * @param[out]	blacklist	whether blacklisted or not
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ */
+int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid, bool *blacklist);
+int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid, bool *blacklist, uid_t uid);
+
 /** @} */
 
 
