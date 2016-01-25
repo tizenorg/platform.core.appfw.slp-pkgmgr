@@ -111,7 +111,8 @@ touch  %{buildroot}%{_sysconfdir}/package-manager/backend/getsize
 chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/getsize
 touch  %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
 chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
-
+touch  %{buildroot}%{_sysconfdir}/package-manager/backend/app
+chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/app
 
 %fdupes %{buildroot}
 
