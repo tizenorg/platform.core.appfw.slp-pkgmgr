@@ -61,6 +61,7 @@ typedef struct _req_cb_info {
 	int request_id;
 	char *req_key;
 	pkgmgr_handler event_cb;
+	pkgmgr_app_handler app_event_cb;
 	void *data;
 	struct _req_cb_info *next;
 } req_cb_info;
@@ -68,6 +69,7 @@ typedef struct _req_cb_info {
 typedef struct _listen_cb_info {
 	int request_id;
 	pkgmgr_handler event_cb;
+	pkgmgr_app_handler app_event_cb;
 	void *data;
 	struct _listen_cb_info *next;
 } listen_cb_info;
@@ -217,7 +219,42 @@ static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
 	cb_info->event_cb = event_cb;
 	cb_info->data = data;
 	cb_info->next = NULL;
+	cb_info->app_event_cb = NULL;
 	pc->new_event_cb = new_event_cb;
+
+	if (pc->info.request.rhead == NULL)
+		pc->info.request.rhead = cb_info;
+	else {
+		current = prev = pc->info.request.rhead;
+		while (current) {
+			prev = current;
+			current = current->next;
+		}
+
+		prev->next = cb_info;
+	}
+}
+
+static void __add_op_app_cbinfo(pkgmgr_client_t * pc, int request_id,
+			    const char *req_key, pkgmgr_app_handler app_event_cb, void *new_event_cb,
+			    void *data)
+{
+	req_cb_info *cb_info;
+	req_cb_info *current;
+	req_cb_info *prev;
+
+	cb_info = (req_cb_info *) calloc(1, sizeof(req_cb_info));
+	if (cb_info == NULL) {
+		DBG("calloc failed");
+		return;
+	}
+	cb_info->request_id = request_id;
+	cb_info->req_key = strdup(req_key);
+	cb_info->event_cb = NULL;
+	cb_info->app_event_cb = app_event_cb;
+	cb_info->data = data;
+	cb_info->next = NULL;
+	pc->new_event_cb = new_event_cb; //TODO(jungh.yeon) : this should be checked
 
 	if (pc->info.request.rhead == NULL)
 		pc->info.request.rhead = cb_info;
@@ -253,6 +290,36 @@ static req_cb_info *__find_op_cbinfo(pkgmgr_client_t *pc, const char *req_key)
 	return NULL;
 }
 
+static void __add_app_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
+			      pkgmgr_app_handler event_cb, void *data)
+{
+	listen_cb_info *cb_info;
+	listen_cb_info *current;
+	listen_cb_info *prev;
+
+	cb_info = (listen_cb_info *) calloc(1, sizeof(listen_cb_info));
+	if (cb_info == NULL) {
+		DBG("calloc failed");
+		return;
+	}
+	cb_info->request_id = request_id;
+	cb_info->app_event_cb = event_cb;
+	cb_info->data = data;
+	cb_info->next = NULL;
+
+	if (pc->info.listening.lhead == NULL)
+		pc->info.listening.lhead = cb_info;
+	else {
+		current = prev = pc->info.listening.lhead;
+		while (current) {
+			prev = current;
+			current = current->next;
+		}
+
+		prev->next = cb_info;
+	}
+}
+
 static void __add_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
 			      pkgmgr_handler event_cb, void *data)
 {
@@ -286,8 +353,8 @@ static void __add_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
 
 static void __operation_callback(void *cb_data, uid_t target_uid,
 				 const char *req_id, const char *pkg_type,
-				 const char *pkgid, const char *key,
-				 const char *val)
+				 const char *pkgid,  const char *appid,
+				 const char *key,    const char *val)
 {
 	pkgmgr_client_t *pc;
 	req_cb_info *cb_info;
@@ -302,7 +369,18 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 	}
 
 	/* call callback */
-	if (cb_info->event_cb) {
+	if (appid != NULL && strlen(appid) != 0) {
+		/* run app callback */
+		if (pc->new_event_cb)
+			cb_info->app_event_cb(target_uid, cb_info->request_id,
+					pkg_type, pkgid, appid, key, val, pc,
+					cb_info->data);
+		else
+			cb_info->app_event_cb(target_uid, cb_info->request_id,
+					pkg_type, pkgid, appid, key, val, NULL,
+					cb_info->data);
+	} else {
+		/* run pkg callback */
 		if (pc->new_event_cb)
 			cb_info->event_cb(target_uid, cb_info->request_id,
 					pkg_type, pkgid, key, val, pc,
@@ -318,8 +396,8 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 
 static void __status_callback(void *cb_data, uid_t target_uid,
 			      const char *req_id, const char *pkg_type,
-			      const char *pkgid,  const char *key,
-			      const char *val)
+			      const char *pkgid,  const char *appid,
+			      const char *key,    const char *val)
 {
 	pkgmgr_client_t *pc;
 	listen_cb_info *tmp;
@@ -328,9 +406,17 @@ static void __status_callback(void *cb_data, uid_t target_uid,
 
 	tmp = pc->info.listening.lhead;
 	while (tmp) {
-		if (tmp->event_cb(target_uid, tmp->request_id, pkg_type, pkgid,
-				  key, val, NULL, tmp->data) != 0)
-			break;
+		if (appid != NULL && strlen(appid) != 0) {
+			/* run app callback */
+			if (tmp->app_event_cb(target_uid, tmp->request_id, pkg_type, pkgid,
+						appid, key, val, NULL, tmp->data) != 0)
+				break;
+		} else {
+			/* run pkg callback */
+			if (tmp->event_cb(target_uid, tmp->request_id, pkg_type, pkgid,
+					  key, val, NULL, tmp->data) != 0)
+				break;
+		}
 		tmp = tmp->next;
 	}
 
@@ -721,6 +807,40 @@ static int __change_op_cb_for_getsize(pkgmgr_client *pc)
 	retvm_if(mpc->info.request.cc == NULL, PKGMGR_R_ERROR, "client creation failed");
 
 	ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_GET_SIZE, mpc->info.request.cc, __operation_callback, pc);
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "set_status_callback() failed - %d", ret);
+
+	return PKGMGR_R_OK;
+}
+
+static int __change_op_cb_for_enable_disable(pkgmgr_client *pc)
+{
+	int ret = -1;
+
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+
+	/*  free listening head */
+	req_cb_info *tmp = NULL;
+	req_cb_info *prev = NULL;
+	for (tmp = mpc->info.request.rhead; tmp;) {
+		prev = tmp;
+		tmp = tmp->next;
+		free(prev);
+	}
+
+	/* free dbus connection */
+	ret = comm_client_free(mpc->info.request.cc);
+	retvm_if(ret < 0, PKGMGR_R_ERROR, "comm_client_free() failed - %d", ret);
+
+	/* Manage pc for seperated event */
+	mpc->ctype = PC_REQUEST;
+	mpc->status_type = PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP;
+
+
+	mpc->info.request.cc = comm_client_new();
+	retvm_if(mpc->info.request.cc == NULL, PKGMGR_R_ERROR, "client creation failed");
+
+	ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_DISABLE_APP, mpc->info.request.cc, __operation_callback, pc);
 	retvm_if(ret < 0, PKGMGR_R_ERROR, "set_status_callback() failed - %d", ret);
 
 	return PKGMGR_R_OK;
@@ -1232,77 +1352,116 @@ API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 }
 
 API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
-		uid_t uid)
+		pkgmgr_app_handler app_event_cb, uid_t uid)
 {
 	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
+	int req_id;
+	char *req_key = NULL;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
 	if (pc == NULL || appid == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
+	}
+
+	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+		ERR("__change_op_cb_for_enable_disable failed");
+		return PKGMGR_R_ESYSTEM;
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "enable_app",
 			g_variant_new("(us)", uid, appid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
-	g_variant_get(result, "(i)", &ret);
-	g_variant_unref(result);
+	g_variant_get(result, "(i&s)", &ret, &req_key);
+	if (req_key == NULL) {
+		g_variant_unref(result);
+		return PKGMGR_R_ECOMM;
+	}
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
 
+	req_id = _get_request_id();
+	__add_op_app_cbinfo(pc, req_id, req_key, app_event_cb, NULL, NULL);
+	g_variant_unref(result);
 	return ret;
 }
 
-API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid)
+API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid, pkgmgr_app_handler app_event_cb)
 {
-	return pkgmgr_client_usr_activate_app(pc, appid, GLOBAL_USER);
+	return pkgmgr_client_usr_activate_app(pc, appid, app_event_cb, GLOBAL_USER);
 }
 
 /* TODO: deprecate? */
 API int pkgmgr_client_usr_activate_appv(pkgmgr_client *pc, const char *appid,
 		char *const argv[], uid_t uid)
 {
-	return pkgmgr_client_usr_activate_app(pc, appid, uid);
+	return pkgmgr_client_usr_activate_app(pc, appid, NULL, uid);
 }
 
 API int pkgmgr_client_activate_appv(pkgmgr_client *pc, const char *appid,
 		char *const argv[])
 {
-	return pkgmgr_client_usr_activate_app(pc, appid, GLOBAL_USER);
+	return pkgmgr_client_usr_activate_app(pc, appid, NULL, GLOBAL_USER);
 }
 
 API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid,
-		uid_t uid)
+		pkgmgr_app_handler app_event_cb, uid_t uid)
 {
 	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+	int req_id;
+	char *req_key = NULL;
 
 	if (pc == NULL || appid == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
+	}
+
+	/* FIXME */
+	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+		ERR("__change_op_cb_for_enable_disable failed");
+		return PKGMGR_R_ESYSTEM;
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "disable_app",
 			g_variant_new("(us)", uid, appid));
+
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
-	g_variant_get(result, "(i)", &ret);
-	g_variant_unref(result);
+	g_variant_get(result, "(i&s)", &ret, &req_key);
+	if (req_key == NULL) {
+		g_variant_unref(result);
+		return PKGMGR_R_ECOMM;
+	}
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
 
+	req_id = _get_request_id();
+	__add_op_app_cbinfo(pc, req_id, req_key, app_event_cb, NULL, NULL);
+
+	g_variant_unref(result);
 	return ret;
 }
 
-API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid)
+API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb)
 {
-	return pkgmgr_client_usr_deactivate_app(pc, appid, GLOBAL_USER);
+	return pkgmgr_client_usr_deactivate_app(pc, appid, app_event_cb, GLOBAL_USER);
 }
 
 API int pkgmgr_client_usr_deactivate_global_app(pkgmgr_client *pc,
-				 const char *appid, uid_t uid)
+				 const char *appid, pkgmgr_app_handler app_event_cb, uid_t uid)
 {
 	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
+	int req_id;
+	char *req_key = NULL;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
 	if (pc == NULL || appid == NULL) {
@@ -1310,34 +1469,66 @@ API int pkgmgr_client_usr_deactivate_global_app(pkgmgr_client *pc,
 		return PKGMGR_R_EINVAL;
 	}
 
+	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+		ERR("__change_op_cb_for_enable_disable failed");
+		return PKGMGR_R_ESYSTEM;
+	}
+
 	result = comm_client_request(mpc->info.request.cc, "disable_global_app",
 			g_variant_new("(us)", uid, appid));
+
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
-	g_variant_get(result, "(i)", &ret);
-	g_variant_unref(result);
+	g_variant_get(result, "(i&s)", &ret, &req_key);
+	if (req_key == NULL) {
+		g_variant_unref(result);
+		return PKGMGR_R_ECOMM;
+	}
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
 
+	req_id = _get_request_id();
+	__add_op_app_cbinfo(pc, req_id, req_key, app_event_cb, NULL, NULL);
 	return ret;
 }
 
 API int pkgmgr_client_usr_activate_global_app(pkgmgr_client *pc,
-				 const char *appid, uid_t uid)
+				 const char *appid, pkgmgr_app_handler app_event_cb, uid_t uid)
 {
 	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
+	int req_id;
+	char *req_key = NULL;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
 	if (pc == NULL || appid == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
+	}
+
+	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+		ERR("__change_op_cb_for_enable_disable failed");
+		return PKGMGR_R_ESYSTEM;
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "enable_global_app",
 			g_variant_new("(us)", uid, appid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
-	g_variant_get(result, "(i)", &ret);
-	g_variant_unref(result);
+	g_variant_get(result, "(i&s)", &ret, &req_key);
+	if (req_key == NULL) {
+		g_variant_unref(result);
+		return PKGMGR_R_ECOMM;
+	}
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
+
+	req_id = _get_request_id();
+	__add_op_app_cbinfo(pc, req_id, req_key, app_event_cb, NULL, NULL);
 
 	return ret;
 }
@@ -1451,6 +1642,26 @@ API int pkgmgr_client_listen_status(pkgmgr_client *pc, pkgmgr_handler event_cb,
 
 	/* 2. add callback info to pkgmgr_client */
 	__add_stat_cbinfo(mpc, req_id, event_cb, data);
+	return req_id;
+}
+
+API int pkgmgr_client_listen_app_status(pkgmgr_client *pc, pkgmgr_app_handler event_cb,
+				    void *data)
+{
+	int req_id;
+	/* Check for NULL value of pc */
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+
+	/* 0. check input */
+	retvm_if(mpc->ctype != PC_LISTENING, PKGMGR_R_EINVAL, "ctype is not PC_LISTENING");
+	retvm_if(event_cb == NULL, PKGMGR_R_EINVAL, "event_cb is NULL");
+
+	/* 1. get id */
+	req_id = _get_request_id();
+
+	/* 2. add app callback info to pkgmgr_client */
+	__add_app_stat_cbinfo(mpc, req_id, event_cb, data);
 	return req_id;
 }
 
