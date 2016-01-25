@@ -110,6 +110,7 @@ extern "C" {
 #define PKGMGR_CLIENT_STATUS_CLEAR_DATA					0x10
 #define PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS			0x20
 #define PKGMGR_CLIENT_STATUS_GET_SIZE				0x40
+#define PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP				0x80
 /** @} */
 
 /* new common error codes */
@@ -271,6 +272,10 @@ typedef int (*pkgmgr_iter_fn)(const char* pkg_type, const char* pkgid,
 
 typedef int (*pkgmgr_handler)(uid_t target_uid, int req_id, const char *pkg_type,
 				const char *pkgid, const char *key,
+				const char *val, const void *pmsg, void *data);
+
+typedef int (*pkgmgr_app_handler)(uid_t target_uid, int req_id, const char *pkg_type,
+				const char *pkgid, const char *appid, const char *key,
 				const char *val, const void *pmsg, void *data);
 
 typedef void (*pkgmgr_pkg_size_info_receive_cb)(pkgmgr_client *pc, const char *pkgid,
@@ -507,8 +512,9 @@ int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ECOMM	communication error
 */
-int pkgmgr_client_activate_app(pkgmgr_client *pc, const char *appid);
-int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid, uid_t uid);
+int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid, pkgmgr_app_handler app_event_cb);
+int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb, uid_t uid);
+
 /**
  * @brief	This API activates package.
  *
@@ -536,8 +542,8 @@ int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, char 
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ECOMM	communication error
 */
-int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid);
-int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid, uid_t uid);
+int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb);
+int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb, uid_t uid);
 
 /**
  * @brief	This API deactivates global app for user specified by uid.
@@ -613,6 +619,21 @@ int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type);
  * @retval	PKGMGR_R_EINVAL	invalid argument
 */
 int pkgmgr_client_listen_status(pkgmgr_client *pc, pkgmgr_handler event_cb,
+				    void *data);
+
+/**
+ * @brief	This API request to listen the pkgmgr's broadcasting about apps
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	event_cb	user callback
+ * @param[in]	data		user data
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+*/
+int pkgmgr_client_listen_app_status(pkgmgr_client *pc, pkgmgr_app_handler event_cb,
 				    void *data);
 
 /**
