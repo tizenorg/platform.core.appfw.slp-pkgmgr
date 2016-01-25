@@ -37,7 +37,8 @@ enum {
 typedef struct comm_client comm_client;
 typedef void (*status_cb) (void *cb_data, uid_t target_uid, const char *req_id,
 			   const char *pkg_type, const char *pkgid,
-			   const char *key, const char *val);
+			   const char *appid,    const char *key,
+			   const char *val);
 
 API comm_client *comm_client_new(void);
 API int comm_client_free(comm_client *cc);
