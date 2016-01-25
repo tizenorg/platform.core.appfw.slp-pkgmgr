@@ -79,6 +79,8 @@ static int __get_signal_type(const char *name)
 		return COMM_STATUS_BROADCAST_UPGRADE;
 	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_GET_SIZE) == 0)
 		return COMM_STATUS_BROADCAST_GET_SIZE;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_ENABLE_DISABLE_APP) == 0)
+		return COMM_STATUS_BROADCAST_ENABLE_DISABLE_APP;
 	else
 		return -1;
 }
@@ -108,6 +110,7 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 	char *pkgid = NULL;
 	char *key = NULL;
 	char *val = NULL;
+	char *appid = NULL;
 
 	/* User's signal handler */
 	struct signal_callback_data *sig_cb_data;
@@ -120,13 +123,13 @@ void _on_signal_handle_filter(GDBusConnection *conn,
 	if (status_type < 0 || !(status_type & sig_cb_data->type))
 		return;
 
-	g_variant_get(parameters, "(u&s&s&s&s&s)",
-				&target_uid, &req_id, &pkg_type, &pkgid, &key, &val);
+	g_variant_get(parameters, "(u&s&s&s&s&s&s)",
+				&target_uid, &req_id, &pkg_type, &pkgid, &appid, &key, &val);
 
 	/* Run signal callback if exist */
 	if (sig_cb_data && sig_cb_data->cb)
 		sig_cb_data->cb(sig_cb_data->cb_data, target_uid, req_id,
-				pkg_type, pkgid, key, val);
+				pkg_type, pkgid, appid, key, val);
 
 	return;
 }
