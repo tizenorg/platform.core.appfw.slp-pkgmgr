@@ -88,6 +88,40 @@ static const char *__get_signal_name(pkgmgr_installer *pi, const char *key)
 	return COMM_STATUS_BROADCAST_SIGNAL_STATUS;
 }
 
+static int __send_signal_for_app_event(pkgmgr_installer *pi, const char *pkg_type,
+		const char *pkgid, const char *appid, const char *key, const char *val)
+{
+	char *sid;
+	const char *name;
+	GError *err = NULL;
+
+	if (!pi || pi->conn == NULL || appid == NULL)
+		return -1;
+
+	sid = pi->session_id;
+	if (!sid)
+		sid = "";
+
+	name = __get_signal_name(pi, key);
+	if (name == NULL) {
+		ERR("unknown signal type");
+		return -1;
+	}
+
+	if (g_dbus_connection_emit_signal(pi->conn, NULL,
+				COMM_STATUS_BROADCAST_OBJECT_PATH,
+				COMM_STATUS_BROADCAST_INTERFACE, name,
+				g_variant_new("(ussssss)", getuid(), sid,
+					pkg_type, pkgid, appid, key, val), &err)
+			!= TRUE) {
+		ERR("failed to send dbus signal: %s", err->message);
+		g_error_free(err);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int __send_signal_for_event(pkgmgr_installer *pi, const char *pkg_type,
 		const char *pkgid, const char *key, const char *val)
 {
@@ -111,8 +145,8 @@ static int __send_signal_for_event(pkgmgr_installer *pi, const char *pkg_type,
 	if (g_dbus_connection_emit_signal(pi->conn, NULL,
 				COMM_STATUS_BROADCAST_OBJECT_PATH,
 				COMM_STATUS_BROADCAST_INTERFACE, name,
-				g_variant_new("(usssss)", getuid(), sid,
-					pkg_type, pkgid, key, val), &err)
+				g_variant_new("(ussssss)", getuid(), sid,
+					pkg_type, pkgid, "", key, val), &err)
 			!= TRUE) {
 		ERR("failed to send dbus signal: %s", err->message);
 		g_error_free(err);
@@ -420,6 +454,35 @@ API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
 	ret = __send_signal_for_event(pi, pkg_type, pkgid,
 			PKGMGR_INSTALLER_APPID_KEY_STR, val);
 	return ret;
+}
+
+API int
+pkgmgr_installer_send_app_signal(pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *appid,
+			     const char *key, const char *val)
+{
+	int r = 0;
+	char *sid;
+
+	if (!pi->conn) {
+		ERR("connection is NULL");
+		return -1;
+	}
+
+	sid = pi->session_id;
+	if (!sid) {
+		ERR("session id is NULL, set empty string");
+		sid = "";
+	}
+
+	if (strcmp(key, PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0)
+		pi->request_type = PKGMGR_REQ_UPGRADE;
+
+	r = __send_signal_for_app_event(pi, pkg_type, pkgid, appid, key, val);
+
+	return r;
 }
 
 API int
