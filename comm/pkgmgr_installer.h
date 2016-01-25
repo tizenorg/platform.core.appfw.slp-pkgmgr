@@ -79,7 +79,8 @@ enum {
 	PKGMGR_REQ_GETSIZE = 7,
 	PKGMGR_REQ_UPGRADE = 8,
 	PKGMGR_REQ_SMACK = 9,
-	PKGMGR_REQ_MANIFEST_DIRECT_INSTALL = 10
+	PKGMGR_REQ_MANIFEST_DIRECT_INSTALL = 10,
+	PKGMGR_REQ_ENABLE_DISABLE_APP = 11
 };
 
 enum {
@@ -629,6 +630,27 @@ int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
 			     const char *pkgid,
 			     const char *val);
 
+/**
+ * @brief	This API sets the requst info of given pkgmgr_installer.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]pi				pointer to pkgmgr_installer
+ * @param[in]	request_type				request type
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_installer_set_request_type(pkgmgr_installer *pi, int request_type);
+
+/**
+ * @brief	This API sets the session ID.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]	pi				pointer to pkgmgr_installer
+ * @param[in]	session_id				session ID to be set
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_installer_set_session_id(pkgmgr_installer *pi, char *session_id);
 
 /**
  * @brief	This API creates the certinfo handle.
