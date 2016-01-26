@@ -149,7 +149,6 @@ API pkgmgr_installer *pkgmgr_installer_new(void)
 API pkgmgr_installer *pkgmgr_installer_offline_new(void)
 {
 	pkgmgr_installer *pi;
-	GError *err = NULL;
 
 	pi = calloc(1, sizeof(struct pkgmgr_installer));
 	if (pi == NULL)
@@ -427,8 +426,7 @@ API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
 			     const char *pkgid,
 			     const char *val)
 {
-	int ret = -1;
-
+	int ret = 0;
 	ret = __send_signal_for_event(pi, pkg_type, pkgid,
 			PKGMGR_INSTALLER_APPID_KEY_STR, val);
 	return ret;
@@ -451,7 +449,6 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 	sid = pi->session_id;
 	if (!sid) {
 		ERR("session id is NULL, set empty string");
-		sid = "";
 	}
 
 	if (strcmp(key, PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0)
