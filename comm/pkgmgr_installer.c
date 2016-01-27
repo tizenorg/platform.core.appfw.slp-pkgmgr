@@ -439,16 +439,10 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 			     const char *key, const char *val)
 {
 	int r = 0;
-	char *sid;
 
 	if (!pi->conn) {
 		ERR("connection is NULL");
 		return -1;
-	}
-
-	sid = pi->session_id;
-	if (!sid) {
-		ERR("session id is NULL, set empty string");
 	}
 
 	if (strcmp(key, PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0)
