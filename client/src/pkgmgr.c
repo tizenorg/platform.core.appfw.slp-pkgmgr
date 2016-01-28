@@ -573,7 +573,7 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid,
 		return PKGMGR_R_EINVAL;
 	}
 	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(si)", pkgid, get_type));
+			g_variant_new("(usi)", uid, pkgid, get_type));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 
@@ -677,7 +677,7 @@ static int __request_size_info(pkgmgr_client *pc, uid_t uid)
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(si)", "size_info", PM_GET_SIZE_INFO));
+			g_variant_new("(usi)", uid, "size_info", PM_GET_SIZE_INFO));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 
