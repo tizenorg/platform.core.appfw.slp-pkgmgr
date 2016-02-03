@@ -544,6 +544,8 @@ int main(int argc, char **argv)
  */
 const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi);
 
+int pkgmgr_installer_get_is_preload(pkgmgr_installer *pi);
+
 /**
 	@brief		Send a process status signal
 	@pre		None
