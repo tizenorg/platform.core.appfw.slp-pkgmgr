@@ -60,6 +60,7 @@ struct pkgmgr_installer {
 	char *tep_path;
 	int tep_move;
 	int is_tep_included;
+	int is_preload;
 	GDBusConnection *conn;
 };
 
@@ -244,6 +245,10 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 		if (-1 == c)
 			break;	/* Parse is end */
 		switch (c) {
+		case OPTVAL_PRELOAD:	/* request for preload app */
+			pi->is_preload = 1;
+			DBG("option is 1000 is_preload[%d]", pi->is_preload );
+			break;
 		case 'k':	/* session id */
 			if (pi->session_id)
 				free(pi->session_id);
@@ -455,6 +460,12 @@ API const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->caller_pkgid;
+}
+
+API int pkgmgr_installer_get_is_preload(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->is_preload;
 }
 
 API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,

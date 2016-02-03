@@ -31,6 +31,8 @@
 extern "C" {
 #endif
 
+#define OPTVAL_PRELOAD 1000
+
 /* Supported options */
 const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:b:e:M:y:q";
 const struct option long_opts[] = {
@@ -49,6 +51,7 @@ const struct option long_opts[] = {
 	{ "smack", 1, NULL, 's' },
 	{ "direct-manifest-install", 1, NULL, 'y' },
 	{ "recovery", 1, NULL, 'b' },
+        { "preload", 0, NULL, OPTVAL_PRELOAD },
 	{ 0, 0, 0, 0 }	/* sentinel */
 };
 
