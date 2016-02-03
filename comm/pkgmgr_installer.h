@@ -545,6 +545,41 @@ int main(int argc, char **argv)
 const char *pkgmgr_installer_get_caller_pkgid(pkgmgr_installer *pi);
 
 /**
+	@brief		Get if the request is for preload app or not
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		Operation result
+	@retval		0 if a request is not for preload
+	@retval		1 if a request is for preload
+	@remark		None
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	int is_preload = 0;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	preload = pkgmgr_installer_get_is_preload(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+	@endcode
+ */
+int pkgmgr_installer_get_is_preload(pkgmgr_installer *pi);
+
+/**
 	@brief		Send a process status signal
 	@pre		None
 	@post		None

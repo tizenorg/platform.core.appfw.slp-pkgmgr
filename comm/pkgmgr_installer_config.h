@@ -49,6 +49,7 @@ const struct option long_opts[] = {
 	{ "smack", 1, NULL, 's' },
 	{ "direct-manifest-install", 1, NULL, 'y' },
 	{ "recovery", 1, NULL, 'b' },
+        { "preload", 1, NULL, 1000 },
 	{ 0, 0, 0, 0 }	/* sentinel */
 };
 
