@@ -1042,7 +1042,7 @@ API int pkgmgr_client_set_tep_path(pkgmgr_client *pc, char *tep_path, char *tep_
 
 API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		const char *descriptor_path, const char *pkg_path,
-		const char *optional_file, pkgmgr_mode mode,
+		const char *optional_data, pkgmgr_mode mode,
 		pkgmgr_handler event_cb, void *data, uid_t uid)
 {
 	GVariant *result;
@@ -1117,24 +1117,24 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 
 API int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
 		const char *descriptor_path, const char *pkg_path,
-		const char *optional_file, pkgmgr_mode mode,
+		const char *optional_data, pkgmgr_mode mode,
 		pkgmgr_handler event_cb, void *data)
 {
 	return pkgmgr_client_usr_install(pc, pkg_type, descriptor_path,
-			pkg_path, optional_file, mode, event_cb,data,
+			pkg_path, optional_data, mode, event_cb,data,
 			GLOBAL_USER);
 }
 
 API int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type,
-		const char *pkgid, const char *optional_file, pkgmgr_mode mode,
+		const char *pkgid, const char *optional_data, pkgmgr_mode mode,
 		pkgmgr_handler event_cb, void *data)
 {
-	return pkgmgr_client_usr_reinstall(pc, pkg_type, pkgid, optional_file,
+	return pkgmgr_client_usr_reinstall(pc, pkg_type, pkgid, optional_data,
 			mode, event_cb, data,GLOBAL_USER);
 }
 
 API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
-		const char *pkgid, const char *optional_file, pkgmgr_mode mode,
+		const char *pkgid, const char *optional_data, pkgmgr_mode mode,
 		pkgmgr_handler event_cb, void *data, uid_t uid)
 {
 	GVariant *result;
@@ -1692,7 +1692,7 @@ API int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_ty
 	switch (service_type) {
 	case PM_REQUEST_CSC:
 		tryvm_if(custom_info == NULL, ret = PKGMGR_R_EINVAL, "custom_info is NULL\n");
-		tryvm_if(strlen(custom_info) >= PKG_STRING_LEN_MAX, ret = PKGMGR_R_EINVAL, "optional_file over PKG_STRING_LEN_MAX");
+		tryvm_if(strlen(custom_info) >= PKG_STRING_LEN_MAX, ret = PKGMGR_R_EINVAL, "custom_info over PKG_STRING_LEN_MAX");
 		tryvm_if(data == NULL, ret = PKGMGR_R_EINVAL, "data is NULL\n");
 
 		ret = __csc_process(custom_info, (char *)data);

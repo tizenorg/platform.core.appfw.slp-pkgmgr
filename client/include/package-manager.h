@@ -363,7 +363,7 @@ int pkgmgr_client_free(pkgmgr_client *pc);
  * @param[in]	pkg_type		package type
  * @param[in]	descriptor_path	full path that descriptor is located
  * @param[in]	pkg_path		full path that package file is located
- * @param[in]	optional_file	optional file which is used for installation
+ * @param[in]	optional_data	optional data which is used for installation
  * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
  * @param[in]	event_cb	user callback
  * @param[in]	data		user data
@@ -374,11 +374,11 @@ int pkgmgr_client_free(pkgmgr_client *pc);
 */
 int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
 			    const char *descriptor_path, const char *pkg_path,
-			    const char *optional_file, pkgmgr_mode mode,
+			    const char *optional_data, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data);
 int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 			    const char *descriptor_path, const char *pkg_path,
-			    const char *optional_file, pkgmgr_mode mode,
+			    const char *optional_data, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data, uid_t uid);
 /**
  * @brief	This API reinstalls package.
@@ -388,7 +388,7 @@ int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
  * @param[in]	pc	pkgmgr_client
  * @param[in]	pkg_type		package type
  * @param[in]	pkg_path		full path that package file is located
- * @param[in]	optional_file	optional file which is used for installation
+ * @param[in]	optional_data	optional data which is used for installation
  * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
  * @param[in]	event_cb	user callback
  * @param[in]	data		user data
@@ -398,10 +398,10 @@ int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type, const char *pkgid,
-			    const char *optional_file, pkgmgr_mode mode,
+			    const char *optional_data, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data);
 int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
-				  const char *optional_file, pkgmgr_mode mode,
+				  const char *optional_data, pkgmgr_mode mode,
 			      pkgmgr_handler event_cb, void *data, uid_t uid);
 /**
  * @brief	This API uninstalls package.
