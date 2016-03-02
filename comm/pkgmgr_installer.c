@@ -114,7 +114,7 @@ static int __send_signal_for_app_event(pkgmgr_installer *pi, const char *pkg_typ
 	if (g_dbus_connection_emit_signal(pi->conn, NULL,
 				COMM_STATUS_BROADCAST_OBJECT_PATH,
 				COMM_STATUS_BROADCAST_INTERFACE, name,
-				g_variant_new("(ussssss)", getuid(), sid,
+				g_variant_new("(ussssss)", pi->target_uid, sid,
 					pkg_type, pkgid, appid, key, val), &err)
 			!= TRUE) {
 		ERR("failed to send dbus signal: %s", err->message);
@@ -477,6 +477,16 @@ API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
 	ret = __send_signal_for_event(pi, pkg_type, pkgid,
 			PKGMGR_INSTALLER_APPID_KEY_STR, val);
 	return ret;
+}
+
+API int pkgmgr_installer_set_uid(pkgmgr_installer *pi, uid_t uid)
+{
+	if (pi == NULL)
+		return -1;
+
+	pi->target_uid = uid;
+
+	return 0;
 }
 
 API int

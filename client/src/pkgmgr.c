@@ -1621,6 +1621,11 @@ API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
 	   retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
    }
 
+   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP) == PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP) {
+	   ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_DISABLE_APP, mpc->info.listening.cc, __status_callback, pc);
+	   retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
+   }
+
    return PKGMGR_R_OK;
 }
 
