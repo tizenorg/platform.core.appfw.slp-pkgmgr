@@ -62,7 +62,10 @@ typedef void* pkgmgr_instcertinfo_h;
 #define PKGMGR_INSTALLER_OK_EVENT_STR            "ok"
 #define PKGMGR_INSTALLER_FAIL_EVENT_STR          "fail"
 
-
+#define PKGMGR_INSTALLER_APP_DISABLE_EVENT_STR         "disable_app"
+#define PKGMGR_INSTALLER_APP_ENABLE_EVENT_STR          "enable_app"
+#define PKGMGR_INSTALLER_GLOBAL_APP_DISABLE_FOR_UID    "disable_global_app_for_uid"
+#define PKGMGR_INSTALLER_GLOBAL_APP_ENABLE_FOR_UID     "enable_global_app_for_uid"
 
 
 /**
@@ -665,6 +668,17 @@ int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
 			     const char *pkg_type,
 			     const char *pkgid,
 			     const char *val);
+
+/**
+ * @brief	This API sets the uid of given pkgmgr_installer.
+ *
+ *              This API is for package-manager client application.\n
+ *
+ * @param[in]pi				pointer to pkgmgr_installer
+ * @param[in]uid				uid
+ * @return	0 if success, error code(<0) if fail\n
+*/
+int pkgmgr_installer_set_uid(pkgmgr_installer *pi, uid_t uid);
 
 /**
  * @brief	This API sets the requst info of given pkgmgr_installer.

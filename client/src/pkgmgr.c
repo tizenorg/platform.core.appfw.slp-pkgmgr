@@ -407,13 +407,15 @@ static void __status_callback(void *cb_data, uid_t target_uid,
 	while (tmp) {
 		if (appid != NULL && strlen(appid) != 0) {
 			/* run app callback */
-			if (tmp->app_event_cb(target_uid, tmp->request_id, pkg_type, pkgid,
-						appid, key, val, NULL, tmp->data) != 0)
+			if (tmp->app_event_cb && tmp->app_event_cb(
+					target_uid, tmp->request_id, pkg_type, pkgid,
+					appid, key, val, NULL, tmp->data) != 0)
 				break;
 		} else {
 			/* run pkg callback */
-			if (tmp->event_cb(target_uid, tmp->request_id, pkg_type, pkgid,
-					  key, val, NULL, tmp->data) != 0)
+			if (tmp->event_cb && tmp->event_cb(
+				target_uid, tmp->request_id, pkg_type, pkgid,
+				key, val, NULL, tmp->data) != 0)
 				break;
 		}
 		tmp = tmp->next;
@@ -1618,6 +1620,11 @@ API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
 
    if ((mpc->status_type & PKGMGR_CLIENT_STATUS_UPGRADE) == PKGMGR_CLIENT_STATUS_UPGRADE) {
 	   ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_UPGRADE, mpc->info.listening.cc, __status_callback, pc);
+	   retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
+   }
+
+   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP) == PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP) {
+	   ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_DISABLE_APP, mpc->info.listening.cc, __status_callback, pc);
 	   retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
    }
 
