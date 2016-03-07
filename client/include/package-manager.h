@@ -355,6 +355,20 @@ pkgmgr_client *pkgmgr_client_new(client_type ctype);
 int pkgmgr_client_free(pkgmgr_client *pc);
 
 /**
+ * @brief	This API set information to install tep package.
+ * @details	Use this API before calling installation API.
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	tep_path	full path that tep file is located at
+ * @param[in]	tep_move	if TRUE, source file will be moved, else it will be copied
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+*/
+int pkgmgr_client_set_tep_path(pkgmgr_client *pc, char *tep_path, char *tep_move);
+
+/**
  * @brief	This API installs package.
  *
  * This API is for package-manager client application.\n
