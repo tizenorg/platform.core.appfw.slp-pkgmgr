@@ -538,7 +538,7 @@ API int pkgmgr_installer_set_request_type(pkgmgr_installer *pi, int request_type
 	return 0;
 }
 
-API int pkgmgr_installer_set_session_id(pkgmgr_installer *pi, char *session_id)
+API int pkgmgr_installer_set_session_id(pkgmgr_installer *pi, const char *session_id)
 {
 	if (pi == NULL || session_id == NULL)
 		return -1;

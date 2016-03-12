@@ -583,6 +583,49 @@ int main(int argc, char **argv)
 int pkgmgr_installer_get_is_preload(pkgmgr_installer *pi);
 
 /**
+	@brief		Send a app status signal
+	@pre		None
+	@post		None
+	@see		None
+	@param[in]	pi	pkgmgr_installer object
+	@param[in]	pkg_type	package type: "deb", "jar", "wgt", ...
+	@param[in]	pkgid	package id
+	@param[in]	appid	application id
+	@param[in]	key			Signal key
+	@param[in]	val			Signal value
+	@return		Operation result
+	@retval		0 on success
+	@retval		-errno on failure
+	@code
+#include <pkgmgr_installer.h>
+void send_app_singal(uid_t uid, int request_type, int req_id,
+		const char *pkg_type, const char *pkgid, const char *appid,
+		const char *key, const char *val)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+
+	if (pkgmgr_installer_set_uid(pi, uid))
+		goto CLEANUP_RET;
+	if (pkgmgr_installer_set_request_type(pi, request_type))
+		goto CLEANUP_RET;
+	if ((pkgmgr_installer_set_session_id(pi, req_id))
+		goto CLEANUP_RET;
+	pkgmgr_installer_send_app_signal(pi, pkg_type, pkgid, appid, key, val);
+
+}
+	@endcode
+ */
+int pkgmgr_installer_send_app_signal(pkgmgr_installer *pi,
+			     const char *pkg_type,
+			     const char *pkgid,
+			     const char *appid,
+			     const char *key, const char *val);
+
+/**
 	@brief		Send a process status signal
 	@pre		None
 	@post		None
@@ -700,7 +743,7 @@ int pkgmgr_installer_set_request_type(pkgmgr_installer *pi, int request_type);
  * @param[in]	session_id				session ID to be set
  * @return	0 if success, error code(<0) if fail\n
 */
-int pkgmgr_installer_set_session_id(pkgmgr_installer *pi, char *session_id);
+int pkgmgr_installer_set_session_id(pkgmgr_installer *pi, const char *session_id);
 
 /**
  * @brief	This API creates the certinfo handle.
