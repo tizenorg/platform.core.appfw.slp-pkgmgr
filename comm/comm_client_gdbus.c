@@ -79,8 +79,10 @@ static int __get_signal_type(const char *name)
 		return COMM_STATUS_BROADCAST_UPGRADE;
 	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_GET_SIZE) == 0)
 		return COMM_STATUS_BROADCAST_GET_SIZE;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_ENABLE_DISABLE_APP) == 0)
-		return COMM_STATUS_BROADCAST_ENABLE_DISABLE_APP;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_ENABLE_APP) == 0)
+		return COMM_STATUS_BROADCAST_ENABLE_APP;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_DISABLE_APP) == 0)
+		return COMM_STATUS_BROADCAST_DISABLE_APP;
 	else
 		return -1;
 }
