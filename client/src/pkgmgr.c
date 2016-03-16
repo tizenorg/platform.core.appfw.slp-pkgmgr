@@ -813,7 +813,7 @@ static int __change_op_cb_for_getsize(pkgmgr_client *pc)
 	return PKGMGR_R_OK;
 }
 
-static int __change_op_cb_for_enable_disable(pkgmgr_client *pc)
+static int __change_op_cb_for_enable_disable(pkgmgr_client *pc, bool is_disable)
 {
 	int ret = -1;
 
@@ -835,13 +835,19 @@ static int __change_op_cb_for_enable_disable(pkgmgr_client *pc)
 
 	/* Manage pc for seperated event */
 	mpc->ctype = PC_REQUEST;
-	mpc->status_type = PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP;
+	if (is_disable)
+		mpc->status_type = PKGMGR_CLIENT_STATUS_DISABLE_APP;
+	else
+		mpc->status_type = PKGMGR_CLIENT_STATUS_ENABLE_APP;
 
 
 	mpc->info.request.cc = comm_client_new();
 	retvm_if(mpc->info.request.cc == NULL, PKGMGR_R_ERROR, "client creation failed");
 
-	ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_DISABLE_APP, mpc->info.request.cc, __operation_callback, pc);
+	if (is_disable)
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_DISABLE_APP, mpc->info.request.cc, __operation_callback, pc);
+	else
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_APP, mpc->info.request.cc, __operation_callback, pc);
 	retvm_if(ret < 0, PKGMGR_R_ERROR, "set_status_callback() failed - %d", ret);
 
 	return PKGMGR_R_OK;
@@ -1379,7 +1385,7 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
 		return PKGMGR_R_EINVAL;
 	}
 
-	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+	if (__change_op_cb_for_enable_disable(mpc, false) < 0) {
 		ERR("__change_op_cb_for_enable_disable failed");
 		return PKGMGR_R_ESYSTEM;
 	}
@@ -1423,7 +1429,7 @@ API int pkgmgr_client_activate_global_app_for_uid(pkgmgr_client *pc,
 		return PKGMGR_R_EINVAL;
 	}
 
-	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+	if (__change_op_cb_for_enable_disable(mpc, false) < 0) {
 		ERR("__change_op_cb_for_enable_disable failed");
 		return PKGMGR_R_ESYSTEM;
 	}
@@ -1463,7 +1469,7 @@ API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid,
 	}
 
 	/* FIXME */
-	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+	if (__change_op_cb_for_enable_disable(mpc, true) < 0) {
 		ERR("__change_op_cb_for_enable_disable failed");
 		return PKGMGR_R_ESYSTEM;
 	}
@@ -1509,7 +1515,7 @@ API int pkgmgr_client_deactivate_global_app_for_uid(pkgmgr_client *pc,
 		return PKGMGR_R_EINVAL;
 	}
 
-	if (__change_op_cb_for_enable_disable(mpc) < 0) {
+	if (__change_op_cb_for_enable_disable(mpc, true) < 0) {
 		ERR("__change_op_cb_for_enable_disable failed");
 		return PKGMGR_R_ESYSTEM;
 	}
@@ -1619,13 +1625,18 @@ API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
 	}
 
    if ((mpc->status_type & PKGMGR_CLIENT_STATUS_UPGRADE) == PKGMGR_CLIENT_STATUS_UPGRADE) {
-	   ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_UPGRADE, mpc->info.listening.cc, __status_callback, pc);
-	   retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_UPGRADE, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
    }
 
-   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP) == PKGMGR_CLIENT_STATUS_ENABLE_DISABLE_APP) {
-	   ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_DISABLE_APP, mpc->info.listening.cc, __status_callback, pc);
-	   retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
+   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_ENABLE_APP) == PKGMGR_CLIENT_STATUS_ENABLE_APP) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_APP, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_ENABLE_APP failed - %d", ret);
+   }
+
+   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_DISABLE_APP) == PKGMGR_CLIENT_STATUS_DISABLE_APP) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_DISABLE_APP, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_DISABLE_APP failed - %d", ret);
    }
 
    return PKGMGR_R_OK;
