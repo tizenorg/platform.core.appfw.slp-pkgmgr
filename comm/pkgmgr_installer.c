@@ -82,8 +82,10 @@ static const char *__get_signal_name(pkgmgr_installer *pi, const char *key)
 		return COMM_STATUS_BROADCAST_EVENT_UPGRADE;
 	case PKGMGR_REQ_MOVE:
 		return COMM_STATUS_BROADCAST_EVENT_MOVE;
-	case PKGMGR_REQ_ENABLE_DISABLE_APP:
-		return COMM_STATUS_BROADCAST_EVENT_ENABLE_DISABLE_APP;
+	case PKGMGR_REQ_ENABLE_APP:
+		return COMM_STATUS_BROADCAST_EVENT_ENABLE_APP;
+	case PKGMGR_REQ_DISABLE_APP:
+		return COMM_STATUS_BROADCAST_EVENT_DISABLE_APP;
 	}
 
 	ERR("cannot find type, send signal with type SIGNAL_STATUS");
