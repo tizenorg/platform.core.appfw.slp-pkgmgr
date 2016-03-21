@@ -148,7 +148,7 @@ static int __send_signal_for_event(pkgmgr_installer *pi, const char *pkg_type,
 	if (g_dbus_connection_emit_signal(pi->conn, NULL,
 				COMM_STATUS_BROADCAST_OBJECT_PATH,
 				COMM_STATUS_BROADCAST_INTERFACE, name,
-				g_variant_new("(ussssss)", getuid(), sid,
+				g_variant_new("(ussssss)", pi->target_uid, sid,
 					pkg_type, pkgid, "", key, val), &err)
 			!= TRUE) {
 		ERR("failed to send dbus signal: %s", err->message);
