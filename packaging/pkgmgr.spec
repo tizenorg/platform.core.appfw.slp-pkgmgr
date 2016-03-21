@@ -103,14 +103,11 @@ mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backend
 mkdir -p %{buildroot}%{_sysconfdir}/package-manager/backendlib
 mkdir -p %{buildroot}%{_sysconfdir}/opt/upgrade
 
-touch  %{buildroot}%{_sysconfdir}/package-manager/backend/pkg
-chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/pkg
-touch  %{buildroot}%{_sysconfdir}/package-manager/backend/getsize
-chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/getsize
-touch  %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
-chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/clearcache
-touch  %{buildroot}%{_sysconfdir}/package-manager/backend/app
-chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/app
+touch  %{buildroot}%{_sysconfdir}/package-manager/backend/default
+chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/default
+touch  %{buildroot}%{_sysconfdir}/package-manager/backend/pkgtool
+chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/pkgtool
+
 
 %fdupes %{buildroot}
 
