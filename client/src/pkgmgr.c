@@ -1303,13 +1303,13 @@ API int pkgmgr_client_usr_activate(pkgmgr_client *pc, const char *pkg_type,
 	int ret = PKGMGR_R_ECOMM;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
-	if (pc == NULL || pkgid == NULL) {
+	if (pc == NULL || pkgid == NULL | pkg_type == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "enable_pkg",
-			g_variant_new("(us)", uid, pkgid));
+			g_variant_new("(uss)", uid, pkg_type, pkgid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
@@ -1331,13 +1331,13 @@ API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
 	int ret = PKGMGR_R_ECOMM;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
-	if (pc == NULL || pkgid == NULL) {
+	if (pc == NULL || pkgid == NULL || pkg_type == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "disable_pkg",
-			g_variant_new("(us)", uid, pkgid));
+			g_variant_new("(uss)", uid, pkg_type, pkgid));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
