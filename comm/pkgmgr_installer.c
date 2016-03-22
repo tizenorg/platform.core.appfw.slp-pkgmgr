@@ -61,6 +61,7 @@ struct pkgmgr_installer {
 	int tep_move;
 	int is_tep_included;
 	int is_preload;
+	int force_removal;
 	GDBusConnection *conn;
 };
 
@@ -249,7 +250,11 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 		switch (c) {
 		case OPTVAL_PRELOAD:	/* request for preload app */
 			pi->is_preload = 1;
-			DBG("option is 1000 is_preload[%d]", pi->is_preload );
+			DBG("preload request [%d]", pi->is_preload );
+			break;
+		case OPTVAL_FORCE_REMOVAL:	/* request for force-remove */
+			pi->force_removal = 1;
+			DBG("force-remove request [%d]", pi->force_removal );
 			break;
 		case 'k':	/* session id */
 			if (pi->session_id)
@@ -468,6 +473,12 @@ API int pkgmgr_installer_get_is_preload(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->is_preload;
+}
+
+API int pkgmgr_installer_get_force_removal(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->force_removal;
 }
 
 API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
