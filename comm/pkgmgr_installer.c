@@ -61,6 +61,7 @@ struct pkgmgr_installer {
 	int tep_move;
 	int is_tep_included;
 	int is_preload;
+	int force_removal;
 	GDBusConnection *conn;
 };
 
@@ -468,6 +469,12 @@ API int pkgmgr_installer_get_is_preload(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->is_preload;
+}
+
+API int pkgmgr_installer_get_force_removal(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->force_removal;
 }
 
 API int pkgmgr_installer_send_app_uninstall_signal(pkgmgr_installer *pi,
