@@ -384,6 +384,18 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'D': /* Deactivate */
+			mode = 'D'; // TODO(jungh.yeon) : for what?
+			pi->request_type = PKGMGR_REQ_DISABLE_PKG;
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
+		case 'A': /* Activate */
+			mode = 'A'; // TODO(jungh.yeon) : for what?
+			pi->request_type = PKGMGR_REQ_ENABLE_PKG;
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 		case 'b': /* recovery */
 			if (mode) {
 				r = -EINVAL;

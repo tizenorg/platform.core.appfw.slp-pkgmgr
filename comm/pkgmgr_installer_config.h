@@ -35,7 +35,7 @@ extern "C" {
 #define OPTVAL_FORCE_REMOVAL 1001
 
 /* Supported options */
-const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:b:e:M:y:q";
+const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:b:e:M:y:D:A:q";
 const struct option long_opts[] = {
 	{ "session-id", 1, NULL, 'k' },
 	{ "license-path", 1, NULL, 'l' },
@@ -52,6 +52,8 @@ const struct option long_opts[] = {
 	{ "smack", 1, NULL, 's' },
 	{ "direct-manifest-install", 1, NULL, 'y' },
 	{ "recovery", 1, NULL, 'b' },
+	{ "deactivate", 1, NULL, 'D' },
+	{ "activate", 1, NULL, 'A' },
         { "preload", 0, NULL, OPTVAL_PRELOAD },
 	{ "force-remove", 0, NULL, OPTVAL_FORCE_REMOVAL },
 	{ 0, 0, 0, 0 }	/* sentinel */
