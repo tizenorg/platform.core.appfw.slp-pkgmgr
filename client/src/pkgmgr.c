@@ -1293,7 +1293,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 	}
 
 	result = comm_client_request(mpc->info.request.cc, "move",
-			g_variant_new("(uss)", uid, pkg_type, pkgid));
+			g_variant_new("(usss)", uid, pkg_type, pkgid, ((move_type == PM_MOVE_TO_INTERNAL) ? "internal" : "external")));
 	if (result == NULL)
 		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
