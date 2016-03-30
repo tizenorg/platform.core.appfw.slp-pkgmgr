@@ -729,11 +729,6 @@ static int __move_pkg_process(pkgmgr_client *pc, const char *pkgid,
 		return ret;
 	}
 
-	/* FIXME */
-	ret = __sync_process(pkgid);
-	if (ret != 0)
-		ERR("move pkg failed, ret=%d\n", ret);
-
 	return ret;
 }
 
@@ -1339,7 +1334,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 	}
 
 	ret = comm_client_request(mpc->info.request.cc, "move",
-			g_variant_new("(uss)", uid, pkg_type, pkgid), &result);
+			g_variant_new("(ussi)", uid, pkg_type, pkgid, move_type), &result);
 	if (ret != PKGMGR_R_OK) {
 		ERR("request failed: %d", ret);
 		return ret;
