@@ -1339,7 +1339,7 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 	}
 
 	ret = comm_client_request(mpc->info.request.cc, "move",
-			g_variant_new("(uss)", uid, pkg_type, pkgid), &result);
+			g_variant_new("(ussi)", uid, pkg_type, pkgid, move_type), &result);
 	if (ret != PKGMGR_R_OK) {
 		ERR("request failed: %d", ret);
 		return ret;
