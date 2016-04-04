@@ -289,6 +289,21 @@ static req_cb_info *__find_op_cbinfo(pkgmgr_client_t *pc, const char *req_key)
 	return NULL;
 }
 
+static int __remove_stat_cbinfo(pkgmgr_client_t *pc)
+{
+	listen_cb_info *info = pc->info.listening.lhead;
+	listen_cb_info *next = NULL;
+
+	while (info != NULL) {
+		next = info->next;
+		free(info);
+		info = next;
+	}
+
+	pc->info.listening.lhead = NULL;
+	return 0;
+}
+
 static void __add_app_stat_cbinfo(pkgmgr_client_t *pc, int request_id,
 			      pkgmgr_app_handler event_cb, void *data)
 {
@@ -1680,6 +1695,22 @@ API int pkgmgr_client_listen_app_status(pkgmgr_client *pc, pkgmgr_app_handler ev
 	/* 2. add app callback info to pkgmgr_client */
 	__add_app_stat_cbinfo(mpc, req_id, event_cb, data);
 	return req_id;
+}
+
+API int pkgmgr_client_remove_listen_status(pkgmgr_client *pc)
+{
+	int ret = -1;
+
+	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+
+	ret = __remove_stat_cbinfo(mpc);
+	if (ret != 0) {
+		ERR("failed to remove status callback");
+		return PKGMGR_R_ERROR;
+	}
+
+	return PKGMGR_R_OK;
 }
 
 API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
