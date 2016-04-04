@@ -1309,7 +1309,7 @@ API int pkgmgr_client_usr_activate(pkgmgr_client *pc, const char *pkg_type,
 	int ret = PKGMGR_R_ECOMM;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
-	if (pc == NULL || pkgid == NULL | pkg_type == NULL) {
+	if (pc == NULL || pkgid == NULL || pkg_type == NULL) {
 		ERR("invalid parameter");
 		return PKGMGR_R_EINVAL;
 	}
