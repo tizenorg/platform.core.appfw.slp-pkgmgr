@@ -660,6 +660,19 @@ int pkgmgr_client_listen_app_status(pkgmgr_client *pc, pkgmgr_app_handler event_
 				    void *data);
 
 /**
+ * @brief	This API request to stop listen the pkgmgr's broadcasting
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ERROR		internal error
+*/
+int pkgmgr_client_remove_listen_status(pkgmgr_client *pc);
+
+/**
  * @brief	This API broadcasts pkgmgr's status
  *
  * This API is for package-manager client application.\n
