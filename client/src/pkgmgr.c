@@ -49,6 +49,17 @@
 #define BINSH_SIZE	7
 
 #define GLOBAL_USER tzplatform_getuid(TZ_SYS_GLOBALAPP_USER)
+#define REGULAR_USER 5000
+
+static inline uid_t _getuid(void)
+{
+	uid_t uid = getuid();
+
+	if (uid < REGULAR_USER)
+		return GLOBAL_USER;
+	else
+		return uid;
+}
 
 static int _get_request_id()
 {
@@ -1145,7 +1156,7 @@ API int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
 {
 	return pkgmgr_client_usr_install(pc, pkg_type, descriptor_path,
 			pkg_path, optional_data, mode, event_cb,data,
-			GLOBAL_USER);
+			_getuid());
 }
 
 API int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type,
@@ -1153,7 +1164,7 @@ API int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type,
 		pkgmgr_handler event_cb, void *data)
 {
 	return pkgmgr_client_usr_reinstall(pc, pkg_type, pkgid, optional_data,
-			mode, event_cb, data,GLOBAL_USER);
+			mode, event_cb, data, _getuid());
 }
 
 API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
@@ -1216,7 +1227,7 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		void *data)
 {
 	return pkgmgr_client_usr_uninstall(pc, pkg_type,pkgid, mode, event_cb,
-			data, GLOBAL_USER);
+			data, _getuid());
 }
 
 API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
@@ -1284,7 +1295,7 @@ API int pkgmgr_client_move(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode)
 {
 	return pkgmgr_client_usr_move(pc, pkg_type, pkgid, move_type, mode,
-			GLOBAL_USER);
+			_getuid());
 }
 API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, pkgmgr_move_type move_type,
@@ -1342,7 +1353,7 @@ API int pkgmgr_client_usr_activate(pkgmgr_client *pc, const char *pkg_type,
 API int pkgmgr_client_activate(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid)
 {
-	return pkgmgr_client_usr_activate(pc, pkg_type, pkgid, GLOBAL_USER);
+	return pkgmgr_client_usr_activate(pc, pkg_type, pkgid, _getuid());
 }
 
 API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
@@ -1370,7 +1381,7 @@ API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
 API int pkgmgr_client_deactivate(pkgmgr_client *pc, const char *pkg_type,
 				 const char *pkgid)
 {
-	return pkgmgr_client_usr_deactivate(pc, pkg_type, pkgid, GLOBAL_USER);
+	return pkgmgr_client_usr_deactivate(pc, pkg_type, pkgid, _getuid());
 }
 
 /* TODO: deprecate? */
@@ -1383,7 +1394,7 @@ API int pkgmgr_client_usr_activate_appv(pkgmgr_client *pc, const char *appid,
 API int pkgmgr_client_activate_appv(pkgmgr_client *pc, const char *appid,
 		char *const argv[])
 {
-	return pkgmgr_client_usr_activate_app(pc, appid, NULL, GLOBAL_USER);
+	return pkgmgr_client_usr_activate_app(pc, appid, NULL, _getuid());
 }
 
 API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
@@ -1427,7 +1438,7 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
 
 API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid, pkgmgr_app_handler app_event_cb)
 {
-	return pkgmgr_client_usr_activate_app(pc, appid, app_event_cb, GLOBAL_USER);
+	return pkgmgr_client_usr_activate_app(pc, appid, app_event_cb, _getuid());
 }
 
 API int pkgmgr_client_activate_global_app_for_uid(pkgmgr_client *pc,
@@ -1513,7 +1524,7 @@ API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid,
 
 API int pkgmgr_client_deactivate_app(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb)
 {
-	return pkgmgr_client_usr_deactivate_app(pc, appid, app_event_cb, GLOBAL_USER);
+	return pkgmgr_client_usr_deactivate_app(pc, appid, app_event_cb, _getuid());
 }
 
 API int pkgmgr_client_deactivate_global_app_for_uid(pkgmgr_client *pc,
@@ -1588,7 +1599,7 @@ API int pkgmgr_client_clear_user_data(pkgmgr_client *pc, const char *pkg_type,
 		const char *appid, pkgmgr_mode mode)
 {
 	return pkgmgr_client_usr_clear_user_data(pc, pkg_type, appid, mode,
-			GLOBAL_USER);
+			_getuid());
 }
 
 API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
@@ -1725,7 +1736,7 @@ API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, 
 				  pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
 			      const char *custom_info, pkgmgr_handler event_cb, void *data)
 {
-	return pkgmgr_client_usr_request_service(service_type, service_mode, pc, pkg_type, pkgid, GLOBAL_USER, custom_info, event_cb, data);
+	return pkgmgr_client_usr_request_service(service_type, service_mode, pc, pkg_type, pkgid, _getuid(), custom_info, event_cb, data);
 }
 
 API int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_type, int service_mode,
@@ -1812,7 +1823,7 @@ API int pkgmgr_client_usr_request_size_info(uid_t uid)
 
 API int pkgmgr_client_request_size_info(void) // get all package size (data, total)
 {
-	return pkgmgr_client_usr_request_size_info(GLOBAL_USER);
+	return pkgmgr_client_usr_request_size_info(_getuid());
 }
 
 API int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid)
@@ -1844,7 +1855,7 @@ API int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid)
 
 API int pkgmgr_client_clear_cache_dir(const char *pkgid)
 {
-	return pkgmgr_client_usr_clear_cache_dir(pkgid, GLOBAL_USER);
+	return pkgmgr_client_usr_clear_cache_dir(pkgid, _getuid());
 }
 
 API int pkgmgr_client_clear_usr_all_cache_dir(uid_t uid)
@@ -1854,7 +1865,7 @@ API int pkgmgr_client_clear_usr_all_cache_dir(uid_t uid)
 
 API int pkgmgr_client_clear_all_cache_dir(void)
 {
-	return pkgmgr_client_usr_clear_cache_dir(PKG_CLEAR_ALL_CACHE, GLOBAL_USER);
+	return pkgmgr_client_usr_clear_cache_dir(PKG_CLEAR_ALL_CACHE, _getuid());
 }
 
 API int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid,
@@ -1862,7 +1873,7 @@ API int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid,
 		void *data)
 {
 	return pkgmgr_client_usr_get_size(pc, pkgid, get_type, event_cb, data,
-			GLOBAL_USER);
+			_getuid());
 }
 
 API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
@@ -1970,7 +1981,7 @@ API int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc,
 
 API int pkgmgr_client_get_package_size_info(pkgmgr_client *pc, const char *pkgid, pkgmgr_pkg_size_info_receive_cb event_cb, void *user_data)
 {
-	return pkgmgr_client_usr_get_package_size_info(pc, pkgid, event_cb, user_data, GLOBAL_USER);
+	return pkgmgr_client_usr_get_package_size_info(pc, pkgid, event_cb, user_data, _getuid());
 }
 
 API int pkgmgr_client_usr_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_total_pkg_size_info_receive_cb event_cb, void *user_data, uid_t uid)
@@ -1980,7 +1991,7 @@ API int pkgmgr_client_usr_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_
 
 API int pkgmgr_client_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_total_pkg_size_info_receive_cb event_cb, void *user_data)
 {
-	return pkgmgr_client_usr_get_package_size_info(pc, PKG_SIZE_INFO_TOTAL, (pkgmgr_pkg_size_info_receive_cb)event_cb, user_data, GLOBAL_USER);
+	return pkgmgr_client_usr_get_package_size_info(pc, PKG_SIZE_INFO_TOTAL, (pkgmgr_pkg_size_info_receive_cb)event_cb, user_data, _getuid());
 }
 
 API int pkgmgr_client_generate_license_request(pkgmgr_client *pc,
@@ -2113,7 +2124,7 @@ API int pkgmgr_client_usr_add_blacklist(pkgmgr_client *pc, const char *pkgid,
 
 API int pkgmgr_client_add_blacklist(pkgmgr_client *pc, const char *pkgid)
 {
-	return pkgmgr_client_usr_add_blacklist(pc, pkgid, GLOBAL_USER);
+	return pkgmgr_client_usr_add_blacklist(pc, pkgid, _getuid());
 }
 
 API int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc,
@@ -2141,7 +2152,7 @@ API int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc,
 API int pkgmgr_client_remove_blacklist(pkgmgr_client *pc,
 		const char *pkgid)
 {
-	return pkgmgr_client_usr_remove_blacklist(pc, pkgid, GLOBAL_USER);
+	return pkgmgr_client_usr_remove_blacklist(pc, pkgid, _getuid());
 }
 
 API int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid,
@@ -2179,5 +2190,5 @@ API int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid,
 		bool *blacklist)
 {
 	return pkgmgr_client_usr_check_blacklist(pc, pkgid, blacklist,
-			GLOBAL_USER);
+			_getuid());
 }
