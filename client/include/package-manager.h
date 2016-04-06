@@ -102,16 +102,18 @@ extern "C" {
 /**
  * @brief listening status type in pkgmgr.
  */
-#define PKGMGR_CLIENT_STATUS_ALL						0x00
-#define PKGMGR_CLIENT_STATUS_INSTALL					0x01
-#define PKGMGR_CLIENT_STATUS_UNINSTALL					0x02
-#define PKGMGR_CLIENT_STATUS_UPGRADE					0x04
-#define PKGMGR_CLIENT_STATUS_MOVE						0x08
-#define PKGMGR_CLIENT_STATUS_CLEAR_DATA					0x10
+#define PKGMGR_CLIENT_STATUS_ALL				0x00
+#define PKGMGR_CLIENT_STATUS_INSTALL				0x01
+#define PKGMGR_CLIENT_STATUS_UNINSTALL				0x02
+#define PKGMGR_CLIENT_STATUS_UPGRADE				0x04
+#define PKGMGR_CLIENT_STATUS_MOVE				0x08
+#define PKGMGR_CLIENT_STATUS_CLEAR_DATA				0x10
 #define PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS			0x20
 #define PKGMGR_CLIENT_STATUS_GET_SIZE				0x40
 #define PKGMGR_CLIENT_STATUS_ENABLE_APP				0x80
-#define PKGMGR_CLIENT_STATUS_DISABLE_APP				0x100
+#define PKGMGR_CLIENT_STATUS_DISABLE_APP			0x100
+#define PKGMGR_CLIENT_STATUS_ENABLE_APP_SPLASH_SCREEN		0x200
+#define PKGMGR_CLIENT_STATUS_DISABLE_APP_SPLASH_SCREEN		0x400
 
 /** @} */
 
@@ -901,6 +903,38 @@ int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc, const char *pkgid, uid
  */
 int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid, bool *blacklist);
 int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid, bool *blacklist, uid_t uid);
+
+/**
+ * @brief	This API is enabled the splash screen
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	appid	applicaiton id
+ * @param[in]   app_event_cb    user callback
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ */
+int pkgmgr_client_enable_splash_screen(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb);
+int pkgmgr_client_usr_enable_splash_screen(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb, uid_t uid);
+
+/**
+ * @brief	This API is disabled the splash screen
+ *
+ * This API is for package-manager client application.\n
+ *
+ * @param[in]	pc	pkgmgr_client
+ * @param[in]	appid	applicaiton id
+ * @param[in]   app_event_cb    user callback
+ * @return	request_id (>0) if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ */
+int pkgmgr_client_disable_splash_screen(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb);
+int pkgmgr_client_usr_disable_splash_screen(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb, uid_t uid);
 
 /** @} */
 
