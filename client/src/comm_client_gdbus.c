@@ -79,6 +79,10 @@ static int __get_signal_type(const char *name)
 		return COMM_STATUS_BROADCAST_ENABLE_APP;
 	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_DISABLE_APP) == 0)
 		return COMM_STATUS_BROADCAST_DISABLE_APP;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_ENABLE_APP_SPLASH_SCREEN) == 0)
+		return COMM_STATUS_BROADCAST_ENABLE_APP_SPLASH_SCREEN;
+	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_DISABLE_APP_SPLASH_SCREEN) == 0)
+		return COMM_STATUS_BROADCAST_DISABLE_APP_SPLASH_SCREEN;
 	else
 		return -1;
 }
@@ -284,12 +288,12 @@ comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb
 {
 	int r = COMM_RET_ERROR;
 
-	if (NULL == cc)
+	if (cc == NULL)
 		return COMM_RET_ERROR;
 
 	/* Create new sig_cb_data */
 	cc->sig_cb_data = calloc(1, sizeof(struct signal_callback_data));
-	if ( cc->sig_cb_data ) {
+	if (cc->sig_cb_data) {
 		(cc->sig_cb_data)->type = comm_status_type;
 		(cc->sig_cb_data)->cb = cb;
 		(cc->sig_cb_data)->cb_data = cb_data;
@@ -309,7 +313,7 @@ comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb
 
 	return COMM_RET_OK;
 
- ERROR_CLEANUP:
+ERROR_CLEANUP:
 	ERR("General error");
 	return r;
 }
