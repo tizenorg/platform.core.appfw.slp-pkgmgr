@@ -67,6 +67,8 @@ typedef void* pkgmgr_instcertinfo_h;
 #define PKGMGR_INSTALLER_GLOBAL_APP_DISABLE_FOR_UID    "disable_global_app_for_uid"
 #define PKGMGR_INSTALLER_GLOBAL_APP_ENABLE_FOR_UID     "enable_global_app_for_uid"
 
+#define PKGMGR_INSTALLER_APP_DISABLE_SPLASH_SCREEN_EVENT_STR         "disable_app_splash_screen"
+#define PKGMGR_INSTALLER_APP_ENABLE_SPLASH_SCREEN_EVENT_STR          "enable_app_splash_screen"
 
 /**
  * Request type.
@@ -85,7 +87,9 @@ enum {
 	PKGMGR_REQ_SMACK = 9,
 	PKGMGR_REQ_MANIFEST_DIRECT_INSTALL = 10,
 	PKGMGR_REQ_ENABLE_APP = 11,
-	PKGMGR_REQ_DISABLE_APP = 12
+	PKGMGR_REQ_DISABLE_APP = 12,
+	PKGMGR_REQ_ENABLE_APP_SPLASH_SCREEN = 13,
+	PKGMGR_REQ_DISABLE_APP_SPLASH_SCREEN = 14
 };
 
 enum {

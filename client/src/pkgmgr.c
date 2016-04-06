@@ -1071,6 +1071,60 @@ static char *__get_type_from_path(const char *pkg_path)
 	return strdup(pkg_type);
 }
 
+static int __change_op_cb_for_enable_disable_splash_screen(pkgmgr_client *pc,
+		bool is_enable)
+{
+	int ret;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+	req_cb_info *tmp;
+	req_cb_info *prev;
+
+	if (mpc == NULL) {
+		ERR("package mananger client pc is NULL");
+		return PKGMGR_R_EINVAL;
+	}
+
+	for (tmp = mpc->info.request.rhead; tmp;) {
+		prev = tmp;
+		tmp = tmp->next;
+		free(prev);
+	}
+
+	ret = comm_client_free(mpc->info.request.cc);
+	if (ret < 0) {
+		ERR("comm_client_free() failed - %d", ret);
+		return PKGMGR_R_ERROR;
+	}
+
+	mpc->ctype = PC_REQUEST;
+	if (is_enable)
+		mpc->status_type = PKGMGR_CLIENT_STATUS_ENABLE_APP_SPLASH_SCREEN;
+	else
+		mpc->status_type = PKGMGR_CLIENT_STATUS_DISABLE_APP_SPLASH_SCREEN;
+
+	mpc->info.request.cc = comm_client_new();
+	if (mpc->info.request.cc == NULL) {
+		ERR("client creation failed");
+		return PKGMGR_R_ERROR;
+	}
+
+	if (is_enable)
+		ret = comm_client_set_status_callback(
+				COMM_STATUS_BROADCAST_ENABLE_APP_SPLASH_SCREEN,
+				mpc->info.request.cc, __operation_callback, pc);
+	else
+		ret = comm_client_set_status_callback(
+				COMM_STATUS_BROADCAST_DISABLE_APP_SPLASH_SCREEN,
+				mpc->info.request.cc, __operation_callback, pc);
+
+	if (ret < 0) {
+		ERR("set_status_callback() failed - %d", ret);
+		return PKGMGR_R_ERROR;
+	}
+
+	return PKGMGR_R_OK;
+}
+
 API int pkgmgr_client_set_tep_path(pkgmgr_client *pc, char *tep_path, char *tep_move)
 {
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
@@ -1644,7 +1698,7 @@ API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
 
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
 	retvm_if(status_type == PKGMGR_CLIENT_STATUS_ALL, PKGMGR_R_OK, "status_type is PKGMGR_CLIENT_STATUS_ALL");
-	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
 	/*  free listening head */
 	listen_cb_info *tmp = NULL;
@@ -1686,22 +1740,32 @@ API int pkgmgr_client_set_status_type(pkgmgr_client *pc, int status_type)
 		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_INSTALL_PROGRESS failed - %d", ret);
 	}
 
-   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_UPGRADE) == PKGMGR_CLIENT_STATUS_UPGRADE) {
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_UPGRADE) == PKGMGR_CLIENT_STATUS_UPGRADE) {
 		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_UPGRADE, mpc->info.listening.cc, __status_callback, pc);
 		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_UPGRADE failed - %d", ret);
 	}
 
-   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_ENABLE_APP) == PKGMGR_CLIENT_STATUS_ENABLE_APP) {
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_ENABLE_APP) == PKGMGR_CLIENT_STATUS_ENABLE_APP) {
 		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_APP, mpc->info.listening.cc, __status_callback, pc);
 		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_ENABLE_APP failed - %d", ret);
 	}
 
-   if ((mpc->status_type & PKGMGR_CLIENT_STATUS_DISABLE_APP) == PKGMGR_CLIENT_STATUS_DISABLE_APP) {
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_DISABLE_APP) == PKGMGR_CLIENT_STATUS_DISABLE_APP) {
 		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_DISABLE_APP, mpc->info.listening.cc, __status_callback, pc);
 		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_DISABLE_APP failed - %d", ret);
 	}
 
-   return PKGMGR_R_OK;
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_ENABLE_APP_SPLASH_SCREEN) == PKGMGR_CLIENT_STATUS_ENABLE_APP_SPLASH_SCREEN) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_ENABLE_APP_SPLASH_SCREEN, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_ENABLE_APP_SPLASH_SCREEN failed - %d", ret);
+	}
+
+	if ((mpc->status_type & PKGMGR_CLIENT_STATUS_DISABLE_APP_SPLASH_SCREEN) == PKGMGR_CLIENT_STATUS_DISABLE_APP_SPLASH_SCREEN) {
+		ret = comm_client_set_status_callback(COMM_STATUS_BROADCAST_DISABLE_APP_SPLASH_SCREEN, mpc->info.listening.cc, __status_callback, pc);
+		retvm_if(ret < 0, PKGMGR_R_ECOMM, "COMM_STATUS_BROADCAST_DISABLE_APP_SPLASH_SCREEN failed - %d", ret);
+	}
+
+	return PKGMGR_R_OK;
 }
 
 API int pkgmgr_client_listen_status(pkgmgr_client *pc, pkgmgr_handler event_cb,
@@ -2254,3 +2318,90 @@ API int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid,
 	return pkgmgr_client_usr_check_blacklist(pc, pkgid, blacklist,
 			_getuid());
 }
+
+API int pkgmgr_client_enable_splash_screen(pkgmgr_client *pc, const char *appid)
+{
+	return pkgmgr_client_usr_enable_splash_screen(pc, appid, _getuid());
+}
+
+API int pkgmgr_client_usr_enable_splash_screen(pkgmgr_client *pc,
+		const char *appid, uid_t uid)
+{
+	int ret;
+	GVariant *result;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || appid == NULL) {
+		ERR("Invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = __change_op_cb_for_enable_disable_splash_screen(mpc, true);
+	if (ret < 0) {
+		ERR("__change_op_cb_for_enable_disable_splash_screen failed");
+		return PKGMGR_R_ESYSTEM;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc,
+			"enable_app_splash_screen",
+			g_variant_new("(us)", uid, appid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(i)", &ret);
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
+
+	g_variant_unref(result);
+
+	return ret;
+}
+
+API int pkgmgr_client_disable_splash_screen(pkgmgr_client *pc,
+		const char *appid)
+{
+	return pkgmgr_client_usr_disable_splash_screen(pc, appid,
+			_getuid());
+}
+
+API int pkgmgr_client_usr_disable_splash_screen(pkgmgr_client *pc,
+		const char *appid, uid_t uid)
+{
+	int ret;
+	GVariant *result;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || appid == NULL) {
+		ERR("Invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = __change_op_cb_for_enable_disable_splash_screen(mpc, false);
+	if (ret < 0) {
+		ERR("__change_op_cb_for_enable_disable_splash_screen failed");
+		return PKGMGR_R_ESYSTEM;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc,
+			"disable_app_splash_screen",
+			g_variant_new("(us)", uid, appid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(i)", &ret);
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
+
+	g_variant_unref(result);
+
+	return ret;
+}
+
