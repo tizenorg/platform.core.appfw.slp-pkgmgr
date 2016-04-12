@@ -384,6 +384,12 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'w': /* pkgid for mount installation */
+			mode = 'w';
+			pi->request_type = PKGMGR_REQ_MOUNT_INSTALL;
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 		case 'b': /* recovery */
 			if (mode) {
 				r = -EINVAL;
