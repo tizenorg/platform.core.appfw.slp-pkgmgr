@@ -21,11 +21,6 @@
  */
 
 
-/*
- * comm_client_gdbus.c
- * comm_client library using gdbus
- */
-
 #include <glib.h>
 #include <gio/gio.h>
 #include <stdbool.h>
@@ -37,7 +32,7 @@
 
 #include "comm_config.h"
 #include "comm_client.h"
-#include "comm_debug.h"
+#include "pkgmgr-debug.h"
 
 #define COMM_CLIENT_RETRY_MAX 5
 #define COMM_CLIENT_WAIT_USEC (1000000 / 2) /* 0.5 sec */

@@ -1,9 +1,5 @@
 /*
- * slp-pkgmgr
- *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
- *
-  * Contact: junsuk. oh <junsuk77.oh@samsung.com>
+ * Copyright (c) 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +15,15 @@
  *
  */
 
-#ifndef __PKG_MANAGER_DEBUG_H__
-#define __PKG_MANAGER_DEBUG_H__
+#ifndef __PKGMGR_INSTALLER_DEBUG_H__
+#define __PKGMGR_INSTALLER_DEBUG_H__
 
 #include <dlog.h>
+
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif /* LOG_TAG */
+#define LOG_TAG "PKGMGR_INSTALLER"
 
 #ifndef ERR
 #define ERR(fmt, args...) LOGE("[%s:%d] "fmt"\n", __func__, __LINE__, ##args)
@@ -36,4 +37,4 @@
 #define INFO(fmt, args...) LOGI("[%s:%d] "fmt"\n", __func__, __LINE__, ##args)
 #endif
 
-#endif  /* __PKG_MANAGER_DEBUG_H__ */
+#endif  /* __PKGMGR_INSTALLER_DEBUG_H__ */

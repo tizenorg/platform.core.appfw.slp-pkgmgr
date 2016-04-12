@@ -26,11 +26,6 @@
 #include <stdlib.h>		/* for NULL */
 #include <libgen.h>
 
-/* API export macro */
-#ifndef API
-#define API __attribute__ ((visibility("default")))
-#endif
-
 /* from comm_pkg_mgr.xml
  */
 #define COMM_PKGMGR_DBUS_SERVICE "org.tizen.pkgmgr"

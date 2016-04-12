@@ -40,8 +40,13 @@
 #include "package-manager.h"
 #include "pkgmgr-internal.h"
 #include "pkgmgr-debug.h"
-#include "pkgmgr-api.h"
 #include "comm_client.h"
+#include "comm_config.h"
+
+/* API export macro */
+#ifndef API
+#define API __attribute__ ((visibility("default")))
+#endif
 
 #define PKG_TMP_PATH tzplatform_mkpath(TZ_USER_APP, "tmp")
 
