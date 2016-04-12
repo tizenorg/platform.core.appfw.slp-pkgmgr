@@ -21,11 +21,6 @@
  */
 
 
-/*
- * comm_client_gdbus.c
- * comm_client library using gdbus
- */
-
 #include <glib.h>
 #include <gio/gio.h>
 #include <stdbool.h>

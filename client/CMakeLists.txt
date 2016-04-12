@@ -1,9 +1,10 @@
 # package manager client library
 
-SET(SRCS src/pkgmgr-internal.c src/pkgmgr.c)
+SET(SRCS src/pkgmgr-internal.c src/pkgmgr.c src/comm_client_gdbus.c)
 
 pkg_check_modules(CLIENT_DEPS REQUIRED
 		glib-2.0
+		gio-2.0
 		dlog
 		pkgmgr-parser
 		pkgmgr-info
@@ -22,7 +23,6 @@ ADD_LIBRARY(${PKGMGR_CLIENT} SHARED ${SRCS})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${PKGMGR_CLIENT} PROPERTIES VERSION ${VERSION})
 TARGET_LINK_LIBRARIES(${PKGMGR_CLIENT}
-		pkgmgr_installer_client
 		pkgmgr-info
 		${CLIENT_DEPS_LDFLAGS})
 

@@ -32,8 +32,8 @@
 #include "pkgmgr_installer.h"
 #include "pkgmgr_installer_config.h"
 
-#include "comm_config.h"
-#include "comm_debug.h"
+#include "../client/include/comm_config.h"
+#include "../client/include/comm_debug.h"
 
 #include <pkgmgr-info.h>
 
