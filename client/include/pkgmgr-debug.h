@@ -22,12 +22,24 @@
 #ifndef __PKGMGR_DEBUG_H__
 #define __PKGMGR_DEBUG_H__
 
+#include <dlog.h>
+
 #ifdef LOG_TAG
 #undef LOG_TAG
 #endif /* LOG_TAG */
 #define LOG_TAG "PKGMGR"
 
-#include "package-manager-debug.h"
+#ifndef ERR
+#define ERR(fmt, args...) LOGE("[%s:%d] "fmt"\n", __func__, __LINE__, ##args)
+#endif
+
+#ifndef DBG
+#define DBG(fmt, args...) LOGD("[%s:%d] "fmt"\n", __func__, __LINE__, ##args)
+#endif
+
+#ifndef INFO
+#define INFO(fmt, args...) LOGI("[%s:%d] "fmt"\n", __func__, __LINE__, ##args)
+#endif
 
 #define ret_if(expr) \
 	do { \
