@@ -21,9 +21,6 @@ INCLUDE_DIRECTORIES(comm)
 
 INCLUDE(FindPkgConfig)
 
-ADD_SUBDIRECTORY(comm)
+ADD_SUBDIRECTORY(installer)
 ADD_SUBDIRECTORY(client)
 ADD_SUBDIRECTORY(types)
-
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/package-manager-debug.h DESTINATION include)
-

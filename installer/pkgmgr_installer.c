@@ -31,16 +31,11 @@
 
 #include "pkgmgr_installer.h"
 #include "pkgmgr_installer_config.h"
+#include "pkgmgr_installer_debug.h"
 
-#include "comm_config.h"
-#include "comm_debug.h"
+#include "../client/include/comm_config.h"
 
 #include <pkgmgr-info.h>
-
-#undef LOG_TAG
-#ifndef LOG_TAG
-#define LOG_TAG "PKGMGR_INSTALLER"
-#endif /* LOG_TAG */
 
 #define MAX_STRLEN 1024
 #define MAX_QUERY_LEN	4096

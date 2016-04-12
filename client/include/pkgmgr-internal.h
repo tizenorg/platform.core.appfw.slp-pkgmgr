@@ -32,6 +32,10 @@
 
 #include "package-manager-plugin.h"
 
+#ifndef API
+#define API __attribute__ ((visibility("default")))
+#endif
+
 typedef package_manager_pkg_info_t package_manager_app_info_t;
 
 

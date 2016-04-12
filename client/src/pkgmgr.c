@@ -42,6 +42,7 @@
 #include "pkgmgr-debug.h"
 #include "pkgmgr-api.h"
 #include "comm_client.h"
+#include "comm_config.h"
 
 #define PKG_TMP_PATH tzplatform_mkpath(TZ_USER_APP, "tmp")
 

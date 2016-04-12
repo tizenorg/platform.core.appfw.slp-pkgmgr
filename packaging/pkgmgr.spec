@@ -152,7 +152,6 @@ useradd %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g ro
 %manifest %{name}-installer.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libpkgmgr_installer.so.*
-%{_libdir}/libpkgmgr_installer_client.so.*
 
 %files installer-devel
 %manifest %{name}-installer-devel.manifest
@@ -160,15 +159,11 @@ useradd %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g ro
 %dir %{_includedir}/pkgmgr
 %{_includedir}/pkgmgr/pkgmgr_installer.h
 %{_libdir}/pkgconfig/pkgmgr-installer.pc
-%{_libdir}/pkgconfig/pkgmgr-installer-client.pc
 %{_libdir}/libpkgmgr_installer.so
-%{_libdir}/libpkgmgr_installer_client.so
 
 %files types-devel
 %manifest %{name}-types-devel.manifest
 %defattr(-,root,root,-)
 %{_includedir}/package-manager-types.h
 %{_includedir}/package-manager-plugin.h
-%{_includedir}/package-manager-debug.h
-%{_includedir}/pkgmgr/comm_config.h
 %{_libdir}/pkgconfig/pkgmgr-types.pc
