@@ -33,6 +33,7 @@
 #include "comm_config.h"
 #include "comm_client.h"
 #include "pkgmgr-debug.h"
+#include "package-manager.h"
 
 #define COMM_CLIENT_RETRY_MAX 5
 #define COMM_CLIENT_WAIT_USEC (1000000 / 2) /* 0.5 sec */
@@ -219,22 +220,26 @@ int comm_client_free(comm_client *cc)
 /**
  * Request a message
  */
-GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *params)
+int comm_client_request(comm_client *cc, const char *method, GVariant *params,
+		GVariant **result)
 {
 	GError *error = NULL;
 	GDBusProxy *proxy;
-	GVariant *result = NULL;
+	GVariant *r = NULL;
 	int retry_cnt = 0;
+	int ret = PKGMGR_R_ECOMM;
 
 	/* convert floating ref into normal ref */
 	g_variant_ref_sink(params);
 
 	do {
-		proxy = g_dbus_proxy_new_sync(cc->conn, G_DBUS_PROXY_FLAGS_NONE, NULL,
-				COMM_PKGMGR_DBUS_SERVICE, COMM_PKGMGR_DBUS_OBJECT_PATH,
+		proxy = g_dbus_proxy_new_sync(cc->conn, G_DBUS_PROXY_FLAGS_NONE,
+				NULL, COMM_PKGMGR_DBUS_SERVICE,
+				COMM_PKGMGR_DBUS_OBJECT_PATH,
 				COMM_PKGMGR_DBUS_INTERFACE, NULL, &error);
 		if (proxy == NULL) {
-			ERR("failed to get proxy object, sleep and retry[%s]", error->message);
+			ERR("failed to get proxy object, sleep and retry[%s]",
+					error->message);
 			g_error_free(error);
 			error = NULL;
 			usleep(COMM_CLIENT_WAIT_USEC);
@@ -242,13 +247,23 @@ GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *par
 			continue;
 		}
 
-		result = g_dbus_proxy_call_sync(proxy, method, params,
+		r = g_dbus_proxy_call_sync(proxy, method, params,
 				G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
 		g_object_unref(proxy);
-		if (result)
+		if (error && error->code == G_DBUS_ERROR_ACCESS_DENIED) {
+			ERR("failed to send request, privilege denied[%s]",
+					error->message);
+			ret = PKGMGR_R_EPRIV;
 			break;
+		}
+		if (r) {
+			*result = r;
+			ret = PKGMGR_R_OK;
+			break;
+		}
 
-		ERR("failed to send request, sleep and retry[%s]", error->message);
+		ERR("failed to send request, sleep and retry[%s]",
+				error->message);
 		g_error_free(error);
 		error = NULL;
 		usleep(COMM_CLIENT_WAIT_USEC);
@@ -258,7 +273,7 @@ GVariant *comm_client_request(comm_client *cc, const char *method, GVariant *par
 	/* decrease ref count to 0 to free resource */
 	g_variant_unref(params);
 
-	return result;
+	return ret;
 }
 
 /**

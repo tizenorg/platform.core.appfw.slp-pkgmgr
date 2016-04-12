@@ -690,10 +690,13 @@ static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid,
 		ERR("mpc->ctype is not PC_REQUEST");
 		return PKGMGR_R_EINVAL;
 	}
-	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(usi)", uid, pkgid, get_type));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+
+	ret = comm_client_request(mpc->info.request.cc, "getsize",
+			g_variant_new("(usi)", uid, pkgid, get_type), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
@@ -737,7 +740,7 @@ static int __move_pkg_process(pkgmgr_client *pc, const char *pkgid,
 static int __check_app_process(pkgmgr_request_service_type service_type,
 		pkgmgr_client *pc, const char *pkgid, uid_t uid, void *data)
 {
-	GVariant *result = NULL;
+	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
 	pkgmgrinfo_pkginfo_h handle;
 	int pid = -1;
@@ -752,14 +755,16 @@ static int __check_app_process(pkgmgr_request_service_type service_type,
 	retvm_if(ret < 0, PKGMGR_R_ERROR, "pkgmgrinfo_pkginfo_get_pkginfo failed");
 
 	if (service_type == PM_REQUEST_KILL_APP)
-		result = comm_client_request(mpc->info.request.cc, "kill",
-				g_variant_new("(us)", uid, pkgid));
+		ret = comm_client_request(mpc->info.request.cc, "kill",
+				g_variant_new("(us)", uid, pkgid), &result);
 	else if (service_type == PM_REQUEST_CHECK_APP)
-		result = comm_client_request(mpc->info.request.cc, "check",
-				g_variant_new("(us)", uid, pkgid));
+		ret = comm_client_request(mpc->info.request.cc, "check",
+				g_variant_new("(us)", uid, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
 	if (ret != PKGMGR_R_OK) {
@@ -794,10 +799,14 @@ static int __request_size_info(pkgmgr_client *pc, uid_t uid)
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(usi)", uid, "size_info", PM_GET_SIZE_INFO));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "getsize",
+			g_variant_new("(usi)", uid, "size_info",
+				PM_GET_SIZE_INFO),
+			&result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
@@ -1131,11 +1140,14 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 	args = g_variant_new("as", builder);
 	g_variant_builder_unref(builder);
 
-	result = comm_client_request(mpc->info.request.cc, "install",
-			g_variant_new("(uss@as)", uid, pkgtype, pkg_path, args));
+	ret = comm_client_request(mpc->info.request.cc, "install",
+			g_variant_new("(uss@as)", uid, pkgtype, pkg_path, args),
+			&result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
 		g_variant_unref(result);
@@ -1204,11 +1216,14 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
 		return PKGMGR_R_ERROR;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "reinstall",
-			g_variant_new("(uss)", uid, pkgtype, pkgid));
+	ret = comm_client_request(mpc->info.request.cc, "reinstall",
+			g_variant_new("(uss)", uid, pkgtype, pkgid), &result);
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
 		g_variant_unref(result);
@@ -1267,14 +1282,14 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_ERROR;
 	}
 
-	/* TODO: check removable ? */
-
-	result = comm_client_request(mpc->info.request.cc, "uninstall",
-			g_variant_new("(uss)", uid, pkgtype, pkgid));
-	if (result == NULL) {
+	ret = comm_client_request(mpc->info.request.cc, "uninstall",
+			g_variant_new("(uss)", uid, pkgtype, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
 		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-		return PKGMGR_R_ECOMM;
+		return ret;
 	}
+
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
 		g_variant_unref(result);
@@ -1323,10 +1338,13 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "move",
-			g_variant_new("(uss)", uid, pkg_type, pkgid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "move",
+			g_variant_new("(uss)", uid, pkg_type, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
 
@@ -1345,10 +1363,13 @@ API int pkgmgr_client_usr_activate(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "enable_pkg",
-			g_variant_new("(uss)", uid, pkg_type, pkgid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "enable_pkg",
+			g_variant_new("(uss)", uid, pkg_type, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
 
@@ -1373,10 +1394,13 @@ API int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "disable_pkg",
-			g_variant_new("(uss)", uid, pkg_type, pkgid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "disable_pkg",
+			g_variant_new("(uss)", uid, pkg_type, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
 
@@ -1421,10 +1445,13 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
 		return PKGMGR_R_ESYSTEM;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "enable_app",
-			g_variant_new("(us)", uid, appid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "enable_app",
+			g_variant_new("(us)", uid, appid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
 		g_variant_unref(result);
@@ -1465,10 +1492,13 @@ API int pkgmgr_client_activate_global_app_for_uid(pkgmgr_client *pc,
 		return PKGMGR_R_ESYSTEM;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "enable_global_app_for_uid",
-			g_variant_new("(us)", uid, appid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "enable_global_app_for_uid",
+			g_variant_new("(us)", uid, appid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
 		g_variant_unref(result);
@@ -1505,11 +1535,13 @@ API int pkgmgr_client_usr_deactivate_app(pkgmgr_client *pc, const char *appid,
 		return PKGMGR_R_ESYSTEM;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "disable_app",
-			g_variant_new("(us)", uid, appid));
+	ret = comm_client_request(mpc->info.request.cc, "disable_app",
+			g_variant_new("(us)", uid, appid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
 		g_variant_unref(result);
@@ -1551,11 +1583,13 @@ API int pkgmgr_client_deactivate_global_app_for_uid(pkgmgr_client *pc,
 		return PKGMGR_R_ESYSTEM;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "disable_global_app_for_uid",
-			g_variant_new("(us)", uid, appid));
+	ret = comm_client_request(mpc->info.request.cc, "disable_global_app_for_uid",
+			g_variant_new("(us)", uid, appid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
 		g_variant_unref(result);
@@ -1589,10 +1623,12 @@ API int pkgmgr_client_usr_clear_user_data(pkgmgr_client *pc,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "cleardata",
-			g_variant_new("(uss)", uid, pkg_type, appid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "cleardata",
+			g_variant_new("(uss)", uid, pkg_type, appid), &result);
+	if (ret == PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
@@ -1848,10 +1884,13 @@ API int pkgmgr_client_usr_clear_cache_dir(const char *pkgid, uid_t uid)
 		return PKGMGR_R_ESYSTEM;
 	}
 
-	result = comm_client_request(pc->info.request.cc, "clearcache",
-			g_variant_new("(us)", uid, pkgid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(pc->info.request.cc, "clearcache",
+			g_variant_new("(us)", uid, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
 
@@ -1906,10 +1945,13 @@ API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
 		get_type = PM_GET_TOTAL_PKG_SIZE_INFO;
 	else
 		get_type = PM_GET_PKG_SIZE_INFO;
-	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(usi)", uid, pkgid, get_type));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+
+	ret = comm_client_request(mpc->info.request.cc, "getsize",
+			g_variant_new("(usi)", uid, pkgid, get_type), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
@@ -1960,10 +2002,13 @@ API int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc,
 		get_type = PM_GET_TOTAL_PKG_SIZE_INFO;
 	else
 		get_type = PM_GET_PKG_SIZE_INFO;
-	result = comm_client_request(mpc->info.request.cc, "getsize",
-			g_variant_new("(usi)", uid, pkgid, get_type));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+
+	ret = comm_client_request(mpc->info.request.cc, "getsize",
+			g_variant_new("(usi)", uid, pkgid, get_type), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i&s)", &ret, &req_key);
 	if (req_key == NULL) {
@@ -2019,11 +2064,13 @@ API int pkgmgr_client_generate_license_request(pkgmgr_client *pc,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc,
+	ret = comm_client_request(mpc->info.request.cc,
 			"generate_license_request",
-			g_variant_new("(s)", resp_data));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+			g_variant_new("(s)", resp_data), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i&s&s)", &ret, &data, &url);
 	if (ret != PKGMGR_R_OK) {
@@ -2056,10 +2103,13 @@ API int pkgmgr_client_register_license(pkgmgr_client *pc, const char *resp_data)
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc,
-			"register_license", g_variant_new("(s)", resp_data));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc,
+			"register_license", g_variant_new("(s)", resp_data),
+			&result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
@@ -2089,11 +2139,15 @@ API int pkgmgr_client_decrypt_package(pkgmgr_client *pc,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc,
-			"decrypt_package", g_variant_new("(ss)",
-				drm_file_path, decrypted_file_path));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc,
+			"decrypt_package",
+			g_variant_new("(ss)", drm_file_path,
+				decrypted_file_path),
+			&result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
 
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
@@ -2117,10 +2171,13 @@ API int pkgmgr_client_usr_add_blacklist(pkgmgr_client *pc, const char *pkgid,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "add_blacklist",
-			g_variant_new("(us)", uid, pkgid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "add_blacklist",
+			g_variant_new("(us)", uid, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
 
@@ -2144,10 +2201,13 @@ API int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "remove_blacklist",
-			g_variant_new("(us)", uid, pkgid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "remove_blacklist",
+			g_variant_new("(us)", uid, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(i)", &ret);
 	g_variant_unref(result);
 
@@ -2173,13 +2233,15 @@ API int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid,
 		return PKGMGR_R_EINVAL;
 	}
 
-	result = comm_client_request(mpc->info.request.cc, "check_blacklist",
-			g_variant_new("(us)", uid, pkgid));
-	if (result == NULL)
-		return PKGMGR_R_ECOMM;
+	ret = comm_client_request(mpc->info.request.cc, "check_blacklist",
+			g_variant_new("(us)", uid, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
 	g_variant_get(result, "(ii)", &b, &ret);
 	g_variant_unref(result);
-
 	if (ret != PKGMGR_R_OK)
 		return ret;
 
