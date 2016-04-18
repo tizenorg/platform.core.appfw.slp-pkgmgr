@@ -1291,6 +1291,91 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
 	return req_id;
 }
 
+API int pkgmgr_client_usr_mount_install(pkgmgr_client *pc, const char *pkg_type,
+		const char *descriptor_path, const char *pkg_path,
+		const char *optional_data, pkgmgr_mode mode,
+		pkgmgr_handler event_cb, void *data, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	char *req_key = NULL;
+	GVariantBuilder *builder = NULL;
+	GVariant *args = NULL;
+	int req_id;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+	char *pkgtype;
+
+	if (pc == NULL || pkg_path == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	if (mpc->ctype != PC_REQUEST) {
+		ERR("mpc->ctype is not PC_REQUEST");
+		return PKGMGR_R_EINVAL;
+	}
+
+	if (access(pkg_path, F_OK) != 0) {
+		ERR("failed to access: %s", pkg_path);
+		return PKGMGR_R_EINVAL;
+	}
+
+	if (mpc->tep_path != NULL && access(mpc->tep_path, F_OK) != 0) {
+		ERR("failed to access: %s", mpc->tep_path);
+		return PKGMGR_R_EINVAL;
+	}
+
+	/* TODO: check pkg's type on server-side */
+	if (pkg_type == NULL)
+		pkgtype = __get_type_from_path(pkg_path);
+	else
+		pkgtype = strdup(pkg_type);
+
+	/* build arguments */
+	builder = g_variant_builder_new(G_VARIANT_TYPE("as"));
+	if (mpc->tep_path) {
+		g_variant_builder_add(builder, "s", "-e");
+		g_variant_builder_add(builder, "s", mpc->tep_path);
+		g_variant_builder_add(builder, "s", "-M");
+		g_variant_builder_add(builder, "s", mpc->tep_move);
+	}
+
+	args = g_variant_new("as", builder);
+	g_variant_builder_unref(builder);
+
+	result = comm_client_request(mpc->info.request.cc, "mount_install",
+			g_variant_new("(uss@as)", uid, pkgtype, pkg_path, args));
+
+	if (result == NULL)
+		return PKGMGR_R_ECOMM;
+	g_variant_get(result, "(i&s)", &ret, &req_key);
+	if (req_key == NULL) {
+		g_variant_unref(result);
+		return PKGMGR_R_ECOMM;
+	}
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
+
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
+
+	g_variant_unref(result);
+
+	return req_id;
+}
+
+API int pkgmgr_client_mount_install(pkgmgr_client *pc, const char *pkg_type,
+		const char *descriptor_path, const char *pkg_path,
+		const char *optional_data, pkgmgr_mode mode,
+		pkgmgr_handler event_cb, void *data)
+{
+	return pkgmgr_client_usr_mount_install(pc, pkg_type, descriptor_path,
+			pkg_path, optional_data, mode, event_cb,data,
+			_getuid());
+}
+
 API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, pkgmgr_mode mode, pkgmgr_handler event_cb,
 		void *data)
