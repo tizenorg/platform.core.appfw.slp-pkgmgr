@@ -2493,3 +2493,100 @@ API int pkgmgr_client_usr_disable_splash_screen(pkgmgr_client *pc,
 	return ret;
 }
 
+API int pkgmgr_client_usr_set_restriction_mode(pkgmgr_client *pc, int mode,
+		uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc, "set_restriction_mode",
+			g_variant_new("(ui)", uid, mode), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+API int pkgmgr_client_set_restriction_mode(pkgmgr_client *pc, int mode)
+{
+	return pkgmgr_client_usr_set_restriction_mode(pc, mode, _getuid());
+}
+
+API int pkgmgr_client_usr_unset_restriction_mode(pkgmgr_client *pc, int mode,
+		uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc,
+			"unset_restriction_mode",
+			g_variant_new("(ui)", uid, mode), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+API int pkgmgr_client_unset_restriction_mode(pkgmgr_client *pc, int mode)
+{
+	return pkgmgr_client_usr_unset_restriction_mode(pc, mode, _getuid());
+}
+
+API int pkgmgr_client_usr_get_restriction_mode(pkgmgr_client *pc,
+		int *mode, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	gint m;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc,
+			"get_restriction_mode",
+			g_variant_new("(u)", uid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(ii)", &m, &ret);
+	g_variant_unref(result);
+	if (ret != PKGMGR_R_OK)
+		return ret;
+
+	*mode = m;
+
+	return PKGMGR_R_OK;
+}
+
+API int pkgmgr_client_get_restriction_mode(pkgmgr_client *pc,
+		int *mode)
+{
+	return pkgmgr_client_usr_get_restriction_mode(pc, mode, _getuid());
+}
