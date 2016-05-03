@@ -334,6 +334,14 @@ typedef enum {
 	PM_GET_MAX
 } pkgmgr_getsize_type;
 
+typedef enum {
+	PM_RESTRICTION_MODE_ALL = 0x0F,
+	PM_RESTRICTION_MODE_INSTALL = 0x01,
+	PM_RESTRICTION_MODE_UNINSTALL = 0x02,
+	PM_RESTRICTION_MODE_REINSTALL = 0x04,
+	PM_RESTRICTION_MODE_MOVE = 0x08,
+} pkgmgr_restriction_mode;
+
 /**
  * @brief	This API creates pkgmgr client.
  *
@@ -976,6 +984,57 @@ int pkgmgr_client_usr_enable_splash_screen(pkgmgr_client *pc, const char *appid,
  */
 int pkgmgr_client_disable_splash_screen(pkgmgr_client *pc, const char *appid);
 int pkgmgr_client_usr_disable_splash_screen(pkgmgr_client *pc, const char *appid, uid_t uid);
+
+/**
+ * @brief	Set restriction mode
+ *
+ * This API set restriction mode bit.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	mode	restriction mode bit
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @see pkgmgr_restriction_mode
+ */
+int pkgmgr_client_set_restriction_mode(pkgmgr_client *pc, int mode);
+int pkgmgr_client_usr_set_restriction_mode(pkgmgr_client *pc, int mode, uid_t uid);
+
+/**
+ * @brief	Unset restriction mode
+ *
+ * This API unset restriction mode bit.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	mode	restriction mode bit
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @see pkgmgr_restriction_mode
+ */
+int pkgmgr_client_unset_restriction_mode(pkgmgr_client *pc, int mode);
+int pkgmgr_client_usr_unset_restriction_mode(pkgmgr_client *pc, int mode, uid_t uid);
+
+/**
+ * @brief	Get restriction mode
+ *
+ * This API gets restriction mode bit.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[out]	mode	restriction mode bit
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @see pkgmgr_restriction_mode
+ */
+int pkgmgr_client_get_restriction_mode(pkgmgr_client *pc, int *mode);
+int pkgmgr_client_usr_get_restriction_mode(pkgmgr_client *pc, int *mode, uid_t uid);
 
 /** @} */
 
