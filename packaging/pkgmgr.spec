@@ -117,6 +117,14 @@ chmod 755 %{buildroot}%{_sysconfdir}/package-manager/backend/pkgtool
 # Create tizenglobalapp user needed for global installation
 useradd %TZ_SYS_GLOBALAPP_USER -r -c "system user for common applications" -g root
 
+# change owner of TZ_USER_APP (/etc/skel/apps_rw) to tizenglobalapp
+saveHOME="$HOME"
+HOME="%{_sysconfdir}/skel"
+. "%{_sysconfdir}/tizen-platform.conf"
+
+chown %TZ_SYS_GLOBALAPP_USER:root $TZ_USER_APP
+HOME="$saveHOME"
+
 %post -n pkgmgr-client -p /sbin/ldconfig
 
 %postun -n pkgmgr-client -p /sbin/ldconfig
