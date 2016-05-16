@@ -2306,107 +2306,6 @@ API int pkgmgr_client_decrypt_package(pkgmgr_client *pc,
 	return PKGMGR_R_OK;
 }
 
-API int pkgmgr_client_usr_add_blacklist(pkgmgr_client *pc, const char *pkgid,
-		uid_t uid)
-{
-	GVariant *result;
-	int ret = PKGMGR_R_ECOMM;
-	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
-
-	if (pc == NULL || pkgid == NULL) {
-		ERR("invalid parameter");
-		return PKGMGR_R_EINVAL;
-	}
-
-	ret = comm_client_request(mpc->info.request.cc, "add_blacklist",
-			g_variant_new("(us)", uid, pkgid), &result);
-	if (ret != PKGMGR_R_OK) {
-		ERR("request failed: %d", ret);
-		return ret;
-	}
-
-	g_variant_get(result, "(i)", &ret);
-	g_variant_unref(result);
-
-	return ret;
-}
-
-API int pkgmgr_client_add_blacklist(pkgmgr_client *pc, const char *pkgid)
-{
-	return pkgmgr_client_usr_add_blacklist(pc, pkgid, _getuid());
-}
-
-API int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc,
-		const char *pkgid, uid_t uid)
-{
-	GVariant *result;
-	int ret = PKGMGR_R_ECOMM;
-	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
-
-	if (pc == NULL || pkgid == NULL) {
-		ERR("invalid parameter");
-		return PKGMGR_R_EINVAL;
-	}
-
-	ret = comm_client_request(mpc->info.request.cc, "remove_blacklist",
-			g_variant_new("(us)", uid, pkgid), &result);
-	if (ret != PKGMGR_R_OK) {
-		ERR("request failed: %d", ret);
-		return ret;
-	}
-
-	g_variant_get(result, "(i)", &ret);
-	g_variant_unref(result);
-
-	return ret;
-}
-
-API int pkgmgr_client_remove_blacklist(pkgmgr_client *pc,
-		const char *pkgid)
-{
-	return pkgmgr_client_usr_remove_blacklist(pc, pkgid, _getuid());
-}
-
-API int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid,
-		bool *blacklist, uid_t uid)
-{
-	GVariant *result;
-	int ret = PKGMGR_R_ECOMM;
-	gint b;
-	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
-
-	if (pc == NULL || pkgid == NULL) {
-		ERR("invalid parameter");
-		return PKGMGR_R_EINVAL;
-	}
-
-	ret = comm_client_request(mpc->info.request.cc, "check_blacklist",
-			g_variant_new("(us)", uid, pkgid), &result);
-	if (ret != PKGMGR_R_OK) {
-		ERR("request failed: %d", ret);
-		return ret;
-	}
-
-	g_variant_get(result, "(ii)", &b, &ret);
-	g_variant_unref(result);
-	if (ret != PKGMGR_R_OK)
-		return ret;
-
-	if (b)
-		*blacklist = true;
-	else
-		*blacklist = false;
-
-	return PKGMGR_R_OK;
-}
-
-API int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid,
-		bool *blacklist)
-{
-	return pkgmgr_client_usr_check_blacklist(pc, pkgid, blacklist,
-			_getuid());
-}
-
 API int pkgmgr_client_enable_splash_screen(pkgmgr_client *pc, const char *appid)
 {
 	return pkgmgr_client_usr_enable_splash_screen(pc, appid, _getuid());
@@ -2493,6 +2392,116 @@ API int pkgmgr_client_usr_disable_splash_screen(pkgmgr_client *pc,
 	return ret;
 }
 
+static int __set_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || pkgid == NULL || strlen(pkgid) == 0 || mode <= 0) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc, "set_restriction_mode",
+			g_variant_new("(usi)", uid, pkgid, mode), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+}
+
+API int pkgmgr_client_usr_set_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode, uid_t uid)
+{
+	return __set_pkg_restriction_mode(pc, pkgid, mode, uid);
+}
+
+API int pkgmgr_client_set_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode)
+{
+	return pkgmgr_client_usr_set_pkg_restriction_mode(pc, pkgid, mode, _getuid());
+}
+
+static int __unset_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || pkgid == NULL || strlen(pkgid) == 0 || mode <= 0) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc,
+			"unset_restriction_mode",
+			g_variant_new("(usi)", uid, pkgid, mode), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(i)", &ret);
+	g_variant_unref(result);
+
+	return ret;
+
+}
+
+API int pkgmgr_client_usr_unset_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode, uid_t uid)
+{
+	return __unset_pkg_restriction_mode(pc, pkgid, mode, uid);
+}
+
+API int pkgmgr_client_unset_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode)
+{
+	return pkgmgr_client_usr_unset_pkg_restriction_mode(pc, pkgid, mode, _getuid());
+}
+
+static int __get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode, uid_t uid)
+{
+	GVariant *result;
+	int ret = PKGMGR_R_ECOMM;
+	gint m;
+	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
+
+	if (pc == NULL || pkgid == NULL || strlen(pkgid) == 0) {
+		ERR("invalid parameter");
+		return PKGMGR_R_EINVAL;
+	}
+
+	ret = comm_client_request(mpc->info.request.cc,
+			"get_restriction_mode",
+			g_variant_new("(us)", uid, pkgid), &result);
+	if (ret != PKGMGR_R_OK) {
+		ERR("request failed: %d", ret);
+		return ret;
+	}
+
+	g_variant_get(result, "(ii)", &m, &ret);
+	g_variant_unref(result);
+	if (ret != PKGMGR_R_OK)
+		return ret;
+
+	*mode = m;
+
+	return PKGMGR_R_OK;
+}
+
+API int pkgmgr_client_usr_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, uid_t uid, int *mode)
+{
+	return __get_pkg_restriction_mode(pc, pkgid, mode, uid);
+}
+
+API int pkgmgr_client_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode)
+{
+	return pkgmgr_client_usr_get_pkg_restriction_mode(pc, pkgid, _getuid(), mode);
+}
+
 API int pkgmgr_client_usr_set_restriction_mode(pkgmgr_client *pc, int mode,
 		uid_t uid)
 {
@@ -2506,7 +2515,7 @@ API int pkgmgr_client_usr_set_restriction_mode(pkgmgr_client *pc, int mode,
 	}
 
 	ret = comm_client_request(mpc->info.request.cc, "set_restriction_mode",
-			g_variant_new("(ui)", uid, mode), &result);
+			g_variant_new("(usi)", uid, "", mode), &result);
 	if (ret != PKGMGR_R_OK) {
 		ERR("request failed: %d", ret);
 		return ret;
@@ -2537,7 +2546,7 @@ API int pkgmgr_client_usr_unset_restriction_mode(pkgmgr_client *pc, int mode,
 
 	ret = comm_client_request(mpc->info.request.cc,
 			"unset_restriction_mode",
-			g_variant_new("(ui)", uid, mode), &result);
+			g_variant_new("(usi)", uid, "", mode), &result);
 	if (ret != PKGMGR_R_OK) {
 		ERR("request failed: %d", ret);
 		return ret;
@@ -2569,7 +2578,7 @@ API int pkgmgr_client_usr_get_restriction_mode(pkgmgr_client *pc,
 
 	ret = comm_client_request(mpc->info.request.cc,
 			"get_restriction_mode",
-			g_variant_new("(u)", uid), &result);
+			g_variant_new("(us)", uid, ""), &result);
 	if (ret != PKGMGR_R_OK) {
 		ERR("request failed: %d", ret);
 		return ret;
