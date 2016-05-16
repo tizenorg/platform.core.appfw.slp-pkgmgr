@@ -905,55 +905,6 @@ int pkgmgr_client_register_license(pkgmgr_client *pc, const char *resp_data);
 int pkgmgr_client_decrypt_package(pkgmgr_client *pc, const char *drm_file_path, const char *decrypted_file_path);
 
 /**
- * @brief	Add a package to blacklist
- *
- * This API adds a package to blacklist.\n
- *
- * @param[in]	pc	The pointer to pkgmgr_client instance
- * @param[in]	pkgid	package id
- * @return	0 if success, error code(<0) if fail\n
- * @retval	PKGMGR_R_OK	success
- * @retval	PKGMGR_R_EINVAL	invalid argument
- * @retval	PKGMGR_R_ECOMM	communication error
- * @retval	PKGMGR_R_EPRIV privilege denied
- */
-int pkgmgr_client_add_blacklist(pkgmgr_client *pc, const char *pkgid);
-int pkgmgr_client_usr_add_blacklist(pkgmgr_client *pc, const char *pkgid, uid_t uid);
-
-/**
- * @brief	Remove a package to blacklist
- *
- * This API removes a package to blacklist.\n
- *
- * @param[in]	pc	The pointer to pkgmgr_client instance
- * @param[in]	pkgid	package id
- * @return	0 if success, error code(<0) if fail\n
- * @retval	PKGMGR_R_OK	success
- * @retval	PKGMGR_R_EINVAL	invalid argument
- * @retval	PKGMGR_R_ECOMM	communication error
- * @retval	PKGMGR_R_EPRIV privilege denied
- */
-int pkgmgr_client_remove_blacklist(pkgmgr_client *pc, const char *pkgid);
-int pkgmgr_client_usr_remove_blacklist(pkgmgr_client *pc, const char *pkgid, uid_t uid);
-
-/**
- * @brief	Check whether a package is blacklisted
- *
- * This API checks whether the given package is blacklisted.\n
- *
- * @param[in]	pc	The pointer to pkgmgr_client instance
- * @param[in]	pkgid	package id
- * @param[out]	blacklist	whether blacklisted or not
- * @return	0 if success, error code(<0) if fail\n
- * @retval	PKGMGR_R_OK	success
- * @retval	PKGMGR_R_EINVAL	invalid argument
- * @retval	PKGMGR_R_ECOMM	communication error
- * @retval	PKGMGR_R_EPRIV privilege denied
- */
-int pkgmgr_client_check_blacklist(pkgmgr_client *pc, const char *pkgid, bool *blacklist);
-int pkgmgr_client_usr_check_blacklist(pkgmgr_client *pc, const char *pkgid, bool *blacklist, uid_t uid);
-
-/**
  * @brief	This API is enabled the splash screen
  *
  * This API is for package-manager client application.\n
@@ -1035,6 +986,78 @@ int pkgmgr_client_usr_unset_restriction_mode(pkgmgr_client *pc, int mode, uid_t 
  */
 int pkgmgr_client_get_restriction_mode(pkgmgr_client *pc, int *mode);
 int pkgmgr_client_usr_get_restriction_mode(pkgmgr_client *pc, int *mode, uid_t uid);
+
+/**
+ * @brief	Set restriction mode to not to allow user install or uninstall pkg specified
+ *
+ * This API not allows to user to install or uninstall pkg given.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	pkgid	pkgid  to be restricted
+ * @param[in]  mode restriction mode bit
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @see pkgmgr_restriction_mode
+ */
+int pkgmgr_client_set_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode);
+int pkgmgr_client_usr_set_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode, uid_t uid);
+
+/**
+ * @brief	Unset restriction of package operation
+ *
+ * This API unset restriction of installing or uninstalling package.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	pkgid	pkg id to be remove in restriction.
+ * @param[in]  mode restriction mode bit
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @see pkgmgr_restriction_mode
+ */
+int pkgmgr_client_unset_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode);
+int pkgmgr_client_usr_unset_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int mode, uid_t uid);
+
+/**
+ * @brief	Get restriction of package operation
+ *
+ * This API gets restriction value of package operation.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	pkgid	pkg id to be remove in restriction.
+ * @param[out]	mode	restriction mode bit
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @see pkgmgr_restriction_mode
+ */
+int pkgmgr_client_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode);
+int pkgmgr_client_usr_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, uid_t uid, int *mode);
+
+/**
+ * @brief	Get restriction of package operation
+ *
+ * This API gets restriction value of package operation.\n
+ *
+ * @param[in]	pc	The pointer to pkgmgr_client instance
+ * @param[in]	pkgid	pkg id to be remove in restriction.
+ * @param[out]	mode	restriction mode bit
+ * @return	0 if success, error code(<0) if fail\n
+ * @retval	PKGMGR_R_OK	success
+ * @retval	PKGMGR_R_EINVAL	invalid argument
+ * @retval	PKGMGR_R_ECOMM	communication error
+ * @retval	PKGMGR_R_EPRIV privilege denied
+ * @see pkgmgr_restriction_mode
+ */
+int pkgmgr_client_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode);
+int pkgmgr_client_usr_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, uid_t uid, int *mode);
 
 /** @} */
 
