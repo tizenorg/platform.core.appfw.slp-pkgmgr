@@ -14,7 +14,7 @@ Source1004: %{name}-installer.manifest
 Source1005: %{name}-installer-devel.manifest
 Source1006: %{name}-types-devel.manifest
 Source1007: %{name}.conf
-Requires:   pwdutils
+Requires:   shadow-utils
 
 BuildRequires:  cmake
 BuildRequires:  unzip
