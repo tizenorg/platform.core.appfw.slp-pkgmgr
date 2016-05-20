@@ -1041,7 +1041,7 @@ int pkgmgr_client_usr_unset_pkg_restriction_mode(pkgmgr_client *pc, const char *
  * @see pkgmgr_restriction_mode
  */
 int pkgmgr_client_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode);
-int pkgmgr_client_usr_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, uid_t uid, int *mode);
+int pkgmgr_client_usr_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode, uid_t uid);
 
 
 /** @} */

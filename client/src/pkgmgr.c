@@ -2492,14 +2492,14 @@ static int __get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int 
 	return PKGMGR_R_OK;
 }
 
-API int pkgmgr_client_usr_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, uid_t uid, int *mode)
+API int pkgmgr_client_usr_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode, uid_t uid)
 {
 	return __get_pkg_restriction_mode(pc, pkgid, mode, uid);
 }
 
 API int pkgmgr_client_get_pkg_restriction_mode(pkgmgr_client *pc, const char *pkgid, int *mode)
 {
-	return pkgmgr_client_usr_get_pkg_restriction_mode(pc, pkgid, _getuid(), mode);
+	return pkgmgr_client_usr_get_pkg_restriction_mode(pc, pkgid, mode, _getuid());
 }
 
 API int pkgmgr_client_usr_set_restriction_mode(pkgmgr_client *pc, int mode,
