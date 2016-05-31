@@ -220,7 +220,6 @@ extern "C" {
 #define PKGCMD_ERR_ARGUMENT_INVALID_STR						"ARGUMENT_INVALID"
 #define PKGCMD_ERR_UNKNOWN_STR								"Unknown Error"
 
-#define PKG_SIZE_INFO_FILE "/tmp/pkgmgr_size_info.txt"
 #define PKG_SIZE_INFO_PATH "/tmp/pkgmgr"
 
 #define PKG_SIZE_INFO_TOTAL "__TOTAL__"
@@ -271,8 +270,8 @@ typedef struct {
 	long long ext_app_size;
 } pkg_size_info_t;
 
-typedef int (*pkgmgr_iter_fn)(const char* pkg_type, const char* pkgid,
-				const char* version, void *data);
+typedef int (*pkgmgr_iter_fn)(const char *pkg_type, const char *pkgid,
+				const char *version, void *data);
 
 typedef int (*pkgmgr_handler)(uid_t target_uid, int req_id, const char *pkg_type,
 				const char *pkgid, const char *key,
@@ -292,17 +291,17 @@ typedef enum {
 	PC_REQUEST = 0,
 	PC_LISTENING,
 	PC_BROADCAST,
-}client_type;
+} client_type;
 
 typedef enum {
 	PM_DEFAULT,
 	PM_QUIET
-}pkgmgr_mode;
+} pkgmgr_mode;
 
 typedef enum {
 	PM_MOVE_TO_INTERNAL = 0,
 	PM_MOVE_TO_SDCARD = 1,
-}pkgmgr_move_type;
+} pkgmgr_move_type;
 
 typedef enum {
 	PM_REQUEST_CSC = 0,
@@ -311,7 +310,7 @@ typedef enum {
 	PM_REQUEST_KILL_APP = 3,
 	PM_REQUEST_CHECK_APP = 4,
 	PM_REQUEST_MAX
-}pkgmgr_request_service_type;
+} pkgmgr_request_service_type;
 
 typedef enum {
 	/* sync, get data, total size for one requested pkgid */
@@ -426,7 +425,7 @@ int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type, const char *pkgid,
 			    const char *optional_data, pkgmgr_mode mode,
 			    pkgmgr_handler event_cb, void *data);
-int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
+int pkgmgr_client_usr_reinstall(pkgmgr_client *pc, const char *pkg_type, const char *pkgid,
 				  const char *optional_data, pkgmgr_mode mode,
 			      pkgmgr_handler event_cb, void *data, uid_t uid);
 
@@ -553,8 +552,8 @@ int pkgmgr_client_usr_deactivate(pkgmgr_client *pc, const char *pkg_type,
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ECOMM	communication error
 */
-int pkgmgr_client_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[]);
-int pkgmgr_client_usr_activate_appv(pkgmgr_client * pc, const char *appid, char *const argv[], uid_t uid);
+int pkgmgr_client_activate_appv(pkgmgr_client *pc, const char *appid, char *const argv[]);
+int pkgmgr_client_usr_activate_appv(pkgmgr_client *pc, const char *appid, char *const argv[], uid_t uid);
 
 /**
  * @brief	This API deactivates app.
@@ -731,7 +730,7 @@ pkgmgr_info *pkgmgr_client_check_pkginfo_from_file(const char *pkg_path);
  * @param[in]	pkg_info			pointer for package info entry
  * @return	0 if success, error code(<0) if fail\n
 */
-int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
+int pkgmgr_client_free_pkginfo(pkgmgr_info *pkg_info);
 
 /**
  * @brief	This API requests service
@@ -739,8 +738,8 @@ int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
  * This API is for package-manager client application.\n
  *
  * @param[in]	service_type		pkgmgr_request_service_type
- * @param[in]	service_mode 	mode which is used for addtional mode selection
- * @param[in]	pc				pkgmgr_client
+ * @param[in]	service_mode		mode which is used for addtional mode selection
+ * @param[in]	pc			pkgmgr_client
  * @param[in]	pkg_type		package type
  * @param[in]	pkgid			package id
  * @param[in]	custom_info		custom information which is used for addtional information
@@ -752,10 +751,10 @@ int pkgmgr_client_free_pkginfo(pkgmgr_info * pkg_info);
  * @retval	PKGMGR_R_ECOMM	communication error
 */
 int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, int service_mode,
-					pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
+					pkgmgr_client *pc, const char *pkg_type, const char *pkgid,
 					const char *custom_info, pkgmgr_handler event_cb, void *data);
 int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_type, int service_mode,
-					pkgmgr_client * pc, const char *pkg_type, const char *pkgid, uid_t uid,
+					pkgmgr_client *pc, const char *pkg_type, const char *pkgid, uid_t uid,
 					const char *custom_info, pkgmgr_handler event_cb, void *data);
 /**
  * @brief	This API get package size
@@ -772,8 +771,8 @@ int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_type, 
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ECOMM	communication error
 */
-int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data);
-int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data, uid_t uid);
+int pkgmgr_client_get_size(pkgmgr_client *pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data);
+int pkgmgr_client_usr_get_size(pkgmgr_client *pc, const char *pkgid, pkgmgr_getsize_type get_type, pkgmgr_handler event_cb, void *data, uid_t uid);
 
 /**
  * @brief		Gets the package size information.

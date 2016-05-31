@@ -530,8 +530,7 @@ static int __sync_process(const char *req_key)
 	char buf[PKG_STRING_LEN_MAX] = {0, };
 
 	snprintf(info_file, PKG_STRING_LEN_MAX, "%s/%s", PKG_SIZE_INFO_PATH, req_key);
-	while(1)
-	{
+	while (1) {
 		check_cnt++;
 
 		if (access(info_file, F_OK) == 0) {
@@ -583,7 +582,7 @@ static int __csc_process(const char *csc_path, char *result_path)
 	char type_buf[1024] = { 0 };
 	char des_buf[1024] = { 0 };
 	dictionary *csc = NULL;
-	FILE* file = NULL;
+	FILE *file = NULL;
 
 	csc = iniparser_load(csc_path);
 	retvm_if(csc == NULL, PKGMGR_R_EINVAL, "cannot open parse file [%s]", csc_path);
@@ -599,8 +598,7 @@ static int __csc_process(const char *csc_path, char *result_path)
 	snprintf(buf, PKG_STRING_LEN_MAX, "count = %d\n", count);
 	fwrite(buf, 1, strlen(buf), file);
 
-	for(cnt = 1 ; cnt <= count ; cnt++)
-	{
+	for (cnt = 1 ; cnt <= count ; cnt++) {
 		snprintf(type_buf, PKG_STRING_LEN_MAX - 1, "csc packages:type_%03d", cnt);
 		snprintf(des_buf, PKG_STRING_LEN_MAX - 1, "csc packages:description_%03d", cnt);
 
@@ -628,7 +626,7 @@ static int __csc_process(const char *csc_path, char *result_path)
 		if (strcmp(pkgtype, "tpk") == 0) {
 			const char *ospinstaller_argv[] = { "/usr/bin/osp-installer", "-c", des, NULL };
 			ret = __xsystem(ospinstaller_argv);
-		} else if (strcmp(pkgtype, "wgt")== 0) {
+		} else if (strcmp(pkgtype, "wgt") == 0) {
 			const char *wrtinstaller_argv[] = { "/usr/bin/wrt-installer", "-c", des, NULL };
 			ret = __xsystem(wrtinstaller_argv);
 		} else {
@@ -640,9 +638,9 @@ static int __csc_process(const char *csc_path, char *result_path)
 			char *errstr = NULL;
 			__error_to_string(ret, &errstr);
 			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = fail[%s]\n", cnt, errstr);
-		}
-		else
+		} else {
 			snprintf(buf, PKG_STRING_LEN_MAX, "result_%03d = success\n", cnt);
+		}
 
 		fwrite(buf, 1, strlen(buf), file);
 	}
@@ -658,7 +656,7 @@ catch:
 	return ret;
 }
 
-static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid,
+static int __get_size_process(pkgmgr_client *pc, const char *pkgid, uid_t uid,
 		pkgmgr_getsize_type get_type, pkgmgr_handler event_cb,
 		void *data)
 {
@@ -886,7 +884,7 @@ static int __get_pkg_size_info_cb(uid_t target_uid, int req_id, const char *req_
 	retvm_if(size_info == NULL, -1, "The memory is insufficient.");
 
 	char *save_ptr = NULL;
-	char *token = strtok_r((char*)value, ":", &save_ptr);
+	char *token = strtok_r((char *)value, ":", &save_ptr);
 	tryvm_if(token == NULL, ret = -1, "failed to parse sizeinfo");
 	size_info->data_size = atoll(token);
 	token = strtok_r(NULL, ":", &save_ptr);
@@ -912,20 +910,17 @@ static int __get_pkg_size_info_cb(uid_t target_uid, int req_id, const char *req_
 	pkgmgr_client_t *pmc = (pkgmgr_client_t *)pc;
 	tryvm_if(pmc == NULL, ret = -1, "pkgmgr_client instance is null.");
 
-	if (strcmp(pkgid, PKG_SIZE_INFO_TOTAL) == 0)
-	{	// total package size info
+	if (strcmp(pkgid, PKG_SIZE_INFO_TOTAL) == 0) {	/* total package size info */
 		pkgmgr_total_pkg_size_info_receive_cb callback = (pkgmgr_total_pkg_size_info_receive_cb)(pmc->new_event_cb);
 		callback((pkgmgr_client *)pc, size_info, user_data);
-	}
-	else
-	{
+	} else {
 		pkgmgr_pkg_size_info_receive_cb callback = (pkgmgr_pkg_size_info_receive_cb)(pmc->new_event_cb);
 		callback((pkgmgr_client *)pc, pkgid, size_info, user_data);
 	}
 
 catch:
 
-	if(size_info){
+	if (size_info) {
 		free(size_info);
 		size_info = NULL;
 	}
@@ -963,7 +958,7 @@ API pkgmgr_client *pkgmgr_client_new(client_type ctype)
 		trym_if(ret < 0L, "comm_client_set_status_callback() failed - %d", ret);
 	}
 
-	return (pkgmgr_client *) pc;
+	return (pkgmgr_client *)pc;
 
  catch:
 	if (pc)
@@ -1207,7 +1202,7 @@ API int pkgmgr_client_install(pkgmgr_client *pc, const char *pkg_type,
 		pkgmgr_handler event_cb, void *data)
 {
 	return pkgmgr_client_usr_install(pc, pkg_type, descriptor_path,
-			pkg_path, optional_data, mode, event_cb,data,
+			pkg_path, optional_data, mode, event_cb, data,
 			_getuid());
 }
 
@@ -1219,7 +1214,7 @@ API int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type,
 			mode, event_cb, data, _getuid());
 }
 
-API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
+API int pkgmgr_client_usr_reinstall(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, const char *optional_data, pkgmgr_mode mode,
 		pkgmgr_handler event_cb, void *data, uid_t uid)
 {
@@ -1361,7 +1356,7 @@ API int pkgmgr_client_mount_install(pkgmgr_client *pc, const char *pkg_type,
 		pkgmgr_handler event_cb, void *data)
 {
 	return pkgmgr_client_usr_mount_install(pc, pkg_type, descriptor_path,
-			pkg_path, optional_data, mode, event_cb,data,
+			pkg_path, optional_data, mode, event_cb, data,
 			_getuid());
 }
 
@@ -1369,7 +1364,7 @@ API int pkgmgr_client_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, pkgmgr_mode mode, pkgmgr_handler event_cb,
 		void *data)
 {
-	return pkgmgr_client_usr_uninstall(pc, pkg_type,pkgid, mode, event_cb,
+	return pkgmgr_client_usr_uninstall(pc, pkg_type, pkgid, mode, event_cb,
 			data, _getuid());
 }
 
@@ -1605,7 +1600,7 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
 	return ret;
 }
 
-API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid, pkgmgr_app_handler app_event_cb)
+API int pkgmgr_client_activate_app(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb)
 {
 	return pkgmgr_client_usr_activate_app(pc, appid, app_event_cb, _getuid());
 }
@@ -1921,17 +1916,17 @@ API int pkgmgr_client_broadcast_status(pkgmgr_client *pc, const char *pkg_type,
 }
 
 API int pkgmgr_client_request_service(pkgmgr_request_service_type service_type, int service_mode,
-				  pkgmgr_client * pc, const char *pkg_type, const char *pkgid,
+				  pkgmgr_client *pc, const char *pkg_type, const char *pkgid,
 			      const char *custom_info, pkgmgr_handler event_cb, void *data)
 {
 	return pkgmgr_client_usr_request_service(service_type, service_mode, pc, pkg_type, pkgid, _getuid(), custom_info, event_cb, data);
 }
 
 API int pkgmgr_client_usr_request_service(pkgmgr_request_service_type service_type, int service_mode,
-				  pkgmgr_client * pc, const char *pkg_type, const char *pkgid, uid_t uid,
+				  pkgmgr_client *pc, const char *pkg_type, const char *pkgid, uid_t uid,
 			      const char *custom_info, pkgmgr_handler event_cb, void *data)
 {
-	int ret =0;
+	int ret = 0;
 
 	/* Check for NULL value of service type */
 	retvm_if(service_type > PM_REQUEST_MAX, PKGMGR_R_EINVAL, "service type is not defined\n");
@@ -2001,15 +1996,14 @@ API int pkgmgr_client_usr_request_size_info(uid_t uid)
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "request pc is null\n");
 
 	ret = __request_size_info(pc, uid);
-	if (ret < 0) {
+	if (ret < 0)
 		ERR("__request_size_info fail \n");
-	}
 
 	pkgmgr_client_free(pc);
 	return ret;
 }
 
-API int pkgmgr_client_request_size_info(void) // get all package size (data, total)
+API int pkgmgr_client_request_size_info(void) /* get all package size (data, total) */
 {
 	return pkgmgr_client_usr_request_size_info(_getuid());
 }
@@ -2059,7 +2053,7 @@ API int pkgmgr_client_clear_all_cache_dir(void)
 	return pkgmgr_client_usr_clear_cache_dir(PKG_CLEAR_ALL_CACHE, _getuid());
 }
 
-API int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid,
+API int pkgmgr_client_get_size(pkgmgr_client *pc, const char *pkgid,
 		pkgmgr_getsize_type get_type, pkgmgr_handler event_cb,
 		void *data)
 {
@@ -2067,7 +2061,7 @@ API int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid,
 			_getuid());
 }
 
-API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
+API int pkgmgr_client_usr_get_size(pkgmgr_client *pc, const char *pkgid,
 		pkgmgr_getsize_type get_type, pkgmgr_handler event_cb,
 		void *data, uid_t uid)
 {
@@ -2182,7 +2176,7 @@ API int pkgmgr_client_get_package_size_info(pkgmgr_client *pc, const char *pkgid
 }
 
 API int pkgmgr_client_usr_get_total_package_size_info(pkgmgr_client *pc, pkgmgr_total_pkg_size_info_receive_cb event_cb, void *user_data, uid_t uid)
-{	// total package size info
+{	/* total package size info */
 	return pkgmgr_client_usr_get_package_size_info(pc, PKG_SIZE_INFO_TOTAL, (pkgmgr_pkg_size_info_receive_cb)event_cb, user_data, uid);
 }
 

@@ -61,7 +61,7 @@ typedef enum {
 	PM_INSTALL_EXTERNAL,
 } PM_INSTALL_LOCATION;
 
-typedef void* pkgmgr_pkgdbinfo_h;
+typedef void *pkgmgr_pkgdbinfo_h;
 
 /**
  * @brief	This API creates package info handle to set info in the db.

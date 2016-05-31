@@ -42,7 +42,7 @@ extern "C" {
  * pkgmgr_installer is an opaque type for an object
  */
 typedef struct pkgmgr_installer pkgmgr_installer;
-typedef void* pkgmgr_instcertinfo_h;
+typedef void *pkgmgr_instcertinfo_h;
 
 /**
  * @brief listening event type in pkgmgr.
@@ -110,7 +110,7 @@ typedef enum {
 	PM_SET_DISTRIBUTOR2_ROOT_CERT = 6,
 	PM_SET_DISTRIBUTOR2_INTERMEDIATE_CERT = 7,
 	PM_SET_DISTRIBUTOR2_SIGNER_CERT = 8,
-}pkgmgr_instcert_type;
+} pkgmgr_instcert_type;
 
 
 /**
@@ -837,7 +837,7 @@ int pkgmgr_installer_destroy_certinfo_set_handle(pkgmgr_instcertinfo_h handle);
  * @param[in]	pkgid				package ID
  * @return	0 if success, error code(<0) if fail\n
 */
- int pkgmgr_installer_delete_certinfo(const char *pkgid);
+int pkgmgr_installer_delete_certinfo(const char *pkgid);
 
 #ifdef __cplusplus
 }

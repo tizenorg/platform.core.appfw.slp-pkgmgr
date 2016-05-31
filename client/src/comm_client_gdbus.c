@@ -160,7 +160,7 @@ comm_client *comm_client_new(void)
 	comm_client *cc = NULL;
 
 	/* Allocate memory for ADT:comm_client */
-#if !GLIB_CHECK_VERSION(2,35,0)
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init();
 #endif
 	cc = calloc(1, sizeof(comm_client));

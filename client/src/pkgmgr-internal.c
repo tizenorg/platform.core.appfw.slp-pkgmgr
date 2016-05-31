@@ -85,9 +85,8 @@ char *_get_backend_path(const char *input_path)
 	DBG("pkg_path[%s]\n", pkg_path);
 
 	fp = fopen(PKG_CONF_PATH, "r");
-	if (fp == NULL) {
+	if (fp == NULL)
 		return NULL;
-	}
 
 	char *path = NULL;
 	while (fgets(buffer, 1024, fp) != NULL) {
@@ -125,7 +124,7 @@ char *_get_backend_path(const char *input_path)
 	else
 		type++;
 
-	snprintf(installer_path, PKG_STRING_LEN_MAX - 1, 
+	snprintf(installer_path, PKG_STRING_LEN_MAX - 1,
 					"%s%s", backend_path, type);
 
 	DBG("installer_path[%s]\n", installer_path);
@@ -146,9 +145,8 @@ char *_get_backend_path_with_type(const char *type)
 	DBG("type[%s]\n", type);
 
 	fp = fopen(PKG_CONF_PATH, "r");
-	if (fp == NULL) {
+	if (fp == NULL)
 		return NULL;
-	}
 
 	char *path = NULL;
 	while (fgets(buffer, 1024, fp) != NULL) {
@@ -172,7 +170,7 @@ char *_get_backend_path_with_type(const char *type)
 	if (fp != NULL)
 		fclose(fp);
 
-	if(path == NULL)
+	if (path == NULL)
 		return NULL;
 
 /*	if(path[strlen(path)] == '/') */
@@ -180,7 +178,7 @@ char *_get_backend_path_with_type(const char *type)
 /*	else
        sprintf(backend_path, "%s/", path); */
 
-	snprintf(installer_path, PKG_STRING_LEN_MAX - 1, 
+	snprintf(installer_path, PKG_STRING_LEN_MAX - 1,
 					"%s%s", backend_path, type);
 	DBG("installer_path[%s]\n", installer_path);
 
@@ -198,7 +196,7 @@ char *_get_backend_path_with_type(const char *type)
 		}
 		type = strchr(extlist, '.') + 1;
 
-		snprintf(installer_path, PKG_STRING_LEN_MAX - 1, 
+		snprintf(installer_path, PKG_STRING_LEN_MAX - 1,
 						"%s%s", backend_path, type);
 	}
 
@@ -215,9 +213,8 @@ int _get_mime_from_file(const char *filename, char *mimetype, int len)
 		return -1;
 
 	mime = xdg_mime_get_mime_type_for_file(filename, 0);
-	if (strcmp(mime, "application/octet-stream") == 0) {
+	if (strcmp(mime, "application/octet-stream") == 0)
 		mime = xdg_mime_get_mime_type_from_file_name(filename);
-	}
 
 	snprintf(mimetype, len, "%s", mime);
 	return 0;
@@ -344,7 +341,7 @@ pkg_plugin_set *_pkg_plugin_load_library(const char *pkg_type,
 		return NULL;
 	}
 
-	if ((on_load = dlsym(library_handle, "pkg_plugin_on_load")) == NULL || 
+	if ((on_load = dlsym(library_handle, "pkg_plugin_on_load")) == NULL ||
 	    dlerror() != NULL) {
 		ERR("can not find symbol \n");
 		dlclose(library_handle);
@@ -477,7 +474,7 @@ typedef struct _detail_info_map_t {
 		char version[PKG_VERSION_STRING_LEN_MAX];
 		char pkg_description[PKG_VALUE_STRING_LEN_MAX];
 		char min_platform_version[PKG_VERSION_STRING_LEN_MAX];
-		time_t installed_time;	
+		time_t installed_time;
 		int installed_size;
 		int app_size;
 		int data_size;
@@ -514,7 +511,7 @@ char *_get_info_string(const char *key,
 
 	memcpy(&tmp_pkg_detail_info, pkg_detail_info,
 	       sizeof(package_manager_pkg_detail_info_t));
-	
+
 	for (i = 0; i < sizeof(info_map) / sizeof(detail_info_map_t); i++) {
 		tmp = &info_map[i];
 		if (strcmp(key, tmp->name) == 0) {
@@ -522,17 +519,17 @@ char *_get_info_string(const char *key,
 				return strdup((char *)(tmp->field));
 			} else if (strcmp(tmp->type, "bool") == 0) {
 				char temp[PKG_VALUE_STRING_LEN_MAX];
-				snprintf(temp, PKG_VALUE_STRING_LEN_MAX - 1, 
+				snprintf(temp, PKG_VALUE_STRING_LEN_MAX - 1,
 					"%d", (int)*(bool *) (tmp->field));
 				return strdup(temp);
 			} else if (strcmp(tmp->type, "int") == 0) {
 				char temp[PKG_VALUE_STRING_LEN_MAX];
-				snprintf(temp, PKG_VALUE_STRING_LEN_MAX - 1, 
+				snprintf(temp, PKG_VALUE_STRING_LEN_MAX - 1,
 					"%d", (int)*(int *)(tmp->field));
 				return strdup(temp);
 			} else if (strcmp(tmp->type, "time_t") == 0) {
 				char temp[PKG_VALUE_STRING_LEN_MAX];
-				snprintf(temp, PKG_VALUE_STRING_LEN_MAX - 1, 
+				snprintf(temp, PKG_VALUE_STRING_LEN_MAX - 1,
 					"%d", (int)*(time_t *) (tmp->field));
 				return strdup(temp);
 			} else
@@ -556,9 +553,9 @@ int _get_info_int(const char *key,
 	for (i = 0; i < sizeof(info_map) / sizeof(detail_info_map_t); i++) {
 		tmp = &info_map[i];
 		if (strcmp(key, tmp->name) == 0) {
-			if (strcmp(tmp->type, "int") == 0) {
+			if (strcmp(tmp->type, "int") == 0)
 				return (int)*(int *)(tmp->field);
-			} else
+			else
 				return -1;
 		}
 	}
@@ -579,9 +576,9 @@ time_t _get_info_time(const char *key,
 	for (i = 0; i < sizeof(info_map) / sizeof(detail_info_map_t); i++) {
 		tmp = &info_map[i];
 		if (strcmp(key, tmp->name) == 0) {
-			if (strcmp(tmp->type, "time_t") == 0) {
+			if (strcmp(tmp->type, "time_t") == 0)
 				return (time_t) *(time_t *) (tmp->field);
-			} else
+			else
 				return (time_t) -1;
 		}
 	}

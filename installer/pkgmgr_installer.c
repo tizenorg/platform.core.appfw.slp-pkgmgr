@@ -256,11 +256,11 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 		switch (c) {
 		case OPTVAL_PRELOAD:	/* request for preload app */
 			pi->is_preload = 1;
-			DBG("preload request [%d]", pi->is_preload );
+			DBG("preload request [%d]", pi->is_preload);
 			break;
 		case OPTVAL_FORCE_REMOVAL:	/* request for force-remove */
 			pi->force_removal = 1;
-			DBG("force-remove request [%d]", pi->force_removal );
+			DBG("force-remove request [%d]", pi->force_removal);
 			break;
 		case 'k':	/* session id */
 			if (pi->session_id)
@@ -284,12 +284,11 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			if (pi->pkgmgr_info)
 				free(pi->pkgmgr_info);
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
-			DBG("option is [i] pkgid[%s]", pi->pkgmgr_info );
-			if (pi->pkgmgr_info && strlen(pi->pkgmgr_info)==0){
+			DBG("option is [i] pkgid[%s]", pi->pkgmgr_info);
+			if (pi->pkgmgr_info && strlen(pi->pkgmgr_info) == 0)
 				free(pi->pkgmgr_info);
-			}else{
+			else
 				mode = 'i';
-			}
 			break;
 
 		case 'e':	/* install */

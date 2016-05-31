@@ -53,7 +53,7 @@ const struct option long_opts[] = {
 	{ "direct-manifest-install", 1, NULL, 'y' },
 	{ "mount-install", 1, NULL, 'w' },
 	{ "recovery", 1, NULL, 'b' },
-        { "preload", 0, NULL, OPTVAL_PRELOAD },
+	{ "preload", 0, NULL, OPTVAL_PRELOAD },
 	{ "force-remove", 0, NULL, OPTVAL_FORCE_REMOVAL },
 	{ 0, 0, 0, 0 }	/* sentinel */
 };
