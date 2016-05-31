@@ -220,7 +220,6 @@ extern "C" {
 #define PKGCMD_ERR_ARGUMENT_INVALID_STR						"ARGUMENT_INVALID"
 #define PKGCMD_ERR_UNKNOWN_STR								"Unknown Error"
 
-#define PKG_SIZE_INFO_FILE "/tmp/pkgmgr_size_info.txt"
 #define PKG_SIZE_INFO_PATH "/tmp/pkgmgr"
 
 #define PKG_SIZE_INFO_TOTAL "__TOTAL__"

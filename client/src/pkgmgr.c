@@ -217,7 +217,7 @@ static void __error_to_string(int errnumber, char **errstr)
 	}
 }
 
-static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
+static void __add_op_cbinfo(pkgmgr_client_t *pc, int request_id,
 			    const char *req_key, pkgmgr_handler event_cb, void *new_event_cb,
 			    void *data)
 {
@@ -672,7 +672,7 @@ catch:
 	return ret;
 }
 
-static int __get_size_process(pkgmgr_client * pc, const char *pkgid, uid_t uid,
+static int __get_size_process(pkgmgr_client *pc, const char *pkgid, uid_t uid,
 		pkgmgr_getsize_type get_type, pkgmgr_handler event_cb,
 		void *data)
 {
@@ -1189,6 +1189,9 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 	args = g_variant_new("as", builder);
 	g_variant_builder_unref(builder);
 
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
+
 	ret = comm_client_request(mpc->info.request.cc, "install",
 			g_variant_new("(uss@as)", uid, pkgtype, pkg_path, args),
 			&result);
@@ -1206,9 +1209,6 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		g_variant_unref(result);
 		return ret;
 	}
-
-	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
 
 	g_variant_unref(result);
 
@@ -1233,7 +1233,7 @@ API int pkgmgr_client_reinstall(pkgmgr_client *pc, const char *pkg_type,
 			mode, event_cb, data, _getuid());
 }
 
-API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
+API int pkgmgr_client_usr_reinstall(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, const char *optional_data, pkgmgr_mode mode,
 		pkgmgr_handler event_cb, void *data, uid_t uid)
 {
@@ -1265,6 +1265,9 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
 		return PKGMGR_R_ERROR;
 	}
 
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
+
 	ret = comm_client_request(mpc->info.request.cc, "reinstall",
 			g_variant_new("(uss)", uid, pkgtype, pkgid), &result);
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
@@ -1282,9 +1285,6 @@ API int pkgmgr_client_usr_reinstall(pkgmgr_client * pc, const char *pkg_type,
 		g_variant_unref(result);
 		return ret;
 	}
-
-	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
 
 	g_variant_unref(result);
 
@@ -1343,6 +1343,9 @@ API int pkgmgr_client_usr_mount_install(pkgmgr_client *pc, const char *pkg_type,
 	args = g_variant_new("as", builder);
 	g_variant_builder_unref(builder);
 
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
+
 	ret = comm_client_request(mpc->info.request.cc, "mount_install",
 			g_variant_new("(uss@as)", uid, pkgtype, pkg_path, args),
 			&result);
@@ -1360,9 +1363,6 @@ API int pkgmgr_client_usr_mount_install(pkgmgr_client *pc, const char *pkg_type,
 		g_variant_unref(result);
 		return ret;
 	}
-
-	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
 
 	g_variant_unref(result);
 
@@ -1419,6 +1419,9 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		return PKGMGR_R_ERROR;
 	}
 
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
+
 	ret = comm_client_request(mpc->info.request.cc, "uninstall",
 			g_variant_new("(uss)", uid, pkgtype, pkgid), &result);
 	if (ret != PKGMGR_R_OK) {
@@ -1438,9 +1441,6 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
 		return ret;
 	}
-
-	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
 
 	g_variant_unref(result);
 	pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
@@ -1605,7 +1605,7 @@ API int pkgmgr_client_usr_activate_app(pkgmgr_client *pc, const char *appid,
 	return ret;
 }
 
-API int pkgmgr_client_activate_app(pkgmgr_client * pc, const char *appid, pkgmgr_app_handler app_event_cb)
+API int pkgmgr_client_activate_app(pkgmgr_client *pc, const char *appid, pkgmgr_app_handler app_event_cb)
 {
 	return pkgmgr_client_usr_activate_app(pc, appid, app_event_cb, _getuid());
 }
@@ -2059,7 +2059,7 @@ API int pkgmgr_client_clear_all_cache_dir(void)
 	return pkgmgr_client_usr_clear_cache_dir(PKG_CLEAR_ALL_CACHE, _getuid());
 }
 
-API int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid,
+API int pkgmgr_client_get_size(pkgmgr_client *pc, const char *pkgid,
 		pkgmgr_getsize_type get_type, pkgmgr_handler event_cb,
 		void *data)
 {
@@ -2067,7 +2067,7 @@ API int pkgmgr_client_get_size(pkgmgr_client * pc, const char *pkgid,
 			_getuid());
 }
 
-API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
+API int pkgmgr_client_usr_get_size(pkgmgr_client *pc, const char *pkgid,
 		pkgmgr_getsize_type get_type, pkgmgr_handler event_cb,
 		void *data, uid_t uid)
 {
@@ -2093,6 +2093,9 @@ API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
 	else
 		get_type = PM_GET_PKG_SIZE_INFO;
 
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
+
 	ret = comm_client_request(mpc->info.request.cc, "getsize",
 			g_variant_new("(usi)", uid, pkgid, get_type), &result);
 	if (ret != PKGMGR_R_OK) {
@@ -2109,9 +2112,6 @@ API int pkgmgr_client_usr_get_size(pkgmgr_client * pc, const char *pkgid,
 		g_variant_unref(result);
 		return ret;
 	}
-
-	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
 
 	g_variant_unref(result);
 
@@ -2150,6 +2150,10 @@ API int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc,
 	else
 		get_type = PM_GET_PKG_SIZE_INFO;
 
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, __get_pkg_size_info_cb, event_cb,
+			user_data);
+
 	ret = comm_client_request(mpc->info.request.cc, "getsize",
 			g_variant_new("(usi)", uid, pkgid, get_type), &result);
 	if (ret != PKGMGR_R_OK) {
@@ -2166,10 +2170,6 @@ API int pkgmgr_client_usr_get_package_size_info(pkgmgr_client *pc,
 		g_variant_unref(result);
 		return ret;
 	}
-
-	req_id = _get_request_id();
-	__add_op_cbinfo(mpc, req_id, req_key, __get_pkg_size_info_cb, event_cb,
-			user_data);
 
 	g_variant_unref(result);
 
