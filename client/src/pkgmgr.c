@@ -2599,3 +2599,51 @@ API int pkgmgr_client_get_restriction_mode(pkgmgr_client *pc,
 {
 	return pkgmgr_client_usr_get_restriction_mode(pc, mode, _getuid());
 }
+
+#if 0
+API int pkgmgr_client_get_package_archive_info(const char *path,
+		pkg_archive_info *archive_info)
+{
+	return PKGMGR_R_OK;
+}
+#endif
+
+API pkgmgr_info *pkgmgr_client_check_pkginfo_from_file(const char *pkg_path)
+{
+	int ret;
+	pkg_plugin_set *plugin_set;
+	package_manager_pkg_detail_info_t *info;
+	const char *pkg_type;
+
+	if (pkg_path == NULL) {
+		ERR("invalid parameter");
+		return NULL;
+	}
+
+	pkg_type = _get_pkg_type_from_file(pkg_path);
+	if (pkg_type == NULL) {
+		ERR("cannot get pkg type");
+		return NULL;
+	}
+
+	plugin_set = _package_manager_load_library(pkg_type);
+	if (plugin_set == NULL) {
+		ERR("failed to load library for %s", pkg_type);
+		return NULL;
+	}
+
+	info = calloc(1, sizeof(package_manager_pkg_detail_info_t));
+	if (info == NULL) {
+		ERR("out of memory");
+		return NULL;
+	}
+
+	ret = plugin_set->get_pkg_detail_info_from_package(pkg_path, info);
+	if (ret) {
+		ERR("get_pkg_detail_info_from_package failed");
+		free(info);
+		return NULL;
+	}
+
+	return (pkgmgr_info *)info;
+}

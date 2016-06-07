@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include <xdgmime.h>
 
 #include "pkgmgr-internal.h"
@@ -278,6 +279,22 @@ const char *_get_pkg_type(const char *pkgid, uid_t uid)
 	snprintf(pkg_type, sizeof(pkg_type), "%s", val);
 
 	pkgmgrinfo_pkginfo_destroy_pkginfo(pkginfo);
+
+	return pkg_type;
+}
+
+const char *_get_pkg_type_from_file(const char *path)
+{
+	char *p;
+	static char pkg_type[PKG_EXT_LEN_MAX];
+
+	p = strrchr(path, '.');
+	if (p == NULL)
+		return NULL;
+
+	snprintf(pkg_type, sizeof(pkg_type), "%s", p + 1);
+	for (p = pkg_type; *p != '\0'; p++)
+		*p = tolower(*p);
 
 	return pkg_type;
 }
