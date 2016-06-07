@@ -399,7 +399,7 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 	}
 
 	/* call callback */
-	if (appid != NULL && strlen(appid) != 0) {
+	if (appid != NULL && strlen(appid) != 0 && cb_info->app_event_cb) {
 		/* run app callback */
 		if (pc->new_event_cb)
 			cb_info->app_event_cb(target_uid, cb_info->request_id,
@@ -409,7 +409,7 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 			cb_info->app_event_cb(target_uid, cb_info->request_id,
 					pkg_type, pkgid, appid, key, val, NULL,
 					cb_info->data);
-	} else {
+	} else if (cb_info->event_cb) {
 		/* run pkg callback */
 		if (pc->new_event_cb)
 			cb_info->event_cb(target_uid, cb_info->request_id,
