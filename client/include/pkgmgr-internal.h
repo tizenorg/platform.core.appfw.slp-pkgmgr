@@ -36,6 +36,7 @@ typedef package_manager_pkg_info_t package_manager_app_info_t;
 
 
 const char *_get_pkg_type(const char *pkgid, uid_t uid);
+const char *_get_pkg_type_from_file(const char *path);
 
 package_manager_pkg_info_t *_pkg_malloc_appinfo(int num);
 
