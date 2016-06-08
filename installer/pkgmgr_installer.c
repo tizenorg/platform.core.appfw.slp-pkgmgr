@@ -76,6 +76,8 @@ static const char *__get_signal_name(pkgmgr_installer *pi, const char *key)
 
 	switch (pi->request_type) {
 	case PKGMGR_REQ_INSTALL:
+	case PKGMGR_REQ_MANIFEST_DIRECT_INSTALL:
+	case PKGMGR_REQ_MOUNT_INSTALL:
 		return COMM_STATUS_BROADCAST_EVENT_INSTALL;
 	case PKGMGR_REQ_UNINSTALL:
 		return COMM_STATUS_BROADCAST_EVENT_UNINSTALL;
