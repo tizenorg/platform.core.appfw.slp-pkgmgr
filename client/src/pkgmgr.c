@@ -217,7 +217,7 @@ static void __error_to_string(int errnumber, char **errstr)
 	}
 }
 
-static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
+static void __add_op_cbinfo(pkgmgr_client_t *pc, int request_id,
 			    const char *req_key, pkgmgr_handler event_cb, void *new_event_cb,
 			    void *data)
 {
@@ -251,7 +251,7 @@ static void __add_op_cbinfo(pkgmgr_client_t * pc, int request_id,
 	}
 }
 
-static void __add_op_app_cbinfo(pkgmgr_client_t * pc, int request_id,
+static void __add_op_app_cbinfo(pkgmgr_client_t *pc, int request_id,
 			    const char *req_key, pkgmgr_app_handler app_event_cb, void *data)
 {
 	req_cb_info *cb_info;
@@ -394,7 +394,7 @@ static void __operation_callback(void *cb_data, uid_t target_uid,
 	/* find callback info */
 	cb_info = __find_op_cbinfo(pc, req_id);
 	if (cb_info == NULL) {
-		ERR("cannot fint cb_info for req_id:%s", req_id);
+		ERR("cannot find cb_info for req_id:%s", req_id);
 		return;
 	}
 
@@ -723,7 +723,7 @@ static int __move_pkg_process(pkgmgr_client *pc, const char *pkgid,
 {
 	int ret;
 
-	ret = pkgmgr_client_usr_move(pc, pkg_type, pkgid, move_type, 0, uid);
+	ret = pkgmgr_client_usr_move(pc, pkg_type, pkgid, move_type, 0, event_cb, data, uid);
 	if (ret < 0) {
 		ERR("move request failed");
 		return ret;
@@ -1449,17 +1449,19 @@ API int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
 }
 
 API int pkgmgr_client_move(pkgmgr_client *pc, const char *pkg_type,
-		const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode)
+		const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode, pkgmgr_handler event_cb, void *data)
 {
 	return pkgmgr_client_usr_move(pc, pkg_type, pkgid, move_type, mode,
-			_getuid());
+			event_cb, data, _getuid());
 }
 API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 		const char *pkgid, pkgmgr_move_type move_type,
-		pkgmgr_mode mode, uid_t uid)
+		pkgmgr_mode mode, pkgmgr_handler event_cb, void *data, uid_t uid)
 {
 	GVariant *result;
 	int ret = PKGMGR_R_ECOMM;
+	int req_id;
+	char *req_key = NULL;
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *)pc;
 
 	if (pc == NULL || pkg_type == NULL || pkgid == NULL) {
@@ -1482,7 +1484,18 @@ API int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
 		return ret;
 	}
 
-	g_variant_get(result, "(i)", &ret);
+	g_variant_get(result, "(i&s)", &ret, &req_key);
+	if (req_key == NULL) {
+		g_variant_unref(result);
+		return PKGMGR_R_ECOMM;
+	}
+	if (ret != PKGMGR_R_OK) {
+		g_variant_unref(result);
+		return ret;
+	}
+
+	req_id = _get_request_id();
+	__add_op_cbinfo(mpc, req_id, req_key, event_cb, NULL, data);
 	g_variant_unref(result);
 
 	return ret;
