@@ -34,6 +34,7 @@
 #include "comm_client.h"
 #include "pkgmgr-debug.h"
 #include "package-manager.h"
+#include "../../installer/pkgmgr_installer.h"
 
 #define COMM_CLIENT_RETRY_MAX 5
 #define COMM_CLIENT_WAIT_USEC (1000000 / 2) /* 0.5 sec */
@@ -61,28 +62,26 @@ static int __get_signal_type(const char *name)
 	if (name == NULL)
 		return -1;
 
-	if (strcmp(name, COMM_STATUS_BROADCAST_SIGNAL_STATUS) == 0)
-		return COMM_STATUS_BROADCAST_ALL;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_INSTALL) == 0)
-		return COMM_STATUS_BROADCAST_INSTALL;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_UNINSTALL) == 0)
-		return COMM_STATUS_BROADCAST_UNINSTALL;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_MOVE) == 0)
-		return COMM_STATUS_BROADCAST_MOVE;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_INSTALL_PROGRESS) == 0)
-		return COMM_STATUS_BROADCAST_INSTALL_PROGRESS;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_UPGRADE) == 0)
-		return COMM_STATUS_BROADCAST_UPGRADE;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_GET_SIZE) == 0)
-		return COMM_STATUS_BROADCAST_GET_SIZE;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_ENABLE_APP) == 0)
-		return COMM_STATUS_BROADCAST_ENABLE_APP;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_DISABLE_APP) == 0)
-		return COMM_STATUS_BROADCAST_DISABLE_APP;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_ENABLE_APP_SPLASH_SCREEN) == 0)
-		return COMM_STATUS_BROADCAST_ENABLE_APP_SPLASH_SCREEN;
-	else if (strcmp(name, COMM_STATUS_BROADCAST_EVENT_DISABLE_APP_SPLASH_SCREEN) == 0)
-		return COMM_STATUS_BROADCAST_DISABLE_APP_SPLASH_SCREEN;
+	if (strcmp(name, PKGMGR_INSTALLER_INSTALL_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_INSTALL;
+	else if (strcmp(name, PKGMGR_INSTALLER_UNINSTALL_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_UNINSTALL;
+	else if (strcmp(name, PKGMGR_INSTALLER_MOVE_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_MOVE;
+	else if (strcmp(name, PKGMGR_INSTALLER_INSTALL_PERCENT_KEY_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_INSTALL_PROGRESS;
+	else if (strcmp(name, PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_UPGRADE;
+	else if (strcmp(name, PKGMGR_INSTALLER_GET_SIZE_KEY_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_GET_SIZE;
+	else if (strcmp(name, PKGMGR_INSTALLER_APP_ENABLE_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_ENABLE_APP;
+	else if (strcmp(name, PKGMGR_INSTALLER_APP_DISABLE_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_DISABLE_APP;
+	else if (strcmp(name, PKGMGR_INSTALLER_APP_ENABLE_SPLASH_SCREEN_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_ENABLE_APP_SPLASH_SCREEN;
+	else if (strcmp(name, PKGMGR_INSTALLER_APP_DISABLE_SPLASH_SCREEN_EVENT_STR) == 0)
+		return PKGMGR_CLIENT_STATUS_DISABLE_APP_SPLASH_SCREEN;
 	else
 		return -1;
 }
@@ -286,10 +285,10 @@ int comm_client_request(comm_client *cc, const char *method, GVariant *params,
 int
 comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb cb, void *cb_data)
 {
-	int r = COMM_RET_ERROR;
+	int r = PKGMGR_R_ERROR;
 
 	if (cc == NULL)
-		return COMM_RET_ERROR;
+		return PKGMGR_R_ERROR;
 
 	/* Create new sig_cb_data */
 	cc->sig_cb_data = calloc(1, sizeof(struct signal_callback_data));
@@ -298,7 +297,7 @@ comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb
 		(cc->sig_cb_data)->cb = cb;
 		(cc->sig_cb_data)->cb_data = cb_data;
 	} else {
-		r = COMM_RET_ERROR;
+		r = PKGMGR_R_ERROR;
 		goto ERROR_CLEANUP;
 	}
 	/* Add a filter for signal */
@@ -307,11 +306,11 @@ comm_client_set_status_callback(int comm_status_type, comm_client *cc, status_cb
 		_on_signal_handle_filter, (gpointer)cc->sig_cb_data, _free_sig_cb_data);
 	if (!cc->subscription_id) {
 		ERR("Failed to add filter\n");
-		r = COMM_RET_ERROR;
+		r = PKGMGR_R_ERROR;
 		goto ERROR_CLEANUP;
 	}
 
-	return COMM_RET_OK;
+	return PKGMGR_R_OK;
 
 ERROR_CLEANUP:
 	ERR("General error");
