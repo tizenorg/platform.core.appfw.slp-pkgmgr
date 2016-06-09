@@ -491,34 +491,19 @@ int pkgmgr_client_usr_uninstall(pkgmgr_client *pc, const char *pkg_type,
  * @param[in]	pkgid	application package id
  * @param[in]	move_type		PM_MOVE_TO_INTERNAL or PM_MOVE_TO_SDCARD
  * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
+ * @param[in]	event_cb	user callback
+ * @param[in]	data	user data
  * @param[in]	uid	the addressee user id of the instruction
  * @retval	PKGMGR_R_OK	success
  * @retval	PKGMGR_R_EINVAL	invalid argument
  * @retval	PKGMGR_R_ERROR	general error
 */
 int pkgmgr_client_move(pkgmgr_client *pc, const char *pkg_type,
-				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode);
-int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
-				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode, uid_t uid);
-/**
- * @brief	This API moves installed package to SD card or vice versa.
- *
- * This API is for package-manager client application.\n
- *
- * @param[in]	pc	pkgmgr_client
- * @param[in]	pkg_type		package type
- * @param[in]	pkgid	application package id
- * @param[in]	move_type		PM_MOVE_TO_INTERNAL or PM_MOVE_TO_SDCARD
- * @param[in]	mode		installation mode  - PM_DEFAULT, PM_QUIET
- * @param[in]	event_cb	user callback
- * @param[in]	data		user data
- * @retval	PKGMGR_R_OK	success
- * @retval	PKGMGR_R_EINVAL	invalid argument
- * @retval	PKGMGR_R_ERROR	general error
-*/
-int pkgmgr_client_move_pkg(pkgmgr_client *pc, const char *pkg_type,
-				const char *pkgid, pkgmgr_move_type move_type, pkgmgr_mode mode,
+				const char *pkgid, pkgmgr_move_type move_type,
 				pkgmgr_handler event_cb, void *data);
+int pkgmgr_client_usr_move(pkgmgr_client *pc, const char *pkg_type,
+				const char *pkgid, pkgmgr_move_type move_type,
+				pkgmgr_handler event_cb, void *data, uid_t uid);
 
 /**
  * @brief	This API activates package.
