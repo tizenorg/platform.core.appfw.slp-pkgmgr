@@ -520,20 +520,6 @@ static inline int __pkgmgr_read_proc(const char *path, char *buf, int size)
 	return ret;
 }
 
-static inline int __pkgmgr_find_pid_by_cmdline(const char *dname,
-				      const char *cmdline, const char *apppath)
-{
-	int pid = 0;
-
-	if (strncmp(cmdline, apppath, PKG_STRING_LEN_MAX-1) == 0) {
-		pid = atoi(dname);
-		if (pid != getpgid(pid))
-			pid = 0;
-	}
-
-	return pid;
-}
-
 static int __sync_process(const char *req_key)
 {
 	int ret;
