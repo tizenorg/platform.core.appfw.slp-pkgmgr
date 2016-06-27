@@ -119,8 +119,9 @@ extern "C" {
 
 /* new common error codes */
 /* since 3.0 */
-/* TODO(jongmyeong.ko): it should be checked with SDK part if we can define new error in 3.0 */
 #define PKGCMD_ERRCODE_UNDEFINED_ERROR (-999)
+#define PKGCMD_ERRCODE_GRANT_PERMISSION_ERROR (-25)  /* Grant permission error */
+#define PKGCMD_ERRCODE_IMAGE_ERROR (-24)  /* Image error */
 #define PKGCMD_ERRCODE_UNZIP_ERROR (-23)  /* Unzip error */
 #define PKGCMD_ERRCODE_SECURITY_ERROR (-22)  /* Security error */
 #define PKGCMD_ERRCODE_REGISTER_ERROR (-21)  /* Register application error */
