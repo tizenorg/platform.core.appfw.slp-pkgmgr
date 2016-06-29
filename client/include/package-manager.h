@@ -147,6 +147,8 @@ extern "C" {
 #define PKGCMD_ERRCODE_ERROR (-1)  /* General error */
 #define PKGCMD_ERRCODE_OK (0)  /* Success */
 
+#define PKGCMD_ERRCODE_GRANT_PERMISSION_ERROR_STR "Grant permission error"
+#define PKGCMD_ERRCODE_IMAGE_ERROR_STR "Image error"
 #define PKGCMD_ERRCODE_UNZIP_ERROR_STR "Unzip error"
 #define PKGCMD_ERRCODE_SECURITY_ERROR_STR "Security error"
 #define PKGCMD_ERRCODE_REGISTER_ERROR_STR "Register application error"
