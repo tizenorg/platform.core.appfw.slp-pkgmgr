@@ -61,6 +61,7 @@ typedef void *pkgmgr_instcertinfo_h;
 #define PKGMGR_INSTALLER_UPGRADE_EVENT_STR       "update"
 #define PKGMGR_INSTALLER_OK_EVENT_STR            "ok"
 #define PKGMGR_INSTALLER_FAIL_EVENT_STR          "fail"
+#define PKGMGR_INSTALLER_UNKNOWN_EVENT_STR       ""
 
 #define PKGMGR_INSTALLER_APP_DISABLE_EVENT_STR         "disable_app"
 #define PKGMGR_INSTALLER_APP_ENABLE_EVENT_STR          "enable_app"
