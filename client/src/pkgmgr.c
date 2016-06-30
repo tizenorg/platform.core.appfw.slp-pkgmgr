@@ -536,7 +536,7 @@ static int __sync_process(const char *req_key)
 		if (access(info_file, F_OK) == 0) {
 			fp = fopen(info_file, "r");
 			if (fp == NULL) {
-				DBG("file is not generated yet.... wait\n");
+				DBG("file is not generated yet.... wait");
 				usleep(100 * 1000);	/* 100ms sleep*/
 				continue;
 			}
@@ -548,23 +548,26 @@ static int __sync_process(const char *req_key)
 			}
 			fclose(fp);
 
-			DBG("info_file file is generated, result = %s. \n", buf);
+			DBG("info_file file is generated, result(%s)", buf);
 			result = atoi(buf);
 			break;
 		}
 
-		DBG("file is not generated yet.... wait\n");
+		DBG("file is not generated yet.... wait");
 		usleep(100 * 1000);	/* 100ms sleep*/
 
 		if (check_cnt > 6000) {	/* 60s * 10 time over*/
-			ERR("wait time over!!\n");
+			ERR("wait time over!!");
 			break;
 		}
 	}
 
 	ret = remove(info_file);
-	if (ret < 0)
-		ERR("file is can not remove[%s, %d]\n", info_file, ret);
+	if (ret < 0) {
+		ERR("failed to remove(%s), errno(%d)", info_file, errno);
+		if (errno == EPERM)
+			ERR("operation not permitted, current user(%d)", getuid());
+	}
 
 	return result;
 }
