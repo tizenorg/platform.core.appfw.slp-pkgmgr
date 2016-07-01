@@ -545,7 +545,8 @@ pkgmgr_installer_send_signal(pkgmgr_installer *pi,
 		return -1;
 	}
 
-	if (strcmp(key, PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0)
+	if (strcmp(key, PKGMGR_INSTALLER_START_KEY_STR) == 0 &&
+			strcmp(val, PKGMGR_INSTALLER_UPGRADE_EVENT_STR) == 0)
 		pi->request_type = PKGMGR_REQ_UPGRADE;
 
 	r = __send_signal_for_event(pi, pkg_type, pkgid, key, val);
