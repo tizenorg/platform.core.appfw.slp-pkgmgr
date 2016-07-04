@@ -247,6 +247,9 @@ CLEANUP_END:
  */
 int pkgmgr_installer_get_request_type(pkgmgr_installer *pi);
 
+//jungh should add description
+uid_t pkgmgr_installer_get_uid(pkgmgr_installer *pi);
+
 /**
 	@brief		Get request info
 	@pre		pkgmgr_installer_receive_request() must be called.
