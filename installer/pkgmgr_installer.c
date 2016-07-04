@@ -407,6 +407,9 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'u': /* uid */
+			pi->target_uid = (uid_t)atoi(optarg);
+
 			/* Otherwise */
 		case '?':	/* Not an option */
 			break;
