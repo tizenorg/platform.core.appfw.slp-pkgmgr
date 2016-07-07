@@ -35,7 +35,7 @@ extern "C" {
 #define OPTVAL_FORCE_REMOVAL 1001
 
 /* Supported options */
-const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:b:e:M:y:w:q";
+const char *short_opts = "k:l:i:d:c:m:t:o:r:p:s:b:e:M:y:w:q:D:A";
 const struct option long_opts[] = {
 	{ "session-id", 1, NULL, 'k' },
 	{ "license-path", 1, NULL, 'l' },
