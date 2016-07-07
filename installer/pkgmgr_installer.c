@@ -407,6 +407,20 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'D': /* disable pkg */
+			pi->request_type = PKGMGR_REQ_DISABLE_PKG;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
+		case 'A': /* enable pkg */
+			pi->request_type = PKGMGR_REQ_ENABLE_PKG;
+			if (pi->pkgmgr_info)
+				free(pi->pkgmgr_info);
+			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
+			break;
+
 			/* Otherwise */
 		case '?':	/* Not an option */
 			break;
