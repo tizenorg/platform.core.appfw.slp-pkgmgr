@@ -105,7 +105,7 @@ typedef struct _pkgmgr_client_t {
 	} info;
 	void *new_event_cb;
 	char *tep_path;
-	char *tep_move;
+	bool tep_move;
 } pkgmgr_client_t;
 
 typedef struct _iter_data {
@@ -1006,11 +1006,6 @@ API int pkgmgr_client_free(pkgmgr_client *pc)
 		mpc->tep_path = NULL;
 	}
 
-	if (mpc->tep_move) {
-		free(mpc->tep_move);
-		mpc->tep_move = NULL;
-	}
-
 	free(mpc);
 	mpc = NULL;
 	return PKGMGR_R_OK;
@@ -1106,14 +1101,17 @@ static int __change_op_cb_for_enable_disable_splash_screen(pkgmgr_client *pc,
 	return PKGMGR_R_OK;
 }
 
-API int pkgmgr_client_set_tep_path(pkgmgr_client *pc, char *tep_path, char *tep_move)
+API int pkgmgr_client_set_tep_path(pkgmgr_client *pc, char *tep_path, bool tep_move)
 {
 	retvm_if(pc == NULL, PKGMGR_R_EINVAL, "package manager client pc is NULL");
 	retvm_if(tep_path == NULL, PKGMGR_R_EINVAL, "tep path is NULL");
 	pkgmgr_client_t *mpc = (pkgmgr_client_t *) pc;
 
+	if (mpc->tep_path)
+		free(mpc->tep_path);
+
 	mpc->tep_path = strdup(tep_path);
-	mpc->tep_move = strdup(tep_move);
+	mpc->tep_move = tep_move;
 
 	return PKGMGR_R_OK;
 }
@@ -1164,7 +1162,9 @@ API int pkgmgr_client_usr_install(pkgmgr_client *pc, const char *pkg_type,
 		g_variant_builder_add(builder, "s", "-e");
 		g_variant_builder_add(builder, "s", mpc->tep_path);
 		g_variant_builder_add(builder, "s", "-M");
-		g_variant_builder_add(builder, "s", mpc->tep_move);
+		/* TODO: revise tep_move */
+		g_variant_builder_add(builder, "s",
+				mpc->tep_move ? "tep_move" : "tep_copy");
 	}
 
 	args = g_variant_new("as", builder);
@@ -1318,7 +1318,9 @@ API int pkgmgr_client_usr_mount_install(pkgmgr_client *pc, const char *pkg_type,
 		g_variant_builder_add(builder, "s", "-e");
 		g_variant_builder_add(builder, "s", mpc->tep_path);
 		g_variant_builder_add(builder, "s", "-M");
-		g_variant_builder_add(builder, "s", mpc->tep_move);
+		/* TODO: revise tep_move */
+		g_variant_builder_add(builder, "s",
+				mpc->tep_move ? "tep_move" : "tep_copy");
 	}
 
 	args = g_variant_new("as", builder);
