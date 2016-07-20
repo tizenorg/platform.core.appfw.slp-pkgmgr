@@ -421,6 +421,10 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 			pi->pkgmgr_info = strndup(optarg, MAX_STRLEN);
 			break;
 
+		case 'u': /* uid */
+			pi->target_uid = (uid_t)atoi(optarg);
+			break;
+
 			/* Otherwise */
 		case '?':	/* Not an option */
 			break;
@@ -439,6 +443,12 @@ API int pkgmgr_installer_get_request_type(pkgmgr_installer *pi)
 {
 	CHK_PI_RET(PKGMGR_REQ_INVALID);
 	return pi->request_type;
+}
+
+API uid_t pkgmgr_installer_get_uid(pkgmgr_installer *pi)
+{
+	CHK_PI_RET(PKGMGR_REQ_INVALID);
+	return pi->target_uid;
 }
 
 API const char *pkgmgr_installer_get_request_info(pkgmgr_installer *pi)
