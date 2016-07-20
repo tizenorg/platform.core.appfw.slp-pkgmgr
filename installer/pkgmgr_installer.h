@@ -250,6 +250,40 @@ CLEANUP_END:
 int pkgmgr_installer_get_request_type(pkgmgr_installer *pi);
 
 /**
+	@brief		Get uid
+	@pre		pkgmgr_installer_receive_request() must be called.
+	@post		None
+	@see		pkgmgr_installer_receive_request
+	@param[in]	pi	pkgmgr_installer object
+	@return		Uid info.
+	@retval		NULL	on function failure
+	@remark		Returned uid must not be modified.
+	@code
+#include <pkgmgr_installer.h>
+int main(int argc, char **argv)
+{
+	pkgmgr_installer *pi;
+	int r = 0;
+	uid_t uid;
+
+	pi = pkgmgr_installer_new();
+	if(!pi) return -1;
+	if(pkgmgr_installer_receive_request(pi, argc, argv)) {
+		r = -1;
+		goto CLEANUP_RET;
+	}
+	uid = pkgmgr_installer_get_uid(pi);
+
+	// Do something...
+
+	pkgmgr_installer_free(pi);
+	return r;
+}
+	@endcode
+ */
+uid_t pkgmgr_installer_get_uid(pkgmgr_installer *pi);
+
+/**
 	@brief		Get request info
 	@pre		pkgmgr_installer_receive_request() must be called.
 	@post		None
