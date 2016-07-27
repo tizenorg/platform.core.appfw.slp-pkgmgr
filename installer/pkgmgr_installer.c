@@ -32,6 +32,7 @@
 #include "pkgmgr_installer.h"
 #include "pkgmgr_installer_config.h"
 #include "pkgmgr_installer_debug.h"
+#include "pkgmgr_installer_info.h"
 
 #include "../client/include/comm_config.h"
 
@@ -64,6 +65,8 @@ struct pkgmgr_installer {
 	int force_removal;
 	GDBusConnection *conn;
 };
+
+uid_t g_target_uid;
 
 static const char *__get_signal_name(pkgmgr_installer *pi, const char *key)
 {
@@ -248,6 +251,7 @@ pkgmgr_installer_receive_request(pkgmgr_installer *pi,
 	int mode = 0;
 
 	pi->target_uid = getuid();
+	g_target_uid = pi->target_uid;
 	while (1) {
 		c = getopt_long(argc, argv, short_opts, long_opts, &opt_idx);
 		/* printf("c=%d %c\n", c, c); //debug */
@@ -523,6 +527,7 @@ API int pkgmgr_installer_set_uid(pkgmgr_installer *pi, uid_t uid)
 		return -1;
 
 	pi->target_uid = uid;
+	g_target_uid = pi->target_uid;
 
 	return 0;
 }
@@ -619,4 +624,11 @@ API int pkgmgr_installer_delete_certinfo(const char *pkgid)
 	int ret = 0;
 	ret = pkgmgrinfo_delete_certinfo(pkgid);
 	return ret;
+}
+
+API int pkgmgr_installer_info_get_target_uid(uid_t *uid)
+{
+	*uid = g_target_uid;
+
+	return 0;
 }

@@ -842,6 +842,8 @@ int pkgmgr_installer_destroy_certinfo_set_handle(pkgmgr_instcertinfo_h handle);
 */
 int pkgmgr_installer_delete_certinfo(const char *pkgid);
 
+int pkgmgr_installer_info_get_target_uid(uid_t *uid);
+
 #ifdef __cplusplus
 }
 #endif
