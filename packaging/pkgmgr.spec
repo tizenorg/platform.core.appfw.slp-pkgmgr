@@ -165,7 +165,7 @@ HOME="$saveHOME"
 %manifest %{name}-installer-devel.manifest
 %defattr(-,root,root,-)
 %dir %{_includedir}/pkgmgr
-%{_includedir}/pkgmgr/pkgmgr_installer.h
+%{_includedir}/pkgmgr/*.h
 %{_libdir}/pkgconfig/pkgmgr-installer.pc
 %{_libdir}/libpkgmgr_installer.so
 
