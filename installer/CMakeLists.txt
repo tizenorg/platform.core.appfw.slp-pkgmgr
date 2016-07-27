@@ -40,21 +40,11 @@ set_target_properties(pkgmgr_installer PROPERTIES VERSION ${VERSION})
 set_target_properties(pkgmgr_installer PROPERTIES COMPILE_FLAGS "${installer_pkgs_CFLAGS_str}")
 target_link_libraries(pkgmgr_installer ${installer_pkgs_LDFLAGS})
 
-
 ### Create pc file
 configure_file(pkgmgr-installer.pc.in ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc @ONLY)
 
-
 ## Install
-INSTALL(TARGETS
-			pkgmgr_installer
-            DESTINATION ${LIB_INSTALL_DIR}
-		COMPONENT RuntimeLibraries)
-INSTALL(FILES
-			pkgmgr_installer.h
-		DESTINATION include/pkgmgr)
-
-
-INSTALL(FILES
-		${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc
-        DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
+INSTALL(TARGETS pkgmgr_installer DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+INSTALL(FILES pkgmgr_installer.h DESTINATION include/pkgmgr)
+INSTALL(FILES pkgmgr_installer_info.h DESTINATION include/pkgmgr)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgmgr-installer.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
